@@ -81,6 +81,26 @@ out/
   ...
 ```
 
+## YouTubeチャンネル用アセット(アイコン・バナー)
+
+チャンネルアイコンとバナー画像も同じ仕組み(Chromium描画)で生成できます。
+
+```bash
+python3 generate_channel_art.py --outdir ./assets
+```
+
+```
+assets/
+  icon.png    800x800   チャンネルアイコン(YouTubeは円形にクロップして表示
+                          するため、重要な要素は中央の円内に収めてあります)
+  banner.png  2560x1440  チャンネルバナー。どのデバイスでも見切れない中央の
+                          「セーフエリア」(1546x423)にタイトル・タグライン
+                          を収めてあります
+```
+
+背景には動画フレームと同じ「無音確認済みの装飾記号」(`config.DECORATIVE_SYMBOLS`)
+をCSS Gridで敷き詰めており、チャンネルの世界観を動画サムネイルと揃えています。
+
 ## ハマった罠(実装時のデバッグ記録)
 
 このリポジトリの実装は「単純にespeak-ngへZalgoテキストを渡せば終わり」で
@@ -133,19 +153,32 @@ Zalgoの結合文字や記号ブロックは1つのフォントに全部入っ�
 フェードアウトし、`video_builder.build_video()` の `-shortest` で動画尺が
 音声に追従するようにしています。
 
+### 6. 「ENCLOSING」系の結合文字は豆腐ではないが表示が崩れる
+
+`U+20D0`-`U+20F0` の中には、丸・四角・ひし形・スクリーン・キーキャップ・
+三角のような**大きな図形を土台の文字に重ねて描く**「ENCLOSING」系のコード
+ポイントがあります(例: `U+20E3` COMBINING ENCLOSING KEYCAP)。これらは
+Unicode上は正式に割り当て済みでフォントも対応しているため豆腐にはなりま
+せんが、実際に描画すると小さな飾り記号ではなく黒い塊や三角形が土台の文字
+を覆い隠してしまい、「Zalgo風の演出」ではなく単なる表示崩れに見えてしまい
+ます。`config.py` の `_ENCLOSING_COMBINING_MARKS` でこれらを個別に除外して
+います。
+
 ## プロジェクト構成
 
 ```
-config.py           全モジュール共通の設定・定数
-word_generator.py   Zalgo風「発音不能な単語」の生成
-tts_synth.py         TTS(espeak-ng)による音声合成 [--mode tts]
-glitch_synth.py      合成グリッチ音による音声生成 [--mode glitch]
-audio_utils.py       繰り返し・パディング無しフェード・mp3変換
-frame_builder.py     "How to Pronounce" フレーム画像の生成(Playwright)
-video_builder.py     フレーム+音声 → mp4 の合成
-generate.py          CLIエントリポイント
-tests/               ユニットテスト(pytest)
-.github/workflows/   CI(push/PR時にテストを自動実行)
+config.py                全モジュール共通の設定・定数
+word_generator.py        Zalgo風「発音不能な単語」の生成
+tts_synth.py              TTS(espeak-ng)による音声合成 [--mode tts]
+glitch_synth.py           合成グリッチ音による音声生成 [--mode glitch]
+audio_utils.py            繰り返し・パディング無しフェード・mp3変換
+frame_builder.py          "How to Pronounce" フレーム画像の生成(Playwright)
+video_builder.py          フレーム+音声 → mp4 の合成
+generate.py               CLIエントリポイント
+generate_channel_art.py   YouTubeチャンネル用アイコン・バナーの生成
+assets/                   generate_channel_art.py の出力先(icon.png / banner.png)
+tests/                    ユニットテスト(pytest)
+.github/workflows/        CI(push/PR時にテストを自動実行)
 ```
 
 ## ライセンス
