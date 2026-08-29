@@ -28,7 +28,7 @@ FRAME_HTML_TEMPLATE = """
 <body>
 <h1>How to Pronounce</h1>
 <h2>{word}</h2>
-<p class="sub">[{mode_label} / 自動生成された発音不能ワード]</p>
+<p class="sub">[{mode_label} / Auto-generated unpronounceable word]</p>
 <svg class="icon" width="140" height="140" viewBox="0 0 140 140">
   <polygon points="10,50 50,50 90,10 90,130 50,90 10,90" fill="black"/>
   <path d="M100,70 A30,30 0 0 0 100,30" stroke="black" stroke-width="6" fill="none"/>

@@ -12,9 +12,10 @@
 CHROMIUM_PATH = "/opt/pw-browsers/chromium"  # Playwright同梱のChromium
 FRAME_SIZE = (1280, 720)
 
+# 動画フレームに表示するラベル(海外視聴者向けなので英語表記に統一)
 MODE_LABELS = {
-    "tts": "TTS読み上げ",
-    "glitch": "合成グリッチ音",
+    "tts": "Text-to-Speech",
+    "glitch": "Synthesized Glitch Audio",
 }
 
 # --- 単語ジェネレータ設定 ----------------------------------------------------
@@ -43,14 +44,22 @@ SEPARATOR_SYMBOLS = ["(", ")", ":", "-"]
 # そのため、(a) 実際にespeak-ngへ1文字ずつ通して無音を個別確認したコード
 # ポイントのみを候補にし、(b) 1つの土台文字に乗せるマークは必ず「同じブロ
 # ックの中だけ」から選ぶ、という2段構えにしている。
+# U+20D0-20F0の中でも「土台の文字を覆い隠す大きな図形」として描画される
+# ENCLOSING系(丸・四角・ひし形・スクリーン・キーキャップ・三角)のコード
+# ポイント。詳細は SAFE_COMBINING_BLOCKS のコメント参照。
+_ENCLOSING_COMBINING_MARKS = {0x20DD, 0x20DE, 0x20DF, 0x20E0, 0x20E2, 0x20E3, 0x20E4}
+
 SAFE_COMBINING_BLOCKS = [
     list(range(0x0300, 0x0370)),  # Combining Diacritical Marks
     list(range(0x0483, 0x048A)),  # Cyrillic combining
     list(range(0x0591, 0x05B0)),  # Hebrew accents(母音記号 05B0-05BDは除外済み)
     list(range(0x1DC0, 0x1DE7)) + list(range(0x1DF5, 0x1E00)),  # Combining Diacritical Marks Supplement
-    list(range(0x20D0, 0x20F1)),  # Combining Diacritical Marks for Symbols
-                                   # (0x20F1以降はUnicode未割り当てで、フォント
-                                   #  が無いため「豆腐」の原因になるので除外)
+    # Combining Diacritical Marks for Symbols。
+    # 0x20F1以降はUnicode未割り当てでフォントが無く「豆腐」になるため除外。
+    # さらに「ENCLOSING(囲み)」系(丸・四角・ひし形・キーキャップ・三角など)
+    # は土台の文字を覆い隠す大きな図形として描画され、小さな飾りが重なる
+    # Zalgo的な見た目ではなく「表示崩れ」に見えてしまうため除外している。
+    [cp for cp in range(0x20D0, 0x20F1) if cp not in _ENCLOSING_COMBINING_MARKS],
 ]
 
 # 装飾記号。実際にespeak-ngへ1文字ずつ通し、「何も読み上げない(無音)」こと
