@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+"""
+How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
+=================================================
+
+1. Zalgo風「発音不能な単語」をランダム生成          -> word_generator.py
+2. 音声を作る(2方式から選択):                      -> tts_synth.py / glitch_synth.py
+     --mode tts     : espeak-ng に単語そのものを読ませ、出てきた音を採用
+                       (デフォルト。単語の文字列がそのまま音に反映される
+                       ので「本当にその単語を読ませている」感が出せる)
+     --mode glitch  : チャープ音・ノイズバースト・ビットクラッシュを合成
+                       (単語の音とは無関係な効果音を「答え」として当てる)
+3. 「答え」を --repeat 回(デフォルト2回)繰り返す      -> audio_utils.py
+4. 無音パディングはしない。中身の実際の長さの末尾だけ短くフェードアウトし、
+   動画の尺はその音声の長さにそのまま合わせる(固定尺に引き伸ばさない)
+5. "How to Pronounce <word>" 形式のミニマルな静止画フレームを生成 -> frame_builder.py
+6. 音声+フレームを合成して mp4 を書き出す(尺は音声の長さに追従)  -> video_builder.py
+
+必要なもの:
+    apt-get install -y espeak-ng ffmpeg
+    apt-get install -y fonts-noto-core fonts-noto-extra fonts-noto-ui-core fonts-noto-ui-extra
+    pip install -r requirements.txt
+    playwright install chromium   # 同梱のChromiumが無い環境の場合のみ
+
+使い方:
+    python3 generate.py --count 5 --outdir ./out
+    python3 generate.py --count 5 --mode glitch --outdir ./out_glitch
+
+出力:
+    ./out/001_word.txt   (生成した単語そのもの)
+    ./out/001.mp3        (音声。modeにより中身が変わる)
+    ./out/001.mp4        (完成動画)
+
+詳しい経緯・ハマった罠は README.md を参照。
+"""
+
+import argparse
+import os
+import random
+
+import config
+from audio_utils import finalize_audio, repeat_audio, wav_to_mp3
+from frame_builder import build_frame, close_browser
+from glitch_synth import synthesize_glitch_chunk
+from tts_synth import synthesize_tts
+from video_builder import build_video
+from word_generator import random_zalgo_word, readable_label
+
+
+def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOICE,
+                  speed=config.DEFAULT_SPEED, unit_duration=config.DEFAULT_UNIT_DURATION,
+                  repeat=config.DEFAULT_REPEAT, repeat_gap=config.DEFAULT_REPEAT_GAP,
+                  fade=config.DEFAULT_FADE):
+    word = random_zalgo_word()
+    label = readable_label(word)
+
+    base = os.path.join(outdir, f"{idx:03d}")
+    txt_path = base + "_word.txt"
+    raw_wav = base + "_raw.wav"
+    rep_wav = base + "_rep.wav"
+    fin_wav = base + ".wav"
+    mp3_path = base + ".mp3"
+    frame_path = base + "_frame.png"
+    video_path = base + ".mp4"
+
+    with open(txt_path, "w", encoding="utf-8") as f:
+        f.write(word)
+
+    if mode == "tts":
+        # espeak-ngが吐く長さがそのまま採用される(パディングはしない)
+        synthesize_tts(word, raw_wav, voice=voice, speed=speed)
+    elif mode == "glitch":
+        # unit_durationが「1回分」の長さ。--repeatで指定した回数ぶん、
+        # これがそのまま繰り返される(動画の総尺は自動的に決まる)
+        synthesize_glitch_chunk(raw_wav, target_seconds=unit_duration)
+    else:
+        raise ValueError(f"unknown mode: {mode!r} (tts / glitch)")
+
+    repeat_audio(raw_wav, rep_wav, times=repeat, gap=repeat_gap)
+    # 無音パディングはしない。中身の実際の長さのまま、末尾だけ短くフェード
+    # し、動画の尺もそれに合わせる(build_videoが -shortest で音声側に合わせる)
+    finalize_audio(rep_wav, fin_wav, fade=fade)
+    os.remove(raw_wav)
+    os.remove(rep_wav)
+
+    wav_to_mp3(fin_wav, mp3_path)
+    build_frame(label, frame_path, mode=mode)
+    build_video(frame_path, mp3_path, video_path)
+
+    os.remove(fin_wav)
+    os.remove(frame_path)
+
+    return {"word": word, "label": label, "video": video_path, "audio": mp3_path}
+
+
+def main():
+    ap = argparse.ArgumentParser(description="How-to-Pronounce ネタ動画 自動生成")
+    ap.add_argument("--count", type=int, default=3, help="生成する本数")
+    ap.add_argument("--outdir", type=str, default="./out", help="出力ディレクトリ")
+    ap.add_argument("--mode", type=str, choices=["tts", "glitch"], default=config.DEFAULT_MODE,
+                     help="音声の作り方: tts=espeak-ngに単語を読ませる(デフォルト) / "
+                          "glitch=合成グリッチ音を当てる")
+    ap.add_argument("--voice", type=str, default=config.DEFAULT_VOICE,
+                     help="[tts専用] espeak-ngの声(例: en, en-us, ja)")
+    ap.add_argument("--speed", type=int, default=config.DEFAULT_SPEED,
+                     help="[tts専用] 読み上げ速度(words/min)")
+    ap.add_argument("--unit-duration", type=float, default=config.DEFAULT_UNIT_DURATION,
+                     help="[glitch専用] 「答え」1回分の長さ(秒)")
+    ap.add_argument("--repeat", type=int, default=config.DEFAULT_REPEAT,
+                     help="「答え」を何回繰り返すか(デフォルト2回。How-to-Pronounce系動画が"
+                          "word...word...のように2回言うことが多いのに合わせている)")
+    ap.add_argument("--repeat-gap", type=float, default=config.DEFAULT_REPEAT_GAP,
+                     help="繰り返し間の無音の長さ(秒)")
+    ap.add_argument("--fade", type=float, default=config.DEFAULT_FADE,
+                     help="末尾のフェードアウトの長さ(秒)。無音パディングはせず、"
+                          "中身の実際の長さに動画尺を合わせる")
+    ap.add_argument("--seed", type=int, default=None, help="乱数シード(再現したい場合)")
+    args = ap.parse_args()
+
+    if args.seed is not None:
+        random.seed(args.seed)
+
+    os.makedirs(args.outdir, exist_ok=True)
+
+    results = []
+    try:
+        for i in range(1, args.count + 1):
+            r = generate_one(
+                i, args.outdir, mode=args.mode,
+                voice=args.voice, speed=args.speed, unit_duration=args.unit_duration,
+                repeat=args.repeat, repeat_gap=args.repeat_gap, fade=args.fade,
+            )
+            print(f"[{i}/{args.count}] {r['video']}  <-  {r['label']}")
+            results.append(r)
+    finally:
+        close_browser()
+
+    return results
+
+
+if __name__ == "__main__":
+    main()

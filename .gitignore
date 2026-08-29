@@ -1,0 +1,20 @@
+# 生成物
+/out/
+/out_*/
+*.mp4
+*.mp3
+*.wav
+*_frame.png
+*_word.txt
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+
+# OS
+.DS_Store

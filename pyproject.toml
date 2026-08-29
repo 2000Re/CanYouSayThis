@@ -1,0 +1,17 @@
+[project]
+name = "unpronounceable-generator"
+version = "0.1.0"
+description = "「How to Pronounce」ネタ動画を自動生成するパイプライン(発音不能なZalgo風単語 + TTS/グリッチ音 + 動画合成)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "playwright>=1.40",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+# pytestの設定は pytest.ini 側に集約しているため、ここには置いていない
+# (両方に書くと "ignoring pytest config in pyproject.toml" という警告が出る)
