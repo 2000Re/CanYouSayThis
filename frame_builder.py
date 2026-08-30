@@ -73,8 +73,12 @@ _playwright_ctx = {"pw": None, "browser": None}
 def _get_browser():
     if _playwright_ctx["browser"] is None:
         _playwright_ctx["pw"] = sync_playwright().start()
+        # CHROMIUM_PATHは元の開発環境にだけ存在するブラウザの実体パス。
+        # 他の環境(CI含む)には無いので、その場合はPlaywright自身が
+        # 解決するデフォルトのバンドル済みChromiumにフォールバックする。
+        executable_path = CHROMIUM_PATH if os.path.exists(CHROMIUM_PATH) else None
         _playwright_ctx["browser"] = _playwright_ctx["pw"].chromium.launch(
-            executable_path=CHROMIUM_PATH
+            executable_path=executable_path
         )
     return _playwright_ctx["browser"]
 
