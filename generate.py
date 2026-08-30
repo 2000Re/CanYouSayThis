@@ -17,6 +17,10 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 6. 音声+フレームを合成して mp4 を書き出す(尺は音声の長さに追従)  -> video_builder.py
 7. --upload 指定時は、書き出したmp4をそのままYouTubeにアップロードする -> youtube_upload.py
 
+--count で複数本生成する場合、1本の失敗(クォータ超過・一時的なネットワーク
+エラー等)で残りの本数まで巻き添えで止めることはしない。失敗した回は記録
+して次に進み、最後に失敗一覧を表示したうえで異常終了(exit code 1)する。
+
 必要なもの:
     apt-get install -y espeak-ng ffmpeg
     apt-get install -y fonts-noto-core fonts-noto-extra fonts-noto-ui-core fonts-noto-ui-extra
@@ -43,6 +47,7 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 import argparse
 import os
 import random
+import sys
 
 import config
 from audio_utils import finalize_audio, repeat_audio, wav_to_mp3
@@ -165,20 +170,34 @@ def main():
     os.makedirs(args.outdir, exist_ok=True)
 
     results = []
+    failures = []
     try:
         for i in range(1, args.count + 1):
-            r = generate_one(
-                i, args.outdir, mode=args.mode,
-                voice=args.voice, speed=args.speed, unit_duration=args.unit_duration,
-                repeat=args.repeat, repeat_gap=args.repeat_gap, fade=args.fade,
-                upload=args.upload, privacy_status=args.privacy_status,
-            )
+            try:
+                r = generate_one(
+                    i, args.outdir, mode=args.mode,
+                    voice=args.voice, speed=args.speed, unit_duration=args.unit_duration,
+                    repeat=args.repeat, repeat_gap=args.repeat_gap, fade=args.fade,
+                    upload=args.upload, privacy_status=args.privacy_status,
+                )
+            except Exception as e:
+                # クォータ超過や一時的なネットワークエラーなどで1本失敗しても、
+                # 残りの本数の生成/アップロードまで巻き添えで止めない
+                print(f"[{i}/{args.count}] failed: {e}")
+                failures.append((i, e))
+                continue
             print(f"[{i}/{args.count}] {r['video']}  <-  {r['label']}")
             if "youtube_url" in r:
                 print(f"    uploaded -> {r['youtube_url']}")
             results.append(r)
     finally:
         close_browser()
+
+    if failures:
+        print(f"\n{len(failures)}/{args.count} 本が失敗しました:")
+        for i, e in failures:
+            print(f"  [{i}] {e}")
+        sys.exit(1)
 
     return results
 
