@@ -10,7 +10,7 @@
 # --- 動画共通設定 -----------------------------------------------------------
 
 CHROMIUM_PATH = "/opt/pw-browsers/chromium"  # Playwright同梱のChromium
-FRAME_SIZE = (1280, 720)
+FRAME_SIZE = (1080, 1920)  # YouTube Shorts / TikTok / Reels向けの縦型9:16
 
 # 動画フレームに表示するラベル(海外視聴者向けなので英語表記に統一)
 MODE_LABELS = {
