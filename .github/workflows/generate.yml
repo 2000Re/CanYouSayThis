@@ -1,0 +1,65 @@
+name: generate
+
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        description: "生成する本数"
+        required: false
+        default: "3"
+      mode:
+        description: "音声の作り方 (tts / glitch)"
+        required: false
+        default: "tts"
+        type: choice
+        options:
+          - tts
+          - glitch
+      voice:
+        description: "[tts専用] espeak-ngの声 (例: en, en-us, ja)"
+        required: false
+        default: "en"
+      seed:
+        description: "乱数シード(再現したい場合。空欄なら毎回ランダム)"
+        required: false
+        default: ""
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y espeak-ng ffmpeg \
+            fonts-noto-core fonts-noto-extra fonts-noto-ui-core fonts-noto-ui-extra
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright Chromium
+        run: playwright install --with-deps chromium
+
+      - name: Generate videos
+        run: |
+          args=(--count "${{ inputs.count }}" --outdir ./out --mode "${{ inputs.mode }}" --voice "${{ inputs.voice }}")
+          if [ -n "${{ inputs.seed }}" ]; then
+            args+=(--seed "${{ inputs.seed }}")
+          fi
+          python3 generate.py "${args[@]}"
+
+      - name: Upload generated videos
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-videos-${{ github.run_number }}
+          path: out/
+          if-no-files-found: error
