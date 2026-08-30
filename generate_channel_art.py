@@ -58,26 +58,30 @@ ICON_HTML = """
   .ring {{ position:absolute; top:50%; left:50%; width:680px; height:680px;
            margin:-340px 0 0 -340px; border-radius:50%;
            border:2px solid rgba(57,255,136,0.18); }}
-  /* 動画本編と同じ「安全な結合文字」を積んだZalgo風の巨大な1文字。
-     チャンネルの中身(発音不能な単語)そのものをアイコンの顔にしている。
-     結合文字を積める高さにはブラウザ側の上限があるため、それだけでは
-     地味になりがちなので、赤/青にずらした半透明コピーを重ねて色収差
-     (デジタルに壊れた/グリッチした)風の見た目を追加している */
-  .glyph-layer {{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-                  font-size:{glyph_size}px; font-weight:900; line-height:1; white-space:nowrap; }}
-  .glyph-r {{ color:rgba(255,45,110,0.65); transform:translate(calc(-50% - 7px), calc(-50% + 3px)); filter: blur(0.6px); }}
-  .glyph-b {{ color:rgba(45,180,255,0.65); transform:translate(calc(-50% + 7px), calc(-50% - 3px)); filter: blur(0.6px); }}
-  .glyph {{ background: linear-gradient(160deg, {accent} 0%, {accent2} 100%);
-            -webkit-background-clip:text; background-clip:text; color:transparent;
-            filter: drop-shadow(0 0 46px rgba(57,255,136,0.45))
-                    drop-shadow(0 0 90px rgba(34,211,238,0.25)); }}
+  /* 動画本編と同じ「安全な結合文字」の塊を2つ、左右に並べたアイコン。
+     結合文字だけ(見える土台文字を持たない)だとブラウザのテキスト幅計算が
+     不安定になり中央寄せが崩れるため、Flexboxの明示的なgapで間隔を作り、
+     絶対配置ではなくレイアウトエンジンに位置を委ねている。
+     赤/青にずらした半透明コピーを重ねて色収差(デジタルに壊れた/グリッチ
+     した)風の見た目を追加している */
+  .glyph-row {{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+                display:flex; align-items:center; gap:170px; white-space:nowrap; }}
+  .glyph-cell {{ font-size:{glyph_size}px; font-weight:900; line-height:1; }}
+  .glyph-r {{ transform:translate(calc(-50% - 6px), calc(-50% + 3px)); filter: blur(0.5px); }}
+  .glyph-r .glyph-cell {{ color:rgba(255,45,110,0.5); }}
+  .glyph-b {{ transform:translate(calc(-50% + 6px), calc(-50% - 3px)); filter: blur(0.5px); }}
+  .glyph-b .glyph-cell {{ color:rgba(45,180,255,0.5); }}
+  .glyph .glyph-cell {{ background: linear-gradient(160deg, {accent} 0%, {accent2} 100%);
+                         -webkit-background-clip:text; background-clip:text; color:transparent;
+                         filter: drop-shadow(0 0 46px rgba(57,255,136,0.45))
+                                 drop-shadow(0 0 90px rgba(34,211,238,0.25)); }}
 </style></head>
 <body>
 <div class="stage">
   <div class="ring"></div>
-  <div class="glyph-layer glyph-r">{glyph}</div>
-  <div class="glyph-layer glyph-b">{glyph}</div>
-  <div class="glyph-layer glyph">{glyph}</div>
+  <div class="glyph-row glyph-r"><span class="glyph-cell">{glyph}</span><span class="glyph-cell">{glyph}</span></div>
+  <div class="glyph-row glyph-b"><span class="glyph-cell">{glyph}</span><span class="glyph-cell">{glyph}</span></div>
+  <div class="glyph-row glyph"><span class="glyph-cell">{glyph}</span><span class="glyph-cell">{glyph}</span></div>
 </div>
 </body></html>
 """
@@ -106,13 +110,23 @@ BANNER_HTML = """
   .kicker-row {{ display:flex; align-items:center; gap:18px; }}
   .kicker-bar {{ width:44px; height:4px; border-radius:2px;
                  background: linear-gradient(90deg, {accent} 0%, {accent2} 100%); }}
-  .kicker {{ font-size:40px; font-weight:700; letter-spacing:6px; text-transform:uppercase;
+  .kicker {{ font-size:36px; font-weight:700; letter-spacing:6px; text-transform:uppercase;
              color:{accent}; margin:0; white-space:nowrap; }}
-  .title {{ font-size:110px; font-weight:900; margin:14px 0 0 0; line-height:1;
+  /* チャンネル名「Can You Say This?」を主役の見出しにし、アイコンと同じ
+     赤/シアンの色収差(グリッチ)レイヤーを重ねて見た目を揃えている */
+  .title-wrap {{ position:relative; margin:16px 0 0 0; }}
+  .title-layer {{ font-size:102px; font-weight:900; line-height:1; white-space:nowrap; margin:0; }}
+  .title-r {{ position:absolute; left:50%; top:0;
+              color:rgba(255,45,110,0.5); transform:translate(calc(-50% - 6px), 3px);
+              filter: blur(0.5px); }}
+  .title-b {{ position:absolute; left:50%; top:0;
+              color:rgba(45,180,255,0.5); transform:translate(calc(-50% + 6px), -3px);
+              filter: blur(0.5px); }}
+  .title {{ position:relative;
             background: linear-gradient(135deg, {fg} 0%, {fg} 55%, {accent2} 100%);
             -webkit-background-clip:text; background-clip:text; color:transparent;
             text-shadow: 0 0 46px rgba(57,255,136,0.25); }}
-  .divider {{ width:220px; height:3px; margin:28px auto 0; border-radius:2px;
+  .divider {{ width:220px; height:3px; margin:30px auto 0; border-radius:2px;
               background: linear-gradient(90deg, transparent, {accent2}, transparent); }}
   .tagline {{ font-size:32px; color:#B9BCC4; margin-top:26px; letter-spacing:1px; }}
 </style></head>
@@ -123,10 +137,14 @@ BANNER_HTML = """
 <div class="safe">
   <div class="kicker-row">
     <span class="kicker-bar"></span>
-    <p class="kicker">Can You Say This?</p>
+    <p class="kicker">How to Pronounce</p>
     <span class="kicker-bar"></span>
   </div>
-  <p class="title">How to Pronounce</p>
+  <div class="title-wrap">
+    <p class="title-layer title-r">Can You Say This?</p>
+    <p class="title-layer title-b">Can You Say This?</p>
+    <p class="title-layer title">Can You Say This?</p>
+  </div>
   <div class="divider"></div>
   <p class="tagline">A new unpronounceable word, every day.</p>
 </div>
@@ -134,26 +152,24 @@ BANNER_HTML = """
 """
 
 
-# チャンネルアイコンは動画と違って「毎回違う見た目」だと困るため、ランダム
-# 選択ではなく、上方向・下方向のマークを手動でキュレーションして組み合わせて
-# いる(ランダムだと同じ位置に重なるマークばかり選ばれ、間延びした見た目に
-# なりがちなため)。いずれもCombining Diacritical Marksブロック(U+0300-036F)。
-# 他のブロック(結合文字シンボル用など)は矢印や図形のような見た目のものが
-# 混ざり、1文字を巨大に見せるアイコン用途には向かないため使っていない。
-_ICON_GLYPH_BASE = "A"
-# 同じマークを繰り返しても(フォント側が重複をほぼ同位置にまとめてしまうため)
-# タワー感は出ない。積み重なった高さを出すには「種類の異なる」マークを
-# 複数使う必要がある。マークのタワーの高さはフォントサイズに比例して伸びる
-# ので、glyph_size(ICON_HTML側)と合わせてキャンバス内に収まるよう調整済み。
-_ICON_GLYPH_ABOVE = [0x0300, 0x0301, 0x0303, 0x030C]
-_ICON_GLYPH_BELOW = [0x0316, 0x031E, 0x032D]
-_ICON_GLYPH_MARKS = _ICON_GLYPH_ABOVE + _ICON_GLYPH_BELOW
+# 結合文字の塊だけを左右に2つ並べる構成。土台は中黒(MIDDLE DOT, U+00B7)。
+# 完全に見えない土台(半角スペース)を試したところ、上下のマークがバラバラの
+# 位置に分かれてしまい中央揃えも崩れることを確認したため、ほぼ目立たない
+# 極小の点を土台にして描画位置を安定させている。チャンネルアイコンは動画と
+# 違って「毎回違う見た目」だと困るため固定の組み合わせにしている。
+# ここで使うマークは、豆腐(未対応フォントでの表示崩れ)を避けるため、
+# フランス語のç・ベトナム語の点・ポーランド語のオゴネクなど「実在の言語の
+# アクセント記号として使われていて、対応フォントが特に広い」ものだけを
+# 選んでいる(U+0316などの珍しいbelow系マークや、全角記号(CJK用フォントが
+# 無いと豆腐になる)は避けた)。
+_ICON_GLYPH_BASE = "·"  # 中黒 U+00B7
+_ICON_GLYPH_ABOVE = [0x0300, 0x0301, 0x0303, 0x030C]  # grave/acute/tilde/caron
+_ICON_GLYPH_BELOW = [0x0323, 0x0327, 0x0328]           # dot below/cedilla/ogonek
 
 
 def _icon_glyph():
-    """手動で選んだ結合文字を1つの土台文字に積んだ、Zalgo風の巨大な
-    アイコン用グリフを作る。"""
-    return _ICON_GLYPH_BASE + "".join(chr(cp) for cp in _ICON_GLYPH_MARKS)
+    """結合文字の塊を1つ返す(左右2つ並べるレイアウトはICON_HTML側が担当)。"""
+    return _ICON_GLYPH_BASE + "".join(chr(cp) for cp in _ICON_GLYPH_ABOVE + _ICON_GLYPH_BELOW)
 
 
 def _scatter_symbols(count=140):
@@ -199,7 +215,7 @@ def build_icon(out_path):
     html_content = ICON_HTML.format(
         size=ICON_SIZE, bg=BG_COLOR, bg2=BG_COLOR_2, fg=FG_COLOR,
         accent=ACCENT_COLOR, accent2=ACCENT_COLOR_2,
-        glyph_size=215, glyph=html.escape(_icon_glyph()),
+        glyph_size=260, glyph=html.escape(_icon_glyph()),
         font_stack=FRAME_CSS_FONT_STACK,
     )
     _render_html(html_content, (ICON_SIZE, ICON_SIZE), out_path)
