@@ -18,22 +18,23 @@ GitHub Secretsに登録しておく運用にしている(取得したトーク�
        (このスクリプトはループバックアドレス http://localhost でリダイレクト
         を受け取るため、デスクトップアプリ種別である必要がある)
 
-重要: 認可した**Googleアカウントに複数のYouTubeチャンネル(ブランドアカ
-ウント)が紐づいている場合、認可した時点でYouTube上で「アクティブ」だった
-チャンネルにアップロード権限が発行される**。意図したチャンネルにアップ
-ロードしたい場合は、このスクリプトを実行する前に
-https://www.youtube.com を開き、右上のアカウントメニューから対象の
-チャンネルに切り替えてから実行すること。
+重要: 1つのGoogleアカウントに複数のYouTubeチャンネル(ブランドアカウント)
+が紐づいている場合、Googleは認可の途中で「どのチャンネルとして許可します
+か」という選択画面を出す。このスクリプトは prompt に select_account を
+含めることでその選択画面を強制的に表示させている(省略すると選択画面が
+スキップされ、そのアカウントの「デフォルト」チャンネルが黙って選ばれてし
+まい、意図しないチャンネルに紐づいたトークンが発行されることがある)。
+ブラウザで選択画面が出たら、必ず意図したチャンネルをクリックすること。
 
 使い方:
     pip install -r requirements-dev.txt
     python3 get_youtube_refresh_token.py --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET
 
-実行するとブラウザが開いてGoogleアカウントでの認可を求められる。認可すると
-リフレッシュトークンが標準出力に表示されるので、それを
-YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET / YOUTUBE_REFRESH_TOKEN として
-GitHub Secretsに登録する。表示されるチャンネル名が意図したものか、必ず
-確認すること。
+実行するとブラウザが開いてGoogleアカウントでの認可、続いてチャンネルの
+選択を求められる。認可するとリフレッシュトークンが標準出力に表示される
+ので、それを YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET /
+YOUTUBE_REFRESH_TOKEN として GitHub Secretsに登録する。表示されるチャン
+ネル名が意図したものか、必ず確認すること。
 """
 
 import argparse
@@ -65,9 +66,11 @@ def main():
         }
     }
     flow = InstalledAppFlow.from_client_config(client_config, SCOPES)
-    # prompt="consent" を明示し、2回目以降の認可でもrefresh_tokenが
-    # 確実に返るようにする(省略すると初回以外はNoneになることがある)
-    credentials = flow.run_local_server(port=0, prompt="consent")
+    # select_account: 複数チャンネルを持つアカウントでチャンネル選択画面を
+    #   強制的に表示させる(無いとデフォルトチャンネルが黙って選ばれる)
+    # consent: 2回目以降の認可でもrefresh_tokenが確実に返るようにする
+    #   (省略すると初回以外はNoneになることがある)
+    credentials = flow.run_local_server(port=0, prompt="consent select_account")
 
     print("\n取得できました。以下をGitHub Secretsに登録してください:\n")
     print(f"  YOUTUBE_CLIENT_ID={args.client_id}")
