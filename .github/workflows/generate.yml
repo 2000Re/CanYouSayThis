@@ -68,6 +68,9 @@ jobs:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          # 任意。設定しておくと、複数チャンネルを持つアカウントで誤った
+          # チャンネルにアップロードしそうな場合にアップロード前に検知して止まる
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
         run: |
           args=(--count "${{ inputs.count }}" --outdir ./out --mode "${{ inputs.mode }}" --voice "${{ inputs.voice }}")
           if [ -n "${{ inputs.seed }}" ]; then
