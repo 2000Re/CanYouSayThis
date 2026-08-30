@@ -33,7 +33,13 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 
-UPLOAD_SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
+# get_youtube_refresh_token.py が要求するスコープと一致させている
+# (OAuth同意画面に登録済みのスコープに合わせて youtube.upload 単体ではなく
+# youtube フルアクセスを使っている)
+UPLOAD_SCOPES = [
+    "https://www.googleapis.com/auth/youtube",
+    "https://www.googleapis.com/auth/youtube.readonly",
+]
 TOKEN_URI = "https://oauth2.googleapis.com/token"
 
 # アップロード中に一時的なサーバーエラーが起きても、無条件に諦めず
@@ -75,9 +81,10 @@ def _verify_channel(youtube):
         if e.resp.status == 403:
             raise RuntimeError(
                 "チャンネル確認用のAPI呼び出し(channels.list)が権限不足で失敗しました。"
-                "現在の YOUTUBE_REFRESH_TOKEN は youtube.readonly スコープ無しで取得された"
-                "古いものである可能性が高いです。get_youtube_refresh_token.py を再実行して"
-                "新しいリフレッシュトークンを取得し、YOUTUBE_REFRESH_TOKEN を更新してください。"
+                "現在の YOUTUBE_REFRESH_TOKEN は youtube / youtube.readonly スコープ無しで"
+                "取得された古いものである可能性が高いです。get_youtube_refresh_token.py を"
+                "再実行して新しいリフレッシュトークンを取得し、YOUTUBE_REFRESH_TOKEN を"
+                "更新してください。"
             ) from e
         raise
 
