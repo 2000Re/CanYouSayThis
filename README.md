@@ -21,8 +21,12 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
    ます。
 4. **動画合成**: "How to Pronounce <word>" 形式のミニマルな静止画フレーム
    を [Playwright](https://playwright.dev/) 経由のChromiumで描画し、音声
-   と合成してmp4を書き出します。動画の尺は音声の実際の長さにそのまま追従
-   します(固定尺への無音パディングはしません)。
+   と合成してmp4を書き出します(縦型9:16、YouTube Shorts向け)。動画の尺
+   は音声の実際の長さにそのまま追従します(固定尺への無音パディングはし
+   ません)。
+5. **YouTubeへの自動アップロード**(任意): `--upload` を付けると、書き出
+   したmp4をそのままYouTube Data API v3経由でチャンネルにアップロードし
+   ます。
 
 ## セットアップ
 
@@ -36,7 +40,7 @@ pip install -r requirements.txt
 playwright install chromium   # Playwright同梱のChromiumが無い環境の場合のみ
 ```
 
-開発用(テスト・lint)には追加で:
+開発用(テスト・lint・YouTubeリフレッシュトークン取得)には追加で:
 
 ```bash
 pip install -r requirements-dev.txt
@@ -53,6 +57,9 @@ python3 generate.py --count 5 --mode glitch --outdir ./out_glitch
 
 # 「答え」を3回繰り返す・乱数シード固定で再現する
 python3 generate.py --count 5 --repeat 3 --seed 42
+
+# 生成した動画をそのままYouTubeにアップロード(下記セットアップが必要)
+python3 generate.py --count 3 --upload --privacy-status unlisted
 ```
 
 ### 主なオプション
@@ -69,6 +76,8 @@ python3 generate.py --count 5 --repeat 3 --seed 42
 | `--repeat-gap` | 繰り返し間の無音の長さ(秒) | `0.4` |
 | `--fade` | 末尾のフェードアウトの長さ(秒) | `0.4` |
 | `--seed` | 乱数シード(再現したい場合) | なし |
+| `--upload` | 生成した各動画をそのままYouTubeにアップロードする | 無効 |
+| `--privacy-status` | [`--upload`専用] `public` / `unlisted` / `private` | `public` |
 
 ### 出力
 
@@ -80,6 +89,49 @@ out/
   002_word.txt
   ...
 ```
+
+## YouTubeへの自動アップロード
+
+`--upload` は [YouTube Data API v3](https://developers.google.com/youtube/v3)
+を使って、生成した動画をそのままチャンネルへアップロードします。GitHub
+Actionsのようなブラウザ操作ができない環境でも動かせるよう、あらかじめ一度
+だけ取得しておいたOAuthリフレッシュトークンを使い回す方式にしています。
+
+### 1. Google Cloud側の準備(初回のみ)
+
+1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェク
+   トを作成し、「YouTube Data API v3」を有効化する。
+2. 「OAuth同意画面」を設定する(公開ステータスは「テスト」のままでよい。
+   その場合はアップロード先チャンネルのGoogleアカウントを「テストユー
+   ザー」に追加すること)。
+3. 「認証情報」→「OAuthクライアントIDを作成」で、種類は**デスクトップ
+   アプリ**を選んで作成する(クライアントID・シークレットが発行される)。
+
+### 2. リフレッシュトークンの取得(初回のみ、ローカルで実行)
+
+```bash
+pip install -r requirements-dev.txt
+python3 get_youtube_refresh_token.py --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET
+```
+
+ブラウザが開き、アップロード先チャンネルのGoogleアカウントで認可すると、
+`YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` / `YOUTUBE_REFRESH_TOKEN` の
+3つが標準出力に表示される。
+
+### 3. GitHub Secretsへの登録
+
+リポジトリの Settings → Secrets and variables → Actions で、上記3つを
+同名のSecretとして登録する。
+
+### 4. 実行
+
+- ローカル: `python3 generate.py --upload` (環境変数として上記3つをセット
+  しておく)
+- GitHub Actions: Actions タブ → **generate** ワークフロー →
+  **Run workflow**。`upload` 入力はデフォルトで有効、`privacy_status` の
+  デフォルトは `public`(アップロード直後から誰でも視聴・検索可能)。テス
+  ト目的で公開したくない場合は `unlisted` / `private` を選ぶか、`upload`
+  をオフにして動画だけ生成しArtifactとしてダウンロードすることもできる。
 
 ## YouTubeチャンネル用アセット(アイコン・バナー)
 
@@ -167,18 +219,20 @@ Unicode上は正式に割り当て済みでフォントも対応しているた�
 ## プロジェクト構成
 
 ```
-config.py                全モジュール共通の設定・定数
-word_generator.py        Zalgo風「発音不能な単語」の生成
-tts_synth.py              TTS(espeak-ng)による音声合成 [--mode tts]
-glitch_synth.py           合成グリッチ音による音声生成 [--mode glitch]
-audio_utils.py            繰り返し・パディング無しフェード・mp3変換
-frame_builder.py          "How to Pronounce" フレーム画像の生成(Playwright)
-video_builder.py          フレーム+音声 → mp4 の合成
-generate.py               CLIエントリポイント
-generate_channel_art.py   YouTubeチャンネル用アイコン・バナーの生成
-assets/                   generate_channel_art.py の出力先(icon.png / banner.png)
-tests/                    ユニットテスト(pytest)
-.github/workflows/        CI(push/PR時にテストを自動実行)
+config.py                    全モジュール共通の設定・定数
+word_generator.py            Zalgo風「発音不能な単語」の生成
+tts_synth.py                  TTS(espeak-ng)による音声合成 [--mode tts]
+glitch_synth.py               合成グリッチ音による音声生成 [--mode glitch]
+audio_utils.py                繰り返し・パディング無しフェード・mp3変換
+frame_builder.py              "How to Pronounce" フレーム画像の生成(Playwright)
+video_builder.py              フレーム+音声 → mp4 の合成
+youtube_upload.py             YouTube Data API v3への動画アップロード [--upload]
+get_youtube_refresh_token.py  YouTubeアップロード用リフレッシュトークンの取得(ローカルで一度だけ実行)
+generate.py                   CLIエントリポイント
+generate_channel_art.py       YouTubeチャンネル用アイコン・バナーの生成
+assets/                       generate_channel_art.py の出力先(icon.png / banner.png)
+tests/                        ユニットテスト(pytest)
+.github/workflows/            CI(push/PR時にテストを自動実行)/ 手動実行の生成・アップロードワークフロー
 ```
 
 ## ライセンス
