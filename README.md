@@ -109,24 +109,43 @@ Actionsのようなブラウザ操作ができない環境でも動かせるよ�
 
 ### 2. リフレッシュトークンの取得(初回のみ、ローカルで実行)
 
+> **⚠️ 1つのGoogleアカウントで複数のYouTubeチャンネル(ブランドアカウン
+> ト)を持っている場合は要注意**。次のコマンドを実行すると、**その時点で
+> ブラウザ上のYouTubeでアクティブになっているチャンネル**にアップロード
+> 権限が発行されます。意図しないチャンネルがアクティブなまま実行すると、
+> 気づかないままそちらにアップロードされてしまいます。
+>
+> 先に https://www.youtube.com を開き、右上のアカウントアイコン→
+> 「アカウントを切り替える」でアップロード先のチャンネル(例:
+> `@Unpronounceable-word`)に切り替えてから、**同じブラウザで**下記コマ
+> ンドを実行してください。
+
 ```bash
 pip install -r requirements-dev.txt
 python3 get_youtube_refresh_token.py --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET
 ```
 
-ブラウザが開き、アップロード先チャンネルのGoogleアカウントで認可すると、
-`YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` / `YOUTUBE_REFRESH_TOKEN` の
-3つが標準出力に表示される。
+ブラウザでの認可が終わると、`YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET`
+/ `YOUTUBE_REFRESH_TOKEN` の3つに加え、**実際に認可されたチャンネル名と
+チャンネルID**が標準出力に表示される。ここでチャンネル名が意図したものか
+必ず確認すること。
 
 ### 3. GitHub Secretsへの登録
 
-リポジトリの Settings → Secrets and variables → Actions で、上記3つを
-同名のSecretとして登録する。
+リポジトリの Settings → Secrets and variables → Actions で、以下をSecret
+として登録する。
+
+| Secret名 | 必須 | 内容 |
+|---|---|---|
+| `YOUTUBE_CLIENT_ID` | ○ | OAuthクライアントID |
+| `YOUTUBE_CLIENT_SECRET` | ○ | OAuthクライアントシークレット |
+| `YOUTUBE_REFRESH_TOKEN` | ○ | 手順2で取得したリフレッシュトークン |
+| `YOUTUBE_CHANNEL_ID` | 任意(強く推奨) | アップロード先として想定しているチャンネルID(`UC...`)。手順2の出力に表示されたものを使う。設定しておくと、認証されたチャンネルがこれと一致しない場合にアップロード前でエラーになり、誤ったチャンネルへの投稿を防げる |
 
 ### 4. 実行
 
-- ローカル: `python3 generate.py --upload` (環境変数として上記3つをセット
-  しておく)
+- ローカル: `python3 generate.py --upload` (環境変数として上記をセットし
+  ておく)
 - GitHub Actions: Actions タブ → **generate** ワークフロー →
   **Run workflow**。`upload` 入力はデフォルトで有効、`privacy_status` の
   デフォルトは `public`(アップロード直後から誰でも視聴・検索可能)。テス
@@ -215,6 +234,15 @@ Unicode上は正式に割り当て済みでフォントも対応しているた�
 を覆い隠してしまい、「Zalgo風の演出」ではなく単なる表示崩れに見えてしまい
 ます。`config.py` の `_ENCLOSING_COMBINING_MARKS` でこれらを個別に除外して
 います。
+
+### 7. 1つのGoogleアカウントに複数チャンネルがあると誤爆する
+
+YouTube Data API はエラーを返さず、**リフレッシュトークン取得時にYouTube
+上でアクティブだったチャンネル**へ黙ってアップロードする。意図したチャン
+ネルと違っても成功扱いになるため気づきにくい。`YOUTUBE_CHANNEL_ID` を
+GitHub Secretsに設定しておくと、`youtube_upload.py` がアップロード前に
+実際のチャンネルと照合し、不一致ならエラーで止めてくれる(詳細は上の
+「YouTubeへの自動アップロード」を参照)。
 
 ## プロジェクト構成
 

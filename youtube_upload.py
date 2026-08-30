@@ -10,6 +10,18 @@ OAuth同意フロー(InstalledAppFlow)は使わない。代わりに、あらか
     YOUTUBE_CLIENT_ID       Google CloudのOAuthクライアントID
     YOUTUBE_CLIENT_SECRET   同クライアントシークレット
     YOUTUBE_REFRESH_TOKEN   get_youtube_refresh_token.py で取得したリフレッシュトークン
+
+任意の環境変数:
+    YOUTUBE_CHANNEL_ID      アップロード先として想定しているチャンネルID(UCから始まる文字列)。
+                            設定しておくと、実際に認証されたチャンネルと一致するかを
+                            アップロード前に確認する(下記の罠を参照)。
+
+罠: 1つのGoogleアカウントで複数のYouTubeチャンネル(ブランドアカウント)を
+管理している場合、リフレッシュトークンがどのチャンネルに紐づくかは
+「取得時にYouTube上でアクティブだったチャンネル」で決まり、意図したチャン
+ネルとは限らない。しかもAPIはエラーを返さず黙って別チャンネルにアップロー
+ドしてしまうため、気づきにくい。YOUTUBE_CHANNEL_ID を設定しておけば、
+チャンネルが想定と違う場合はアップロードせずに即座にエラーで止まる。
 """
 
 import os
@@ -50,6 +62,30 @@ def _load_credentials():
     )
 
 
+def _verify_channel(youtube):
+    """YOUTUBE_CHANNEL_ID が設定されていれば、認証されたチャンネルと一致するか確認する。
+    未設定なら何もしない(後方互換のため必須にはしていない)。"""
+    expected_id = os.environ.get("YOUTUBE_CHANNEL_ID")
+    if not expected_id:
+        return
+
+    resp = youtube.channels().list(part="id,snippet", mine=True).execute()
+    channels = resp.get("items", [])
+    if not channels:
+        raise RuntimeError("認証されたGoogleアカウントに紐づくYouTubeチャンネルが見つかりません")
+
+    actual = channels[0]
+    if actual["id"] != expected_id:
+        raise RuntimeError(
+            f"アップロード先チャンネルが想定と異なります: "
+            f"期待 YOUTUBE_CHANNEL_ID={expected_id} / "
+            f"実際は {actual['snippet']['title']} (id={actual['id']})。"
+            "同じGoogleアカウントが複数チャンネルを持つ場合、リフレッシュトークン取得時に"
+            "YouTube上でアクティブだったチャンネルが使われるため、意図したチャンネルで"
+            "get_youtube_refresh_token.py を実行し直してください。"
+        )
+
+
 def upload_video(video_path, title, description, tags=None, category_id="24",
                   privacy_status="public"):
     """video_path をYouTubeにアップロードし、公開URL(https://youtu.be/<id>)を返す。
@@ -58,6 +94,8 @@ def upload_video(video_path, title, description, tags=None, category_id="24",
     """
     credentials = _load_credentials()
     youtube = build("youtube", "v3", credentials=credentials)
+
+    _verify_channel(youtube)
 
     body = {
         "snippet": {
