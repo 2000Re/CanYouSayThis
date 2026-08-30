@@ -12,7 +12,10 @@ GitHub Secretsに登録しておく運用にしている(取得したトーク�
 事前準備(Google Cloud Console):
     1. プロジェクトを作成し、「YouTube Data API v3」を有効化する
     2. 「OAuth同意画面」を設定する(公開ステータスは「テスト」のままでよい。
-       その場合は自分のGoogleアカウントを「テストユーザー」に追加すること)
+       その場合は自分のGoogleアカウントを「テストユーザー」に追加すること)。
+       「データアクセス」→「スコープを追加または削除」で、下記SCOPESに
+       書いてあるものと同じスコープを追加しておくこと(登録していないスコー
+       プはリクエストしても正しく付与されないことがある)
     3. 「認証情報」→「OAuthクライアントIDを作成」で、種類は
        「デスクトップアプリ」を選んで作成する
        (このスクリプトはループバックアドレス http://localhost でリダイレクト
@@ -42,10 +45,13 @@ import argparse
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
-# youtube.readonly は、アップロード先チャンネルが想定通りか確認する
-# youtube_upload.py の YOUTUBE_CHANNEL_ID チェックのために必要
+# youtube (フルアクセス) 1つで、アップロードとチャンネル確認(channels.list)
+# の両方をカバーする。youtube.upload だけを個別に要求すると、OAuth同意画面
+# 側にそのスコープが登録されていない場合に正しく付与されないことがあるため、
+# 同意画面の「機密性の高いスコープ」に登録した youtube / youtube.readonly と
+# 一致させている。
 SCOPES = [
-    "https://www.googleapis.com/auth/youtube.upload",
+    "https://www.googleapis.com/auth/youtube",
     "https://www.googleapis.com/auth/youtube.readonly",
 ]
 
