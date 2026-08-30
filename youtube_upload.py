@@ -69,7 +69,18 @@ def _verify_channel(youtube):
     if not expected_id:
         return
 
-    resp = youtube.channels().list(part="id,snippet", mine=True).execute()
+    try:
+        resp = youtube.channels().list(part="id,snippet", mine=True).execute()
+    except HttpError as e:
+        if e.resp.status == 403:
+            raise RuntimeError(
+                "チャンネル確認用のAPI呼び出し(channels.list)が権限不足で失敗しました。"
+                "現在の YOUTUBE_REFRESH_TOKEN は youtube.readonly スコープ無しで取得された"
+                "古いものである可能性が高いです。get_youtube_refresh_token.py を再実行して"
+                "新しいリフレッシュトークンを取得し、YOUTUBE_REFRESH_TOKEN を更新してください。"
+            ) from e
+        raise
+
     channels = resp.get("items", [])
     if not channels:
         raise RuntimeError("認証されたGoogleアカウントに紐づくYouTubeチャンネルが見つかりません")
