@@ -19,6 +19,7 @@ HTMLを描画してスクリーンショットする方式を使う。
 """
 
 import argparse
+import html
 import os
 import random
 
@@ -32,7 +33,7 @@ from config import CHROMIUM_PATH, FRAME_CSS_FONT_STACK
 # ACCENT_COLORとのグラデーションでロゴ/タイトルに深みを出すための差し色。
 BG_COLOR = "#0B0D12"
 BG_COLOR_2 = "#1B2333"
-ACCENT_COLOR = "#39FF88"   # メインアクセント(スピーカーの音波・アクセント文字)
+ACCENT_COLOR = "#39FF88"   # メインアクセント
 ACCENT_COLOR_2 = "#22D3EE"  # グラデーション用の差し色2(シアン)
 FG_COLOR = "#FFFFFF"
 
@@ -52,41 +53,31 @@ ICON_HTML = """
          display:flex; align-items:center; justify-content:center; }}
   /* YouTubeはアイコンを円形にクロップして表示するため、要素は全て
      この正方形コンテナ(内接円の安全範囲)にまとめて中央寄せする */
-  .stage {{ position:relative; width:{size}px; height:{size}px; }}
+  .stage {{ position:relative; width:{size}px; height:{size}px;
+            display:flex; align-items:center; justify-content:center; }}
   .ring {{ position:absolute; top:50%; left:50%; width:680px; height:680px;
            margin:-340px 0 0 -340px; border-radius:50%;
-           border:2px solid rgba(57,255,136,0.22); }}
-  .ring2 {{ position:absolute; top:50%; left:50%; width:610px; height:610px;
-            margin:-305px 0 0 -305px; border-radius:50%;
-            border:1px solid rgba(34,211,238,0.16); }}
-  .mark {{ position:absolute; top:50%; left:50%; width:560px; height:560px;
-           margin:-280px 0 0 -280px; }}
-  .speaker {{ position:absolute; left:0; top:70px;
-              filter: drop-shadow(0 0 26px rgba(57,255,136,0.5)); }}
-  .qmark {{ position:absolute; right:-6px; top:-14px; font-size:158px; font-weight:900;
-            line-height:1; transform:rotate(6deg);
-            background: linear-gradient(135deg, {accent} 0%, {accent2} 100%);
+           border:2px solid rgba(57,255,136,0.18); }}
+  /* 動画本編と同じ「安全な結合文字」を積んだZalgo風の巨大な1文字。
+     チャンネルの中身(発音不能な単語)そのものをアイコンの顔にしている。
+     結合文字を積める高さにはブラウザ側の上限があるため、それだけでは
+     地味になりがちなので、赤/青にずらした半透明コピーを重ねて色収差
+     (デジタルに壊れた/グリッチした)風の見た目を追加している */
+  .glyph-layer {{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+                  font-size:{glyph_size}px; font-weight:900; line-height:1; white-space:nowrap; }}
+  .glyph-r {{ color:rgba(255,45,110,0.65); transform:translate(calc(-50% - 7px), calc(-50% + 3px)); filter: blur(0.6px); }}
+  .glyph-b {{ color:rgba(45,180,255,0.65); transform:translate(calc(-50% + 7px), calc(-50% - 3px)); filter: blur(0.6px); }}
+  .glyph {{ background: linear-gradient(160deg, {accent} 0%, {accent2} 100%);
             -webkit-background-clip:text; background-clip:text; color:transparent;
-            filter: drop-shadow(0 0 20px rgba(34,211,238,0.4)); }}
+            filter: drop-shadow(0 0 46px rgba(57,255,136,0.45))
+                    drop-shadow(0 0 90px rgba(34,211,238,0.25)); }}
 </style></head>
 <body>
 <div class="stage">
   <div class="ring"></div>
-  <div class="ring2"></div>
-  <div class="mark">
-    <svg class="speaker" width="380" height="380" viewBox="0 0 140 140">
-      <defs>
-        <linearGradient id="speakerGrad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="{accent}"/>
-          <stop offset="100%" stop-color="{accent2}"/>
-        </linearGradient>
-      </defs>
-      <polygon points="10,50 50,50 90,10 90,130 50,90 10,90" fill="{fg}"/>
-      <path d="M100,70 A30,30 0 0 0 100,30" stroke="url(#speakerGrad)" stroke-width="9" fill="none" stroke-linecap="round"/>
-      <path d="M100,95 A55,55 0 0 0 100,5" stroke="url(#speakerGrad)" stroke-width="9" fill="none" stroke-linecap="round"/>
-    </svg>
-    <div class="qmark">?!</div>
-  </div>
+  <div class="glyph-layer glyph-r">{glyph}</div>
+  <div class="glyph-layer glyph-b">{glyph}</div>
+  <div class="glyph-layer glyph">{glyph}</div>
 </div>
 </body></html>
 """
@@ -143,6 +134,28 @@ BANNER_HTML = """
 """
 
 
+# チャンネルアイコンは動画と違って「毎回違う見た目」だと困るため、ランダム
+# 選択ではなく、上方向・下方向のマークを手動でキュレーションして組み合わせて
+# いる(ランダムだと同じ位置に重なるマークばかり選ばれ、間延びした見た目に
+# なりがちなため)。いずれもCombining Diacritical Marksブロック(U+0300-036F)。
+# 他のブロック(結合文字シンボル用など)は矢印や図形のような見た目のものが
+# 混ざり、1文字を巨大に見せるアイコン用途には向かないため使っていない。
+_ICON_GLYPH_BASE = "A"
+# 同じマークを繰り返しても(フォント側が重複をほぼ同位置にまとめてしまうため)
+# タワー感は出ない。積み重なった高さを出すには「種類の異なる」マークを
+# 複数使う必要がある。マークのタワーの高さはフォントサイズに比例して伸びる
+# ので、glyph_size(ICON_HTML側)と合わせてキャンバス内に収まるよう調整済み。
+_ICON_GLYPH_ABOVE = [0x0300, 0x0301, 0x0303, 0x030C]
+_ICON_GLYPH_BELOW = [0x0316, 0x031E, 0x032D]
+_ICON_GLYPH_MARKS = _ICON_GLYPH_ABOVE + _ICON_GLYPH_BELOW
+
+
+def _icon_glyph():
+    """手動で選んだ結合文字を1つの土台文字に積んだ、Zalgo風の巨大な
+    アイコン用グリフを作る。"""
+    return _ICON_GLYPH_BASE + "".join(chr(cp) for cp in _ICON_GLYPH_MARKS)
+
+
 def _scatter_symbols(count=140):
     """記号をランダムな位置・サイズ・不透明度・回転で散らした<span>群を作る。
     均一グリッドで敷き詰めるより「壁紙感」が薄れ、星座のような疎らな見た目になる。"""
@@ -186,6 +199,7 @@ def build_icon(out_path):
     html_content = ICON_HTML.format(
         size=ICON_SIZE, bg=BG_COLOR, bg2=BG_COLOR_2, fg=FG_COLOR,
         accent=ACCENT_COLOR, accent2=ACCENT_COLOR_2,
+        glyph_size=215, glyph=html.escape(_icon_glyph()),
         font_stack=FRAME_CSS_FONT_STACK,
     )
     _render_html(html_content, (ICON_SIZE, ICON_SIZE), out_path)
