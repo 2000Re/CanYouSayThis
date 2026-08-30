@@ -23,6 +23,20 @@ on:
         description: "乱数シード(再現したい場合。空欄なら毎回ランダム)"
         required: false
         default: ""
+      upload:
+        description: "生成した動画をそのままYouTubeにアップロードする"
+        required: false
+        default: true
+        type: boolean
+      privacy_status:
+        description: "[upload時のみ] アップロード時の公開範囲"
+        required: false
+        default: "public"
+        type: choice
+        options:
+          - public
+          - unlisted
+          - private
 
 jobs:
   generate:
@@ -50,14 +64,21 @@ jobs:
         run: playwright install --with-deps chromium
 
       - name: Generate videos
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: |
           args=(--count "${{ inputs.count }}" --outdir ./out --mode "${{ inputs.mode }}" --voice "${{ inputs.voice }}")
           if [ -n "${{ inputs.seed }}" ]; then
             args+=(--seed "${{ inputs.seed }}")
           fi
+          if [ "${{ inputs.upload }}" = "true" ]; then
+            args+=(--upload --privacy-status "${{ inputs.privacy_status }}")
+          fi
           python3 generate.py "${args[@]}"
 
-      - name: Upload generated videos
+      - name: Upload generated videos (backup/audit)
         uses: actions/upload-artifact@v4
         with:
           name: generated-videos-${{ github.run_number }}
