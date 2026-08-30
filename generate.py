@@ -15,6 +15,7 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
    動画の尺はその音声の長さにそのまま合わせる(固定尺に引き伸ばさない)
 5. "How to Pronounce <word>" 形式のミニマルな静止画フレームを生成 -> frame_builder.py
 6. 音声+フレームを合成して mp4 を書き出す(尺は音声の長さに追従)  -> video_builder.py
+7. --upload 指定時は、書き出したmp4をそのままYouTubeにアップロードする -> youtube_upload.py
 
 必要なもの:
     apt-get install -y espeak-ng ffmpeg
@@ -22,9 +23,14 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
     pip install -r requirements.txt
     playwright install chromium   # 同梱のChromiumが無い環境の場合のみ
 
+    --upload を使う場合はさらに環境変数
+    YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET / YOUTUBE_REFRESH_TOKEN が必要
+    (取得方法は get_youtube_refresh_token.py を参照)
+
 使い方:
     python3 generate.py --count 5 --outdir ./out
     python3 generate.py --count 5 --mode glitch --outdir ./out_glitch
+    python3 generate.py --count 3 --upload --privacy-status unlisted
 
 出力:
     ./out/001_word.txt   (生成した単語そのもの)
@@ -47,10 +53,27 @@ from video_builder import build_video
 from word_generator import random_zalgo_word, readable_label
 
 
+def _youtube_metadata(word, label, mode):
+    """生成した単語からYouTubeアップロード用のtitle/description/tagsを組み立てる。
+
+    label は readable_label() で結合文字を落とし最大12文字に丸め済みの
+    ものなので、タイトルの100文字制限には十分収まる。"""
+    mode_label = config.MODE_LABELS.get(mode, mode)
+    title = f'How to Pronounce "{label}" #Shorts'
+    description = (
+        "Can you pronounce this? \U0001F440\n\n"
+        f"Word: {word}\n"
+        f"Mode: {mode_label}\n\n"
+        "#Shorts #Pronunciation #Unpronounceable"
+    )
+    tags = ["shorts", "pronunciation", "unpronounceable", "how to pronounce", mode]
+    return title, description, tags
+
+
 def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOICE,
                   speed=config.DEFAULT_SPEED, unit_duration=config.DEFAULT_UNIT_DURATION,
                   repeat=config.DEFAULT_REPEAT, repeat_gap=config.DEFAULT_REPEAT_GAP,
-                  fade=config.DEFAULT_FADE):
+                  fade=config.DEFAULT_FADE, upload=False, privacy_status="public"):
     word = random_zalgo_word()
     label = readable_label(word)
 
@@ -90,7 +113,20 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     os.remove(fin_wav)
     os.remove(frame_path)
 
-    return {"word": word, "label": label, "video": video_path, "audio": mp3_path}
+    result = {"word": word, "label": label, "video": video_path, "audio": mp3_path}
+
+    if upload:
+        # --upload時のみ必要な依存関係(google-api-python-client等)なので
+        # 遅延importにして、アップロードしない通常利用に影響しないようにする
+        from youtube_upload import upload_video
+
+        title, description, tags = _youtube_metadata(word, label, mode)
+        result["youtube_url"] = upload_video(
+            video_path, title=title, description=description, tags=tags,
+            privacy_status=privacy_status,
+        )
+
+    return result
 
 
 def main():
@@ -115,6 +151,12 @@ def main():
                      help="末尾のフェードアウトの長さ(秒)。無音パディングはせず、"
                           "中身の実際の長さに動画尺を合わせる")
     ap.add_argument("--seed", type=int, default=None, help="乱数シード(再現したい場合)")
+    ap.add_argument("--upload", action="store_true",
+                     help="生成した各動画をそのままYouTubeにアップロードする"
+                          "(YOUTUBE_CLIENT_ID/YOUTUBE_CLIENT_SECRET/YOUTUBE_REFRESH_TOKEN"
+                          "環境変数が必要。get_youtube_refresh_token.py 参照)")
+    ap.add_argument("--privacy-status", type=str, choices=["public", "unlisted", "private"],
+                     default="public", help="[--upload専用] アップロード時の公開範囲")
     args = ap.parse_args()
 
     if args.seed is not None:
@@ -129,8 +171,11 @@ def main():
                 i, args.outdir, mode=args.mode,
                 voice=args.voice, speed=args.speed, unit_duration=args.unit_duration,
                 repeat=args.repeat, repeat_gap=args.repeat_gap, fade=args.fade,
+                upload=args.upload, privacy_status=args.privacy_status,
             )
             print(f"[{i}/{args.count}] {r['video']}  <-  {r['label']}")
+            if "youtube_url" in r:
+                print(f"    uploaded -> {r['youtube_url']}")
             results.append(r)
     finally:
         close_browser()
