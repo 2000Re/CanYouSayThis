@@ -27,6 +27,9 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
 5. **YouTubeへの自動アップロード**(任意): `--upload` を付けると、書き出
    したmp4をそのままYouTube Data API v3経由でチャンネルにアップロードし
    ます。
+6. **Shorts結合動画**(任意): アップロードしたShortsが10本たまるごとに、
+   それらを結合した1本の「通常動画」を自動で作ってアップロードします
+   (詳しくは後述の「Shorts結合動画」を参照)。
 
 ## セットアップ
 
@@ -152,6 +155,39 @@ python3 get_youtube_refresh_token.py --client-id YOUR_CLIENT_ID --client-secret 
   ト目的で公開したくない場合は `unlisted` / `private` を選ぶか、`upload`
   をオフにして動画だけ生成しArtifactとしてダウンロードすることもできる。
 
+## Shorts結合動画
+
+アップロードしたShorts動画の履歴(`upload_history.json`)が10本たまるごと
+に、それらをYouTubeから取得し直して1本の横型(16:9)動画に結合し、「通常
+動画」として自動でアップロードします(`compile_shorts.py`。generateワーク
+フローの中で `--upload` 使用時に自動実行されます)。
+
+**なぜ「結合」が必要か**: YouTubeはShorts判定を投稿者の意図ではなく
+「アスペクト比(縦型)+尺(3分以内)」だけで機械的に行います。縦型のShorts
+を単純に何本かつなげても、合計尺が短いままだと縦型ゆえに依然Shorts扱いに
+なってしまいます。そのため結合時は各クリップを横型(16:9)キャンバスの
+中央に配置し、左右を無地の帯で埋める(ピラーボックス)ことで、確実に
+「通常動画」として扱われるようにしています。
+
+**状態管理**: どのShortsを結合に使ったか(`compiled_video_ids`)、恒久的に
+取得できず諦めたか(`skipped_video_ids`)は `compilation_state.json` に、
+アップロード成功履歴は `upload_history.json` に記録し、どちらもワークフ
+ローの最後にリポジトリへコミットします(GitHub Actionsのランナーはジョブ
+ごとに使い捨てのため、ここに記録しないと10本のカウントが毎回リセットされ
+てしまいます)。動画が削除・非公開化・著作権クレーム等で取得できなくなっ
+た場合も、その1本のせいで結合処理全体が永久に止まらないよう、リトライ後
+に諦めた動画は `skipped_video_ids` に記録して以後の結合対象から除外しま
+す。
+
+ローカルで手動実行する場合:
+
+```bash
+python3 compile_shorts.py --privacy-status unlisted
+```
+
+(認証は `--upload` と同じ `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` /
+`YOUTUBE_REFRESH_TOKEN` 環境変数を使う)
+
 ## YouTubeチャンネル用アセット(アイコン・バナー)
 
 チャンネルアイコンとバナー画像も同じ仕組み(Chromium描画)で生成できます。
@@ -168,9 +204,6 @@ assets/
                           「セーフエリア」(1546x423)にタイトル・タグライン
                           を収めてあります
 ```
-
-背景には動画フレームと同じ「無音確認済みの装飾記号」(`config.DECORATIVE_SYMBOLS`)
-をCSS Gridで敷き詰めており、チャンネルの世界観を動画サムネイルと揃えています。
 
 ## ハマった罠(実装時のデバッグ記録)
 
@@ -244,6 +277,18 @@ GitHub Secretsに設定しておくと、`youtube_upload.py` がアップロー�
 実際のチャンネルと照合し、不一致ならエラーで止めてくれる(詳細は上の
 「YouTubeへの自動アップロード」を参照)。
 
+### 8. Shorts結合動画は「作り直す」のではなく「取得し直す」
+
+`compile_shorts.py` は結合対象の動画をGitHub Actions上で保持しておくので
+はなく、**すでにYouTubeに公開済みの自分の動画をyt-dlpでダウンロードし直
+す**方式にしています。GitHub Actionsのランナーはジョブごとに使い捨てで
+生成物を永続化していないため、素材を保持し続けるにはリポジトリや外部
+ストレージへの追加のアップロードが必要になり、コストと複雑さが増えます。
+逆に「動画は一度作ったら消してよい」という前提に立てば、必要になった時
+点で(すでに正しく生成・公開済みの)動画をダウンロードし直す方が単純です。
+ただしこの方式では、`private` でアップロードした動画は匿名ダウンロード
+できないため結合対象にできません。
+
 ## プロジェクト構成
 
 ```
@@ -255,6 +300,9 @@ audio_utils.py                繰り返し・パディング無しフェード�
 frame_builder.py              "How to Pronounce" フレーム画像の生成(Playwright)
 video_builder.py              フレーム+音声 → mp4 の合成
 youtube_upload.py             YouTube Data API v3への動画アップロード [--upload]
+upload_history.py             アップロード成功履歴(upload_history.json)の読み書き
+compilation_state.py          Shorts結合動画の状態(compilation_state.json)管理
+compile_shorts.py             Shortsが10本たまるごとに結合動画を作りアップロード
 get_youtube_refresh_token.py  YouTubeアップロード用リフレッシュトークンの取得(ローカルで一度だけ実行)
 generate.py                   CLIエントリポイント
 generate_channel_art.py       YouTubeチャンネル用アイコン・バナーの生成
