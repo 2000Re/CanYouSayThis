@@ -244,6 +244,13 @@ def main():
     finally:
         close_browser()
 
+    if args.upload and results:
+        # 動画ごとにログを出すとN本分埋もれてしまうため、全本処理し終えた
+        # このタイミングで1回だけ、実行全体のクォータ消費/残容量をまとめて出す
+        from youtube_upload import log_api_usage_summary
+
+        log_api_usage_summary()
+
     if failures:
         print(f"\n{len(failures)}/{args.count} 本が失敗しました:")
         for i, e in failures:

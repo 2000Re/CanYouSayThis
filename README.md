@@ -150,6 +150,7 @@ python3 get_youtube_refresh_token.py --client-id YOUR_CLIENT_ID --client-secret 
 | `YOUTUBE_CLIENT_SECRET` | ○ | OAuthクライアントシークレット |
 | `YOUTUBE_REFRESH_TOKEN` | ○ | 手順2で取得したリフレッシュトークン |
 | `YOUTUBE_CHANNEL_ID` | 任意(強く推奨) | アップロード先として想定しているチャンネルID(`UC...`)。手順2の出力に表示されたものを使う。設定しておくと、認証されたチャンネルがこれと一致しない場合にアップロード前でエラーになり、誤ったチャンネルへの投稿を防げる |
+| `YOUTUBE_REFRESH_TOKEN_ISSUED_AT` | 任意(強く推奨) | 手順2を実行した日付(`YYYY-MM-DD`)。手順2の出力に表示されたものを使う。設定しておくと、OAuth同意画面が「テスト」ステータスの場合の既知の7日失効ルールが近づいた/過ぎた際に実行ログへ警告が出る(下記「リフレッシュトークンの失効監視」を参照) |
 
 ### 4. 実行
 
@@ -160,6 +161,36 @@ python3 get_youtube_refresh_token.py --client-id YOUR_CLIENT_ID --client-secret 
   デフォルトは `public`(アップロード直後から誰でも視聴・検索可能)。テス
   ト目的で公開したくない場合は `unlisted` / `private` を選ぶか、`upload`
   をオフにして動画だけ生成しArtifactとしてダウンロードすることもできる。
+
+### 5. リフレッシュトークンの失効監視
+
+OAuth同意画面の公開ステータスを「テスト」のままにしている場合(このリポジ
+トリのデフォルトの想定)、リフレッシュトークンは**発行から7日で失効**しま
+す(スコープに`name`/`email`/`profile`以外を含むアプリのGoogle側の仕様。
+「本番環境」へ切り替えれば無期限にできますが、`youtube`スコープはGoogleの
+検証プロセス(場合によっては有料のセキュリティ監査)が必要になるため、個
+人利用の規模では現実的でないことが多いです)。
+
+`YOUTUBE_REFRESH_TOKEN_ISSUED_AT` を登録しておくと、`youtube_upload.get_youtube_client()`
+(`--upload`・`compile_shorts.py`のどちらからも通る共通経路)が発行日から
+の経過日数をチェックし、以下のタイミングでワークフローのログに警告
+(`::warning::`)を出します(処理自体は止めません)。
+
+- 5日経過: 「そろそろ再発行してください」の予告
+- 7日経過: 「おそらく失効しています」の警告(この時点でアップロードが
+  `invalid_grant` 等で失敗し始めている可能性があります)
+
+再発行が必要になったら、`get_youtube_refresh_token.py` を再実行し、
+`YOUTUBE_REFRESH_TOKEN` と `YOUTUBE_REFRESH_TOKEN_ISSUED_AT` の両方を
+新しい値に更新してください。
+
+### 6. APIクォータ使用量のログ
+
+`--upload` 実行後(全動画処理後に1回)と `compile_shorts.py` 実行後に、
+その回で消費したYouTube Data APIクォータの概算と残容量目安を実行ログへ
+出力します(`youtube_upload.log_api_usage_summary()`)。GCP Consoleのクォー
+タ画面を都度開かなくても、ワークフローのログだけで「あとどれくらいアップ
+ロードできそうか」を把握できます。
 
 ## Shorts結合動画
 
@@ -192,7 +223,8 @@ python3 compile_shorts.py --privacy-status unlisted
 ```
 
 (認証は `--upload` と同じ `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` /
-`YOUTUBE_REFRESH_TOKEN` 環境変数を使う)
+`YOUTUBE_REFRESH_TOKEN` 環境変数を使う。`YOUTUBE_REFRESH_TOKEN_ISSUED_AT`
+を設定していれば失効監視も同様に働く)
 
 ## YouTubeチャンネル用アセット(アイコン・バナー)
 

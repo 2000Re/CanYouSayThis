@@ -40,20 +40,19 @@ from moviepy import ColorClip, CompositeVideoClip, VideoFileClip, concatenate_vi
 import config
 from compilation_state import load_compilation_state, pillarbox_scale, save_compilation_state, select_pending
 from upload_history import load_upload_history
-from youtube_upload import get_youtube_client
+from youtube_upload import _quota_summary_lines, get_youtube_client
 
 # youtube_upload.upload_video()と同じく、実行ログだけでYouTube Data APIの
-# クォータ消費量(概算)を把握できるようにする。
+# クォータ消費量・残容量(概算)を把握できるようにする(集計ロジック自体は
+# youtube_upload._quota_summary_lines() を共用し、二重管理を避けている。
+# ただしカウンタ自体は本スクリプトのプロセス内消費分として別で持つ)。
 QUOTA_COST_PER_CALL = {"videos.insert": 100}
 _api_call_counts = {name: 0 for name in QUOTA_COST_PER_CALL}
 
 
 def _log_api_usage_summary():
-    total_units = sum(count * QUOTA_COST_PER_CALL[name] for name, count in _api_call_counts.items())
-    print("=== API使用量(YouTube Data API v3、概算) ===")
-    for name, count in _api_call_counts.items():
-        print(f"  {name}: {count}回 (1回あたり{QUOTA_COST_PER_CALL[name]} units)")
-    print(f"  概算クォータ消費: {total_units} units (日次上限 10,000 units の目安)")
+    for line in _quota_summary_lines(_api_call_counts, QUOTA_COST_PER_CALL):
+        print(line)
 
 
 def download_video(video_id: str, output_path: str) -> None:

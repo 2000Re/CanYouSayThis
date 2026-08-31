@@ -113,3 +113,20 @@ COMPILATION_BG_COLOR = (11, 13, 18)  # generate_channel_art.BG_COLOR(#0B0D12)と
 # 結合対象から永久に除外する(次回以降ダウンロードを再試行しない)。
 COMPILATION_DOWNLOAD_MAX_RETRIES = 2
 COMPILATION_DOWNLOAD_RETRY_BACKOFF_SECONDS = 5
+
+# --- YouTube Data API クォータ ------------------------------------------------
+#
+# youtube_upload.py / compile_shorts.py の両方から参照し、実行ログに
+# 「今回の実行でどれだけ消費し、残りがどれくらいか」を概算表示するために使う。
+DAILY_QUOTA_UNITS = 10000  # 日次クォータの目安(GCPコンソールのデフォルト)
+DAILY_UPLOAD_LIMIT = 100   # videos.insertとは別枠の「1日あたりの動画投稿数」上限
+
+# --- YouTubeリフレッシュトークンの有効期限監視 --------------------------------
+#
+# OAuth同意画面の公開ステータスが「テスト」のままだと、リフレッシュトークンは
+# 発行から7日で失効する(スコープにname/email/profile以外を含むアプリのため)。
+# get_youtube_refresh_token.py実行時の日付を任意のSecret
+# (YOUTUBE_REFRESH_TOKEN_ISSUED_AT)として登録しておくと、
+# youtube_upload.get_youtube_client() がこの日数を目安に警告を出す。
+TOKEN_EXPIRY_DAYS = 7          # テストステータスでの既知の失効日数
+TOKEN_WARNING_AFTER_DAYS = 5   # この日数を過ぎたら「そろそろ」の警告を出す
