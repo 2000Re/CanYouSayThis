@@ -8,13 +8,14 @@ on:
         required: false
         default: "3"
       mode:
-        description: "音声の作り方 (tts / glitch)"
+        description: "音声の作り方 (tts / glitch / random)"
         required: false
         default: "tts"
         type: choice
         options:
           - tts
           - glitch
+          - random
       voice:
         description: "[tts専用] espeak-ngの声 (例: en, en-us, ja)"
         required: false

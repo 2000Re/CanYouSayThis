@@ -4,12 +4,15 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 =================================================
 
 1. Zalgo風「発音不能な単語」をランダム生成          -> word_generator.py
-2. 音声を作る(2方式から選択):                      -> tts_synth.py / glitch_synth.py
+2. 音声を作る(3方式から選択):                      -> tts_synth.py / glitch_synth.py
      --mode tts     : espeak-ng に単語そのものを読ませ、出てきた音を採用
                        (デフォルト。単語の文字列がそのまま音に反映される
                        ので「本当にその単語を読ませている」感が出せる)
      --mode glitch  : チャープ音・ノイズバースト・ビットクラッシュを合成
                        (単語の音とは無関係な効果音を「答え」として当てる)
+     --mode random  : 1本ごとに tts / glitch をランダムに選ぶ
+                       (--countで複数本まとめて作る際や、自動実行の日々の
+                       投稿に単調さが出ないようにする用途)
 3. 「答え」を --repeat 回(デフォルト2回)繰り返す      -> audio_utils.py
 4. 無音パディングはしない。中身の実際の長さの末尾だけ短くフェードアウトし、
    動画の尺はその音声の長さにそのまま合わせる(固定尺に引き伸ばさない)
@@ -17,7 +20,8 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 6. 音声+フレームを合成して mp4 を書き出す(尺は音声の長さに追従)  -> video_builder.py
 7. --upload 指定時は、書き出したmp4をそのままYouTubeにアップロードする -> youtube_upload.py
    (アップロード成功時は upload_history.json にも記録し、compile_shorts.py が
-    10本たまるごとに結合動画を作れるようにする)
+    10本たまるごとに結合動画を作れるようにする。--mode random で作った回も、
+    実際に使われたtts/glitchのどちらかが記録される)
 
 --count で複数本生成する場合、1本の失敗(クォータ超過・一時的なネットワーク
 エラー等)で残りの本数まで巻き添えで止めることはしない。失敗した回は記録
@@ -36,6 +40,7 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 使い方:
     python3 generate.py --count 5 --outdir ./out
     python3 generate.py --count 5 --mode glitch --outdir ./out_glitch
+    python3 generate.py --count 5 --mode random --outdir ./out_mixed
     python3 generate.py --count 3 --upload --privacy-status unlisted
 
 出力:
@@ -77,10 +82,19 @@ def _youtube_metadata(word, label, mode):
     return title, description, tags
 
 
+def _resolve_mode(mode):
+    """--mode random の場合、tts/glitchのどちらかを1本ごとにランダムに選ぶ。
+    それ以外(tts / glitch)はそのまま返す。"""
+    if mode == "random":
+        return random.choice(list(config.MODE_LABELS))
+    return mode
+
+
 def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOICE,
                   speed=config.DEFAULT_SPEED, unit_duration=config.DEFAULT_UNIT_DURATION,
                   repeat=config.DEFAULT_REPEAT, repeat_gap=config.DEFAULT_REPEAT_GAP,
                   fade=config.DEFAULT_FADE, upload=False, privacy_status="public"):
+    actual_mode = _resolve_mode(mode)
     word = random_zalgo_word()
     label = readable_label(word)
 
@@ -96,15 +110,15 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     with open(txt_path, "w", encoding="utf-8") as f:
         f.write(word)
 
-    if mode == "tts":
+    if actual_mode == "tts":
         # espeak-ngが吐く長さがそのまま採用される(パディングはしない)
         synthesize_tts(word, raw_wav, voice=voice, speed=speed)
-    elif mode == "glitch":
+    elif actual_mode == "glitch":
         # unit_durationが「1回分」の長さ。--repeatで指定した回数ぶん、
         # これがそのまま繰り返される(動画の総尺は自動的に決まる)
         synthesize_glitch_chunk(raw_wav, target_seconds=unit_duration)
     else:
-        raise ValueError(f"unknown mode: {mode!r} (tts / glitch)")
+        raise ValueError(f"unknown mode: {actual_mode!r} (tts / glitch)")
 
     repeat_audio(raw_wav, rep_wav, times=repeat, gap=repeat_gap)
     # 無音パディングはしない。中身の実際の長さのまま、末尾だけ短くフェード
@@ -114,20 +128,20 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     os.remove(rep_wav)
 
     wav_to_mp3(fin_wav, mp3_path)
-    build_frame(label, frame_path, mode=mode)
+    build_frame(label, frame_path, mode=actual_mode)
     build_video(frame_path, mp3_path, video_path)
 
     os.remove(fin_wav)
     os.remove(frame_path)
 
-    result = {"word": word, "label": label, "video": video_path, "audio": mp3_path}
+    result = {"word": word, "label": label, "video": video_path, "audio": mp3_path, "mode": actual_mode}
 
     if upload:
         # --upload時のみ必要な依存関係(google-api-python-client等)なので
         # 遅延importにして、アップロードしない通常利用に影響しないようにする
         from youtube_upload import upload_video
 
-        title, description, tags = _youtube_metadata(word, label, mode)
+        title, description, tags = _youtube_metadata(word, label, actual_mode)
         youtube_url = upload_video(
             video_path, title=title, description=description, tags=tags,
             privacy_status=privacy_status,
@@ -139,7 +153,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         from upload_history import append_upload
 
         video_id = youtube_url.rsplit("/", 1)[-1]
-        append_upload(word=word, label=label, video_id=video_id, mode=mode)
+        append_upload(word=word, label=label, video_id=video_id, mode=actual_mode)
 
     return result
 
@@ -148,9 +162,10 @@ def main():
     ap = argparse.ArgumentParser(description="How-to-Pronounce ネタ動画 自動生成")
     ap.add_argument("--count", type=int, default=3, help="生成する本数")
     ap.add_argument("--outdir", type=str, default="./out", help="出力ディレクトリ")
-    ap.add_argument("--mode", type=str, choices=["tts", "glitch"], default=config.DEFAULT_MODE,
+    ap.add_argument("--mode", type=str, choices=["tts", "glitch", "random"], default=config.DEFAULT_MODE,
                      help="音声の作り方: tts=espeak-ngに単語を読ませる(デフォルト) / "
-                          "glitch=合成グリッチ音を当てる")
+                          "glitch=合成グリッチ音を当てる / "
+                          "random=1本ごとにtts/glitchをランダムに選ぶ")
     ap.add_argument("--voice", type=str, default=config.DEFAULT_VOICE,
                      help="[tts専用] espeak-ngの声(例: en, en-us, ja)")
     ap.add_argument("--speed", type=int, default=config.DEFAULT_SPEED,
@@ -196,7 +211,7 @@ def main():
                 print(f"[{i}/{args.count}] failed: {e}")
                 failures.append((i, e))
                 continue
-            print(f"[{i}/{args.count}] {r['video']}  <-  {r['label']}")
+            print(f"[{i}/{args.count}] ({r['mode']}) {r['video']}  <-  {r['label']}")
             if "youtube_url" in r:
                 print(f"    uploaded -> {r['youtube_url']}")
             results.append(r)
