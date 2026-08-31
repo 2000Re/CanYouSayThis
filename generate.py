@@ -16,6 +16,8 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 5. "How to Pronounce <word>" 形式のミニマルな静止画フレームを生成 -> frame_builder.py
 6. 音声+フレームを合成して mp4 を書き出す(尺は音声の長さに追従)  -> video_builder.py
 7. --upload 指定時は、書き出したmp4をそのままYouTubeにアップロードする -> youtube_upload.py
+   (アップロード成功時は upload_history.json にも記録し、compile_shorts.py が
+    10本たまるごとに結合動画を作れるようにする)
 
 --count で複数本生成する場合、1本の失敗(クォータ超過・一時的なネットワーク
 エラー等)で残りの本数まで巻き添えで止めることはしない。失敗した回は記録
@@ -126,10 +128,18 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         from youtube_upload import upload_video
 
         title, description, tags = _youtube_metadata(word, label, mode)
-        result["youtube_url"] = upload_video(
+        youtube_url = upload_video(
             video_path, title=title, description=description, tags=tags,
             privacy_status=privacy_status,
         )
+        result["youtube_url"] = youtube_url
+
+        # アップロードが成功して初めて履歴に記録する(失敗した回を記録すると、
+        # 存在しない動画IDが compile_shorts.py の結合対象に紛れ込むため)
+        from upload_history import append_upload
+
+        video_id = youtube_url.rsplit("/", 1)[-1]
+        append_upload(word=word, label=label, video_id=video_id, mode=mode)
 
     return result
 
