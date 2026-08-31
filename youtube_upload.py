@@ -104,16 +104,23 @@ def _verify_channel(youtube):
         )
 
 
+def get_youtube_client():
+    """認証済みのYouTube Data APIクライアントを返す(チャンネル確認込み)。
+
+    upload_video() と compile_shorts.py の両方から使う共通処理。"""
+    credentials = _load_credentials()
+    youtube = build("youtube", "v3", credentials=credentials)
+    _verify_channel(youtube)
+    return youtube
+
+
 def upload_video(video_path, title, description, tags=None, category_id="24",
                   privacy_status="public"):
     """video_path をYouTubeにアップロードし、公開URL(https://youtu.be/<id>)を返す。
 
     category_id のデフォルト "24" は Entertainment。
     """
-    credentials = _load_credentials()
-    youtube = build("youtube", "v3", credentials=credentials)
-
-    _verify_channel(youtube)
+    youtube = get_youtube_client()
 
     body = {
         "snippet": {
