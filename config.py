@@ -87,3 +87,29 @@ DEFAULT_UNIT_DURATION = 2.0   # [glitchモード] 「答え」1回分の長さ(�
 DEFAULT_REPEAT = 2            # 「答え」を何回繰り返すか
 DEFAULT_REPEAT_GAP = 0.4      # 繰り返し間の無音の長さ(秒)
 DEFAULT_FADE = 0.4            # 末尾のフェードアウトの長さ(秒)
+
+# --- YouTubeアップロード履歴 -------------------------------------------------
+
+UPLOAD_HISTORY_PATH = "upload_history.json"  # generate.py --upload の成功履歴
+
+# --- compile_shorts.py: Shorts結合動画 ---------------------------------------
+#
+# Shorts(縦型9:16、3分以内)は本数を連結しても合計尺が短いままだと縦型ゆえに
+# YouTubeにShorts判定されてしまう(判定は投稿者の意図ではなく、アスペクト比
+# +尺のみで決まる仕様のため)。そのため結合時は各クリップを横型(16:9)
+# キャンバスにピラーボックス(左右に無地の帯)で配置し直し、確実に「通常動画」
+# として扱われるようにする。
+
+COMPILATION_STATE_PATH = "compilation_state.json"
+COMPILATION_BATCH_SIZE = 10  # この件数たまるごとに結合動画を1本作る
+COMPILATION_DOWNLOAD_DIR = "compilation_downloads"
+COMPILATION_OUTPUT_DIR = "compilation_output"
+COMPILATION_VIDEO_WIDTH = 1920
+COMPILATION_VIDEO_HEIGHT = 1080
+COMPILATION_BG_COLOR = (11, 13, 18)  # generate_channel_art.BG_COLOR(#0B0D12)と統一
+# 動画の削除・非公開化・著作権クレーム等で恒久的にダウンロードできない
+# ケースと、一時的なネットワーク不調を区別するためのリトライ回数。
+# ここで諦めた動画はcompilation_state.jsonのskipped_video_idsに記録し、
+# 結合対象から永久に除外する(次回以降ダウンロードを再試行しない)。
+COMPILATION_DOWNLOAD_MAX_RETRIES = 2
+COMPILATION_DOWNLOAD_RETRY_BACKOFF_SECONDS = 5
