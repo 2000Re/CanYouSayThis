@@ -64,7 +64,7 @@ from frame_builder import build_frame, close_browser
 from glitch_synth import synthesize_glitch_chunk
 from tts_synth import synthesize_tts
 from video_builder import build_video
-from word_generator import random_zalgo_word, readable_label
+from word_generator import random_zalgo_word, readable_label, zalgo_display_word
 
 
 def _youtube_metadata(word, label, mode):
@@ -123,6 +123,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     else:
         word = random_zalgo_word()
     label = readable_label(word)
+    frame_word = zalgo_display_word(word)
 
     base = os.path.join(outdir, f"{idx:03d}")
     txt_path = base + "_word.txt"
@@ -154,7 +155,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     os.remove(rep_wav)
 
     wav_to_mp3(fin_wav, mp3_path)
-    build_frame(label, frame_path, mode=actual_mode)
+    build_frame(label, frame_path, mode=actual_mode, display_word=frame_word)
     build_video(frame_path, mp3_path, video_path)
 
     os.remove(fin_wav)

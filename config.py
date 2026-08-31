@@ -44,22 +44,32 @@ SEPARATOR_SYMBOLS = ["(", ")", ":", "-"]
 # そのため、(a) 実際にespeak-ngへ1文字ずつ通して無音を個別確認したコード
 # ポイントのみを候補にし、(b) 1つの土台文字に乗せるマークは必ず「同じブロ
 # ックの中だけ」から選ぶ、という2段構えにしている。
-# U+20D0-20F0の中でも「土台の文字を覆い隠す大きな図形」として描画される
-# ENCLOSING系(丸・四角・ひし形・スクリーン・キーキャップ・三角)のコード
-# ポイント。詳細は SAFE_COMBINING_BLOCKS のコメント参照。
-_ENCLOSING_COMBINING_MARKS = {0x20DD, 0x20DE, 0x20DF, 0x20E0, 0x20E2, 0x20E3, 0x20E4}
+#
+# (3) 上記2つは音声(espeak-ng)側の罠だが、表示側にも罠があった。
+#     Combining Diacritical Marks for Symbols(U+20D0-U+20F0)は音声的には
+#     無音確認済みでも、Chromium+Notoフォントで実際に土台文字へ結合させて
+#     描画すると軒並み豆腐(□)になり、正しく結合しない(ENCLOSING系を除外
+#     した残りの約26種で確認済み)。動画フレームは長らく readable_label()
+#     (結合文字を全部落とした簡易ラベル)しか表示しておらず、この問題が
+#     隠れて気づかれていなかった。フレームに実際の結合文字を描画する
+#     ようになったタイミングで発覚したため、このブロック自体を候補から
+#     除外している。
+#
+# (4) 残った4ブロック(計200コードポイント)についても、Playwrightで実際に
+#     「土台文字+マーク」の描画幅を「土台文字単体」と比較する形で全数検証
+#     したところ、U+1DFA(COMBINING DOT BELOW LEFT)だけが結合できない
+#     (土台文字1文字ぶんまるごと幅が伸びる=豆腐/非結合)ことが判明した。
+#     ブロックの残り99%は正常なので、ブロックごと除外するのではなくこの
+#     1点だけを除外している。
+_BROKEN_RENDERING_MARKS = {0x1DFA}
 
 SAFE_COMBINING_BLOCKS = [
     list(range(0x0300, 0x0370)),  # Combining Diacritical Marks
     list(range(0x0483, 0x048A)),  # Cyrillic combining
     list(range(0x0591, 0x05B0)),  # Hebrew accents(母音記号 05B0-05BDは除外済み)
-    list(range(0x1DC0, 0x1DE7)) + list(range(0x1DF5, 0x1E00)),  # Combining Diacritical Marks Supplement
-    # Combining Diacritical Marks for Symbols。
-    # 0x20F1以降はUnicode未割り当てでフォントが無く「豆腐」になるため除外。
-    # さらに「ENCLOSING(囲み)」系(丸・四角・ひし形・キーキャップ・三角など)
-    # は土台の文字を覆い隠す大きな図形として描画され、小さな飾りが重なる
-    # Zalgo的な見た目ではなく「表示崩れ」に見えてしまうため除外している。
-    [cp for cp in range(0x20D0, 0x20F1) if cp not in _ENCLOSING_COMBINING_MARKS],
+    # Combining Diacritical Marks Supplement(U+1DFAのみ描画不良のため除外)
+    [cp for cp in list(range(0x1DC0, 0x1DE7)) + list(range(0x1DF5, 0x1E00))
+     if cp not in _BROKEN_RENDERING_MARKS],
 ]
 
 # 装飾記号。実際にespeak-ngへ1文字ずつ通し、「何も読み上げない(無音)」こと
