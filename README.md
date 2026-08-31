@@ -11,11 +11,14 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
 1. **単語生成**: 母音などの土台文字にUnicodeの結合文字(いわゆるZalgoテキ
    スト)や記号を大量に重ねた、見た目からして発音不能な単語をランダムに作
    ります。
-2. **音声生成**: 2つの方式を選べます。
+2. **音声生成**: 2つの方式、または両方をランダムに混ぜる方式を選べます。
    - `tts`(デフォルト): [espeak-ng](https://github.com/espeak-ng/espeak-ng)
      に単語そのものを読ませ、出てきた音をそのまま採用します。
    - `glitch`: チャープ音・ノイズバースト・ビットクラッシュを合成し、単語
      の音とは無関係な効果音を「答え」として当てます。
+   - `random`: 1本ごとに`tts`/`glitch`のどちらかをランダムに選びます
+     (`--count`で複数本まとめて作る際や、自動実行の日々の投稿が単調に
+     ならないようにする用途)。
 3. **繰り返し**: 実際のHow-to-Pronounce系動画が "word... word..." のよう
    に2回言うことが多いのに合わせて、生成した音声をデフォルトで2回繰り返し
    ます。
@@ -58,6 +61,9 @@ python3 generate.py --count 5 --outdir ./out
 # グリッチ音方式で5本生成
 python3 generate.py --count 5 --mode glitch --outdir ./out_glitch
 
+# tts/glitchを1本ごとにランダムに混ぜて5本生成
+python3 generate.py --count 5 --mode random --outdir ./out_mixed
+
 # 「答え」を3回繰り返す・乱数シード固定で再現する
 python3 generate.py --count 5 --repeat 3 --seed 42
 
@@ -71,7 +77,7 @@ python3 generate.py --count 3 --upload --privacy-status unlisted
 |---|---|---|
 | `--count` | 生成する本数 | `3` |
 | `--outdir` | 出力ディレクトリ | `./out` |
-| `--mode` | `tts` または `glitch` | `tts` |
+| `--mode` | `tts` / `glitch` / `random`(1本ごとにランダム選択) | `tts` |
 | `--voice` | [tts専用] espeak-ngの声(`en`, `en-us`, `ja` など) | `en` |
 | `--speed` | [tts専用] 読み上げ速度(words/min) | `150` |
 | `--unit-duration` | [glitch専用] 「答え」1回分の長さ(秒) | `2.0` |
