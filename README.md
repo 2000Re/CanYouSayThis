@@ -1,4 +1,4 @@
-# unpronounceable-generator
+# CanYouSayThis
 
 「How to Pronounce ▤彡...」系のネタ動画を自動生成するパイプラインです。
 
