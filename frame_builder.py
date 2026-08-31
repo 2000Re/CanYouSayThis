@@ -27,7 +27,7 @@ FRAME_HTML_TEMPLATE = """
          display:flex; flex-direction:column; align-items:center; justify-content:center; }}
   p.kicker {{ font-size:{kicker_font_size}px; font-weight:700; letter-spacing:4px; text-transform:uppercase;
               color:#333; margin:0 0 8px 0; }}
-  h1.word {{ font-size:{word_font_size}px; font-weight:900; margin:0 30px; text-align:center;
+  h1.word {{ font-size:{word_font_size}px; font-weight:900; margin:{word_margin_top}px 30px; text-align:center;
              word-break:break-word; max-width:{word_max_width}px; line-height:1.05; color:black; }}
   p.sub {{ color:#777; font-size:{sub_font_size}px; margin-top:28px; }}
   .icon {{ margin-top:20px; }}
@@ -51,6 +51,10 @@ _BASELINE_KICKER_FONT_SIZE = 36
 _BASELINE_SUB_FONT_SIZE = 24
 _BASELINE_ICON_SIZE = 90
 _BASELINE_MAX_WIDTH_MARGIN = 80  # フレーム幅からこの分を引いたものが単語のmax-width
+# 結合文字(Zalgoの見た目)は土台の文字の行の上へせり出して描画されるため、
+# 詰めすぎるとキッカー("How to Pronounce")と衝突する。それを避けるための
+# 単語上の余白(結合文字を含まない旧デザインの頃は margin-top:0 だった)。
+_BASELINE_WORD_MARGIN_TOP = 130
 
 
 def _word_font_size(word_label, width):
@@ -91,12 +95,21 @@ def close_browser():
         _playwright_ctx["pw"] = None
 
 
-def build_frame(word_label, frame_path, mode="tts", size=FRAME_SIZE):
+def build_frame(word_label, frame_path, mode="tts", size=FRAME_SIZE, display_word=None):
+    """word_label: フォントサイズ算出の基準にする、結合文字を含まないラベル
+    (word_generator.readable_label()の出力)。文字数がそのまま見た目の
+    サイズに対応するので、サイジングは常にこちらの長さで行う。
+
+    display_word: 実際に画面へ描画する文字列。結合文字(Zalgoの見た目)を
+    保持した word_generator.zalgo_display_word() の出力を渡すことで、
+    フレームに実際のZalgo感を出す。省略時は word_label をそのまま描画する
+    (後方互換用)。"""
+    display_word = word_label if display_word is None else display_word
     width, height = size
     scale = width / _BASELINE_WIDTH
     html_content = FRAME_HTML_TEMPLATE.format(
         font_stack=FRAME_CSS_FONT_STACK,
-        word=html.escape(word_label),
+        word=html.escape(display_word),
         mode_label=MODE_LABELS.get(mode, mode),
         word_font_size=_word_font_size(word_label, width),
         width=width,
@@ -105,6 +118,7 @@ def build_frame(word_label, frame_path, mode="tts", size=FRAME_SIZE):
         kicker_font_size=round(_BASELINE_KICKER_FONT_SIZE * scale),
         sub_font_size=round(_BASELINE_SUB_FONT_SIZE * scale),
         icon_size=round(_BASELINE_ICON_SIZE * scale),
+        word_margin_top=round(_BASELINE_WORD_MARGIN_TOP * scale),
     )
     html_path = frame_path + ".html"
     with open(html_path, "w", encoding="utf-8") as f:
