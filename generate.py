@@ -4,6 +4,8 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 =================================================
 
 1. Zalgo風「発音不能な単語」をランダム生成          -> word_generator.py
+   (--upload時は、upload_history.jsonに既に記録済みの単語と被らないものを
+   選ぶ。チャンネルへの重複投稿を避けるため)
 2. 音声を作る(3方式から選択):                      -> tts_synth.py / glitch_synth.py
      --mode tts     : espeak-ng に単語そのものを読ませ、出てきた音を採用
                        (デフォルト。単語の文字列がそのまま音に反映される
@@ -90,12 +92,36 @@ def _resolve_mode(mode):
     return mode
 
 
+def _random_unique_word(existing_words, max_attempts=20):
+    """existing_words に含まれない単語が出るまで生成を試みる。
+
+    組み合わせ数が膨大なので衝突はほぼ起きないが、チャンネルへの重複投稿を
+    避けるため念のため再抽選する。max_attempts回試しても衝突する場合は
+    (ほぼ起こり得ないが)無限ループを避けるためそのまま返す。"""
+    word = random_zalgo_word()
+    for _ in range(max_attempts - 1):
+        if word not in existing_words:
+            break
+        word = random_zalgo_word()
+    return word
+
+
 def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOICE,
                   speed=config.DEFAULT_SPEED, unit_duration=config.DEFAULT_UNIT_DURATION,
                   repeat=config.DEFAULT_REPEAT, repeat_gap=config.DEFAULT_REPEAT_GAP,
                   fade=config.DEFAULT_FADE, upload=False, privacy_status="public"):
     actual_mode = _resolve_mode(mode)
-    word = random_zalgo_word()
+
+    if upload:
+        # チャンネルへの重複投稿を避けるため、アップロード済みの単語と
+        # 被らないものを選ぶ(--upload時のみ必要な依存関係の遅延importは
+        # このファイル内で完結しているのでここでも問題ない)
+        from upload_history import load_upload_history
+
+        existing_words = {entry["word"] for entry in load_upload_history()}
+        word = _random_unique_word(existing_words)
+    else:
+        word = random_zalgo_word()
     label = readable_label(word)
 
     base = os.path.join(outdir, f"{idx:03d}")
