@@ -38,6 +38,16 @@ on:
           - unlisted
           - private
 
+permissions:
+  contents: write
+
+# upload_history.json/compilation_state.json をこのワークフローがgit push
+# するため、手動実行が重なった場合に同じファイルへのpushが競合したり、
+# 結合バッチが二重に処理されたりしないよう同時実行を1本に制限する。
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   generate:
     runs-on: ubuntu-latest
@@ -81,9 +91,57 @@ jobs:
           fi
           python3 generate.py "${args[@]}"
 
+      # upload_history.jsonに公開済みShortsが10本たまるごとに、それらを
+      # yt-dlpで取得し直して横型(16:9)の結合動画としてアップロードする。
+      # アップロードしていない回(upload=false)は履歴が増えないため、結合
+      # する対象もないのでスキップする。本編パイプラインとは独立した追加
+      # 機能なので、失敗しても後続の処理はブロックしない
+      # (compile_shorts.py側で例外を吸収する)。
+      - name: Compile Shorts into a regular video (every 10 videos)
+        if: ${{ inputs.upload == 'true' }}
+        run: python3 compile_shorts.py --privacy-status "${{ inputs.privacy_status }}"
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+
+      - name: Commit updated upload history and compilation state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add upload_history.json compilation_state.json
+          git diff --cached --quiet || git commit -m "chore: update upload history"
+
+          # git push はGitHub側の一時的な障害で失敗することがある。この時点で
+          # 動画は既にYouTubeへアップロード済みなので、ここで諦めると
+          # upload_history.jsonへの記録だけが失われ、結合動画の対象カウントが
+          # ずれてしまう。そのため数回リトライする(間にpull --rebaseを挟み、
+          # 他の実行が先にpushしていた場合にも追従できるようにする)。
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              exit 0
+            fi
+            echo "git push 失敗(${attempt}回目)。リトライします。"
+            sleep $((attempt * 10))
+            git pull --rebase origin "${GITHUB_REF_NAME}" || true
+          done
+          echo "git push が複数回失敗しました。upload_history.json の更新が反映されていない" \
+               "可能性があります。手動での確認・修正が必要です。"
+          exit 1
+
       - name: Upload generated videos (backup/audit)
         uses: actions/upload-artifact@v4
         with:
           name: generated-videos-${{ github.run_number }}
           path: out/
           if-no-files-found: error
+
+      # compilation_output/ は10件たまった回にしか作られないため、
+      # それ以外の日は対象ファイルなしで正常にスキップされる。
+      - name: Upload compilation video as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: compilation-output-${{ github.run_number }}
+          path: compilation_output/
+          if-no-files-found: ignore
