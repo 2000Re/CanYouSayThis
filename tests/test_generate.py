@@ -8,8 +8,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import config
 import generate as generate_module
 from generate import _random_unique_word, _resolve_mode
+
+REAL_MODES = ("tts", "tts_extreme", "glitch", "morse")
 
 
 def test_resolve_mode_passes_through_tts():
@@ -23,13 +26,13 @@ def test_resolve_mode_passes_through_glitch():
 def test_resolve_mode_random_always_picks_a_real_mode():
     random.seed(0)
     for _ in range(50):
-        assert _resolve_mode("random") in ("tts", "glitch")
+        assert _resolve_mode("random") in REAL_MODES
 
 
-def test_resolve_mode_random_can_pick_both():
+def test_resolve_mode_random_can_pick_all_modes():
     random.seed(0)
-    picks = {_resolve_mode("random") for _ in range(50)}
-    assert picks == {"tts", "glitch"}
+    picks = {_resolve_mode("random") for _ in range(100)}
+    assert picks == set(config.MODE_LABELS)
 
 
 def test_random_unique_word_returns_first_pick_when_no_collision(monkeypatch):
