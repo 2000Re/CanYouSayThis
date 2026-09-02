@@ -20,23 +20,41 @@ def _one_glitch_segment():
         freq = random.randint(70, 2400)
         dur = round(random.uniform(0.12, 0.42), 2)
         src = f"sine=frequency={freq}:duration={dur}"
-        filt = f"acrusher=bits={random.randint(3,6)}:mode=lin:aa=0" if random.random() < 0.6 else "anull"
+        # bitsの幅を広げ、かける確率も上げてクランチ感の強弱にバラつきを出す
+        filt = f"acrusher=bits={random.randint(2,8)}:mode=lin:aa=0" if random.random() < 0.75 else "anull"
     elif kind == "tone_vibrato":
         freq = random.randint(70, 2400)
         dur = round(random.uniform(0.15, 0.45), 2)
         src = f"sine=frequency={freq}:duration={dur}"
-        filt = f"vibrato=f={random.randint(4,20)}:d={round(random.uniform(0.5,1.0),2)}"
+        filt = f"vibrato=f={random.randint(2,30)}:d={round(random.uniform(0.3,1.0),2)}"
     elif kind == "noise":
         color = random.choice(NOISE_COLORS)
         dur = round(random.uniform(0.1, 0.3), 2)
         amp = round(random.uniform(0.4, 0.75), 2)
         src = f"anoisesrc=d={dur}:c={color}:a={amp}"
-        filt = f"acrusher=bits={random.randint(3,5)}:mode=lin:aa=0" if random.random() < 0.5 else "anull"
+        filt = f"acrusher=bits={random.randint(2,7)}:mode=lin:aa=0" if random.random() < 0.65 else "anull"
     else:  # silence (short gap for rhythm)
         dur = round(random.uniform(0.05, 0.15), 2)
         src = f"anullsrc=r=44100:cl=mono:d={dur}"
         filt = "anull"
     return src, filt, dur
+
+
+def _random_echo_params(skip_chance=0.25):
+    """aechoにかけるin_gain/out_gain/delay/decayをまとめて返す(素通しならNone)。
+
+    以前はin_gain/out_gainが0.8:0.7で固定されており、個々のセグメントの
+    音程や長さを変えても「エコーのかかり方」という支配的な質感だけは毎回
+    同じだった。ここを丸ごとランダム化し、さらに一定確率でエコー自体を
+    かけない(ドライな音)ことで、ウェット/ドライという別軸のバリエーション
+    を持たせる。"""
+    if random.random() < skip_chance:
+        return None
+    in_gain = round(random.uniform(0.5, 0.9), 2)
+    out_gain = round(random.uniform(0.4, 0.85), 2)
+    delay = random.randint(15, 90)
+    decay = round(random.uniform(0.15, 0.55), 2)
+    return in_gain, out_gain, delay, decay
 
 
 def _build_glitch_segments(target_seconds):
@@ -73,9 +91,12 @@ def synthesize_glitch_chunk(wav_path, target_seconds=2.0):
 
     concat_inputs = "".join(labels)
     filter_parts.append(f"{concat_inputs}concat=n={len(segments)}:v=0:a=1[cat]")
-    filter_parts.append(
-        f"[cat]aecho=0.8:0.7:{random.randint(20,60)}:{round(random.uniform(0.25,0.45),2)}[out]"
-    )
+    echo = _random_echo_params()
+    if echo is None:
+        filter_parts.append("[cat]anull[out]")
+    else:
+        in_gain, out_gain, delay, decay = echo
+        filter_parts.append(f"[cat]aecho={in_gain}:{out_gain}:{delay}:{decay}[out]")
 
     filter_complex = ";".join(filter_parts)
 
