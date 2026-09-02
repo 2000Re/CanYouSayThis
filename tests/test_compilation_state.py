@@ -1,5 +1,9 @@
+import io
 import sys
+import zipfile
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -73,3 +77,42 @@ def test_pillarbox_scale_falls_back_to_width_when_height_based_scale_overflows()
     scale = compilation_state.pillarbox_scale(2000, 100, 1920, 1080)
     assert scale == 1920 / 2000
     assert 2000 * scale <= 1920
+
+
+def test_find_artifact_matches_by_name():
+    artifacts = [
+        {"name": "candidates", "id": 1},
+        {"name": "generated-videos", "id": 2},
+        {"name": "audio-output", "id": 3},
+    ]
+    assert compilation_state.find_artifact(artifacts, "generated-videos") == {"name": "generated-videos", "id": 2}
+
+
+def test_find_artifact_returns_none_when_missing():
+    artifacts = [{"name": "candidates", "id": 1}]
+    assert compilation_state.find_artifact(artifacts, "generated-videos") is None
+
+
+def test_find_artifact_handles_empty_list():
+    assert compilation_state.find_artifact([], "generated-videos") is None
+
+
+def test_extract_zip_member_reads_matching_file():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("dQw4w9WgXcQ.mp4", b"fake video bytes")
+        zf.writestr("other-video-id.mp4", b"other video bytes")
+    zip_bytes = buf.getvalue()
+
+    assert compilation_state.extract_zip_member(zip_bytes, "dQw4w9WgXcQ.mp4") == b"fake video bytes"
+    assert compilation_state.extract_zip_member(zip_bytes, "other-video-id.mp4") == b"other video bytes"
+
+
+def test_extract_zip_member_raises_key_error_when_missing():
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("dQw4w9WgXcQ.mp4", b"fake video bytes")
+    zip_bytes = buf.getvalue()
+
+    with pytest.raises(KeyError):
+        compilation_state.extract_zip_member(zip_bytes, "missing.mp4")

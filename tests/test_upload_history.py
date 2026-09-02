@@ -38,8 +38,8 @@ def test_append_upload_adds_entry_to_existing_history(tmp_path, monkeypatch):
     path = tmp_path / "upload_history.json"
     monkeypatch.setattr(upload_history, "UPLOAD_HISTORY_PATH", str(path))
     upload_history.append_upload(word="Á", label="A", video_id="v1", mode="tts")
-    upload_history.append_upload(word="B́", label="B", video_id="v2", mode="glitch")
+    upload_history.append_upload(word="B́", label="B", video_id="v2", mode="glitch", run_id="12345")
     assert upload_history.load_upload_history() == [
-        {"word": "Á", "label": "A", "video_id": "v1", "mode": "tts"},
-        {"word": "B́", "label": "B", "video_id": "v2", "mode": "glitch"},
+        {"word": "Á", "label": "A", "video_id": "v1", "mode": "tts", "run_id": None},
+        {"word": "B́", "label": "B", "video_id": "v2", "mode": "glitch", "run_id": "12345"},
     ]
