@@ -8,16 +8,18 @@ on:
         required: false
         default: "3"
       mode:
-        description: "音声の作り方 (tts / glitch / random)"
+        description: "音声の作り方 (tts / tts_extreme / glitch / morse / random)"
         required: false
         default: "tts"
         type: choice
         options:
           - tts
+          - tts_extreme
           - glitch
+          - morse
           - random
       voice:
-        description: "[tts専用] espeak-ngの声 (例: en, en-us, ja)"
+        description: "[tts/tts_extreme専用] espeak-ngの声 (例: en, en-us, ja)"
         required: false
         default: "en"
       seed:

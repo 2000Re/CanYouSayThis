@@ -11,14 +11,23 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
 1. **単語生成**: 母音などの土台文字にUnicodeの結合文字(いわゆるZalgoテキ
    スト)や記号を大量に重ねた、見た目からして発音不能な単語をランダムに作
    ります。
-2. **音声生成**: 2つの方式、または両方をランダムに混ぜる方式を選べます。
+2. **音声生成**: 4つの方式、またはそれらをランダムに混ぜる方式を選べます。
    - `tts`(デフォルト): [espeak-ng](https://github.com/espeak-ng/espeak-ng)
      に単語そのものを読ませ、出てきた音をそのまま採用します。
+   - `tts_extreme`: espeak-ngの奇妙な声バリエーション(`Demonic` / `croak` /
+     `whisper` など)+極端なピッチ・速度で単語を読ませたうえで、さらに
+     ffmpegでピッチシフト・ビットクラッシュ等をランダムにかけて歪ませま
+     す。`tts`と同じく単語自体は読ませていますが、声質が毎回激しく変わ
+     ります。
    - `glitch`: チャープ音・ノイズバースト・ビットクラッシュを合成し、単語
      の音とは無関係な効果音を「答え」として当てます。
-   - `random`: 1本ごとに`tts`/`glitch`のどちらかをランダムに選びます
-     (`--count`で複数本まとめて作る際や、自動実行の日々の投稿が単調に
-     ならないようにする用途)。
+   - `morse`: 単語の英数字部分を実際の国際モールス符号に変換し、ビープ音
+     で鳴らします。エンコード自体は本物ですが、聞いて読み取れることを狙っ
+     た機能ではなく、`glitch`と同じく単語の音とは無関係な「答え」の1つで
+     す。
+   - `random`: 1本ごとに上記4方式からランダムに選びます(`--count`で複数
+     本まとめて作る際や、自動実行の日々の投稿が単調にならないようにする
+     用途)。
 3. **繰り返し**: 実際のHow-to-Pronounce系動画が "word... word..." のよう
    に2回言うことが多いのに合わせて、生成した音声をデフォルトで2回繰り返し
    ます。
@@ -61,7 +70,13 @@ python3 generate.py --count 5 --outdir ./out
 # グリッチ音方式で5本生成
 python3 generate.py --count 5 --mode glitch --outdir ./out_glitch
 
-# tts/glitchを1本ごとにランダムに混ぜて5本生成
+# 極端に歪ませたTTSで5本生成
+python3 generate.py --count 5 --mode tts_extreme --outdir ./out_extreme
+
+# モールス符号のビープ音で5本生成
+python3 generate.py --count 5 --mode morse --outdir ./out_morse
+
+# 4方式を1本ごとにランダムに混ぜて5本生成
 python3 generate.py --count 5 --mode random --outdir ./out_mixed
 
 # 「答え」を3回繰り返す・乱数シード固定で再現する
@@ -77,9 +92,9 @@ python3 generate.py --count 3 --upload --privacy-status unlisted
 |---|---|---|
 | `--count` | 生成する本数 | `3` |
 | `--outdir` | 出力ディレクトリ | `./out` |
-| `--mode` | `tts` / `glitch` / `random`(1本ごとにランダム選択) | `tts` |
-| `--voice` | [tts専用] espeak-ngの声(`en`, `en-us`, `ja` など) | `en` |
-| `--speed` | [tts専用] 読み上げ速度(words/min) | `150` |
+| `--mode` | `tts` / `tts_extreme` / `glitch` / `morse` / `random`(1本ごとにランダム選択) | `tts` |
+| `--voice` | [tts/tts_extreme専用] espeak-ngの声(`en`, `en-us`, `ja` など) | `en` |
+| `--speed` | [tts専用。tts_extremeは毎回ランダムな速度を使うため対象外] 読み上げ速度(words/min) | `150` |
 | `--unit-duration` | [glitch専用] 「答え」1回分の長さ(秒) | `2.0` |
 | `--repeat` | 「答え」を何回繰り返すか | `2` |
 | `--repeat-gap` | 繰り返し間の無音の長さ(秒) | `0.4` |
@@ -423,8 +438,9 @@ cookie認証を渡しても解決しない事例が別リポジトリ(SayItRight
 ```
 config.py                    全モジュール共通の設定・定数
 word_generator.py            Zalgo風「発音不能な単語」の生成
-tts_synth.py                  TTS(espeak-ng)による音声合成 [--mode tts]
+tts_synth.py                  TTS(espeak-ng)による音声合成 [--mode tts / tts_extreme]
 glitch_synth.py               合成グリッチ音による音声生成 [--mode glitch]
+morse_synth.py                モールス符号のビープ音による音声生成 [--mode morse]
 audio_utils.py                繰り返し・パディング無しフェード・mp3変換
 frame_builder.py              "How to Pronounce" フレーム画像の生成(Playwright)
 video_builder.py              フレーム+音声 → mp4 の合成

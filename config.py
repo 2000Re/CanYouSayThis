@@ -12,10 +12,15 @@
 CHROMIUM_PATH = "/opt/pw-browsers/chromium"  # Playwright同梱のChromium
 FRAME_SIZE = (1080, 1920)  # YouTube Shorts / TikTok / Reels向けの縦型9:16
 
-# 動画フレームに表示するラベル(海外視聴者向けなので英語表記に統一)
+# 動画フレームに表示するラベル(海外視聴者向けなので英語表記に統一)。
+# --mode randomはこのdictのキーからランダムに1つ選ぶため(generate.py
+# _resolve_mode()参照)、新しいモードを追加する場合はここに登録すれば
+# 自動的にrandomの抽選対象にも入る。
 MODE_LABELS = {
     "tts": "Text-to-Speech",
     "glitch": "Synthesized Glitch Audio",
+    "tts_extreme": "Distorted Text-to-Speech",
+    "morse": "Morse Code",
 }
 
 # --- 単語ジェネレータ設定 ----------------------------------------------------

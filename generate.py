@@ -6,15 +6,23 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 1. Zalgo風「発音不能な単語」をランダム生成          -> word_generator.py
    (--upload時は、upload_history.jsonに既に記録済みの単語と被らないものを
    選ぶ。チャンネルへの重複投稿を避けるため)
-2. 音声を作る(3方式から選択):                      -> tts_synth.py / glitch_synth.py
-     --mode tts     : espeak-ng に単語そのものを読ませ、出てきた音を採用
-                       (デフォルト。単語の文字列がそのまま音に反映される
-                       ので「本当にその単語を読ませている」感が出せる)
-     --mode glitch  : チャープ音・ノイズバースト・ビットクラッシュを合成
-                       (単語の音とは無関係な効果音を「答え」として当てる)
-     --mode random  : 1本ごとに tts / glitch をランダムに選ぶ
-                       (--countで複数本まとめて作る際や、自動実行の日々の
-                       投稿に単調さが出ないようにする用途)
+2. 音声を作る(5方式から選択):     -> tts_synth.py / glitch_synth.py / morse_synth.py
+     --mode tts          : espeak-ng に単語そのものを読ませ、出てきた音を採用
+                            (デフォルト。単語の文字列がそのまま音に反映され
+                            るので「本当にその単語を読ませている」感が出せる)
+     --mode tts_extreme  : espeak-ngの奇妙な声バリエーション+極端なピッチ・
+                            速度で読ませ、さらにffmpegでピッチシフト・
+                            ビットクラッシュ等をランダムにかけて歪ませる
+                            (ttsと同じく単語自体は読ませているが、声質が
+                            毎回激しく変わる)
+     --mode glitch       : チャープ音・ノイズバースト・ビットクラッシュを
+                            合成(単語の音とは無関係な効果音を当てる)
+     --mode morse        : 単語の英数字部分を実際の国際モールス符号に変換
+                            し、ビープ音で鳴らす(単語の音とは無関係だが、
+                            エンコード自体は本物)
+     --mode random       : 1本ごとに上記4方式からランダムに選ぶ
+                            (--countで複数本まとめて作る際や、自動実行の
+                            日々の投稿に単調さが出ないようにする用途)
 3. 「答え」を --repeat 回(デフォルト2回)繰り返す      -> audio_utils.py
 4. 無音パディングはしない。中身の実際の長さの末尾だけ短くフェードアウトし、
    動画の尺はその音声の長さにそのまま合わせる(固定尺に引き伸ばさない)
@@ -23,7 +31,7 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 7. --upload 指定時は、書き出したmp4をそのままYouTubeにアップロードする -> youtube_upload.py
    (アップロード成功時は upload_history.json にも記録し、compile_shorts.py が
     10本たまるごとに結合動画を作れるようにする。--mode random で作った回も、
-    実際に使われたtts/glitchのどちらかが記録される)
+    実際に使われた方式(tts/tts_extreme/glitch/morseのいずれか)が記録される)
 
 --count で複数本生成する場合、1本の失敗(クォータ超過・一時的なネットワーク
 エラー等)で残りの本数まで巻き添えで止めることはしない。失敗した回は記録
@@ -42,6 +50,8 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 使い方:
     python3 generate.py --count 5 --outdir ./out
     python3 generate.py --count 5 --mode glitch --outdir ./out_glitch
+    python3 generate.py --count 5 --mode tts_extreme --outdir ./out_extreme
+    python3 generate.py --count 5 --mode morse --outdir ./out_morse
     python3 generate.py --count 5 --mode random --outdir ./out_mixed
     python3 generate.py --count 3 --upload --privacy-status unlisted
 
@@ -62,7 +72,8 @@ import config
 from audio_utils import finalize_audio, repeat_audio, wav_to_mp3
 from frame_builder import build_frame, close_browser
 from glitch_synth import synthesize_glitch_chunk
-from tts_synth import synthesize_tts
+from morse_synth import synthesize_morse_chunk
+from tts_synth import synthesize_tts, synthesize_tts_extreme
 from video_builder import build_video
 from word_generator import random_zalgo_word, readable_label, zalgo_display_word
 
@@ -140,12 +151,16 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     if actual_mode == "tts":
         # espeak-ngが吐く長さがそのまま採用される(パディングはしない)
         synthesize_tts(word, raw_wav, voice=voice, speed=speed)
+    elif actual_mode == "tts_extreme":
+        synthesize_tts_extreme(word, raw_wav, voice=voice)
     elif actual_mode == "glitch":
         # unit_durationが「1回分」の長さ。--repeatで指定した回数ぶん、
         # これがそのまま繰り返される(動画の総尺は自動的に決まる)
         synthesize_glitch_chunk(raw_wav, target_seconds=unit_duration)
+    elif actual_mode == "morse":
+        synthesize_morse_chunk(word, raw_wav)
     else:
-        raise ValueError(f"unknown mode: {actual_mode!r} (tts / glitch)")
+        raise ValueError(f"unknown mode: {actual_mode!r} (tts / tts_extreme / glitch / morse)")
 
     repeat_audio(raw_wav, rep_wav, times=repeat, gap=repeat_gap)
     # 無音パディングはしない。中身の実際の長さのまま、末尾だけ短くフェード
@@ -201,14 +216,18 @@ def main():
     ap = argparse.ArgumentParser(description="How-to-Pronounce ネタ動画 自動生成")
     ap.add_argument("--count", type=int, default=3, help="生成する本数")
     ap.add_argument("--outdir", type=str, default="./out", help="出力ディレクトリ")
-    ap.add_argument("--mode", type=str, choices=["tts", "glitch", "random"], default=config.DEFAULT_MODE,
+    ap.add_argument("--mode", type=str, choices=["tts", "tts_extreme", "glitch", "morse", "random"],
+                     default=config.DEFAULT_MODE,
                      help="音声の作り方: tts=espeak-ngに単語を読ませる(デフォルト) / "
+                          "tts_extreme=奇妙な声+極端なピッチ・速度+ffmpegの歪みフィルタで読ませる / "
                           "glitch=合成グリッチ音を当てる / "
-                          "random=1本ごとにtts/glitchをランダムに選ぶ")
+                          "morse=単語をモールス符号のビープ音に変換する / "
+                          "random=1本ごとに上記4方式からランダムに選ぶ")
     ap.add_argument("--voice", type=str, default=config.DEFAULT_VOICE,
-                     help="[tts専用] espeak-ngの声(例: en, en-us, ja)")
+                     help="[tts/tts_extreme専用] espeak-ngの声(例: en, en-us, ja)")
     ap.add_argument("--speed", type=int, default=config.DEFAULT_SPEED,
-                     help="[tts専用] 読み上げ速度(words/min)")
+                     help="[tts専用。tts_extremeは毎回ランダムな速度を使うため対象外] "
+                          "読み上げ速度(words/min)")
     ap.add_argument("--unit-duration", type=float, default=config.DEFAULT_UNIT_DURATION,
                      help="[glitch専用] 「答え」1回分の長さ(秒)")
     ap.add_argument("--repeat", type=int, default=config.DEFAULT_REPEAT,
