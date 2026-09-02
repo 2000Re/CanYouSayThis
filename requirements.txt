@@ -2,5 +2,5 @@ playwright>=1.40
 google-api-python-client>=2.100
 google-auth>=2.23
 google-auth-httplib2>=0.2
-yt-dlp>=2024.3.10
+requests>=2.31
 moviepy>=2.0.0

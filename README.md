@@ -94,10 +94,16 @@ python3 generate.py --count 3 --upload --privacy-status unlisted
 out/
   001_word.txt   生成した単語そのもの
   001.mp3        音声(modeにより中身が変わる)
-  001.mp4        完成動画
+  001.mp4        完成動画(--upload時は後述の通りvideo_idにリネームされる)
   002_word.txt
   ...
 ```
+
+`--upload` 使用時は、YouTubeへのアップロード成功後に完成動画が
+`{video_id}.mp4`(例: `dQw4w9WgXcQ.mp4`)にリネームされます。これは
+`compile_shorts.py` が後から`upload_history.json`の`video_id`をキーに
+GitHub Actionsアーティファクト内の該当ファイルを特定できるようにする
+ためです(詳細は「Shorts結合動画」節と「ハマった罠」の8番を参照)。
 
 ## YouTubeへの自動アップロード
 
@@ -195,9 +201,10 @@ OAuth同意画面の公開ステータスを「テスト」のままにしてい
 ## Shorts結合動画
 
 アップロードしたShorts動画の履歴(`upload_history.json`)が10本たまるごと
-に、それらをYouTubeから取得し直して1本の横型(16:9)動画に結合し、「通常
-動画」として自動でアップロードします(`compile_shorts.py`。generateワーク
-フローの中で `--upload` 使用時に自動実行されます)。
+に、それらの動画本体をGitHub Actionsアーティファクトから取得し直して
+1本の横型(16:9)動画に結合し、「通常動画」として自動でアップロードします
+(`compile_shorts.py`。generateワークフローの中で `--upload` 使用時に自動
+実行されます。動画本体の取得元については「ハマった罠」の8番を参照)。
 
 **なぜ「結合」が必要か**: YouTubeはShorts判定を投稿者の意図ではなく
 「アスペクト比(縦型)+尺(3分以内)」だけで機械的に行います。縦型のShorts
@@ -222,9 +229,13 @@ OAuth同意画面の公開ステータスを「テスト」のままにしてい
 python3 compile_shorts.py --privacy-status unlisted
 ```
 
-(認証は `--upload` と同じ `YOUTUBE_CLIENT_ID` / `YOUTUBE_CLIENT_SECRET` /
-`YOUTUBE_REFRESH_TOKEN` 環境変数を使う。`YOUTUBE_REFRESH_TOKEN_ISSUED_AT`
-を設定していれば失効監視も同様に働く)
+(YouTube側の認証は `--upload` と同じ `YOUTUBE_CLIENT_ID` /
+`YOUTUBE_CLIENT_SECRET` / `YOUTUBE_REFRESH_TOKEN` 環境変数を使う。
+`YOUTUBE_REFRESH_TOKEN_ISSUED_AT` を設定していれば失効監視も同様に働く。
+加えて、動画本体の取得にGitHub Actions APIを使うため `GITHUB_TOKEN`
+[Personal Access Token(`actions:read`権限が必要)] と `GITHUB_REPOSITORY`
+[例: `2000Re/CanYouSayThis`] の環境変数も必要。GitHub Actionsのワークフロー
+内では両方とも自動で設定されるため、この指定はローカル実行時のみ必要)
 
 ## YouTubeチャンネル用アセット(アイコン・バナー)
 
@@ -318,17 +329,40 @@ GitHub Secretsに設定しておくと、`youtube_upload.py` がアップロー�
 実際のチャンネルと照合し、不一致ならエラーで止めてくれる(詳細は上の
 「YouTubeへの自動アップロード」を参照)。
 
-### 8. Shorts結合動画は「作り直す」のではなく「取得し直す」
+### 8. Shorts結合動画の動画取得は「YouTubeから」ではなく「GitHub Actionsアーティファクトから」
 
-`compile_shorts.py` は結合対象の動画をGitHub Actions上で保持しておくので
-はなく、**すでにYouTubeに公開済みの自分の動画をyt-dlpでダウンロードし直
-す**方式にしています。GitHub Actionsのランナーはジョブごとに使い捨てで
-生成物を永続化していないため、素材を保持し続けるにはリポジトリや外部
-ストレージへの追加のアップロードが必要になり、コストと複雑さが増えます。
-逆に「動画は一度作ったら消してよい」という前提に立てば、必要になった時
-点で(すでに正しく生成・公開済みの)動画をダウンロードし直す方が単純です。
-ただしこの方式では、`private` でアップロードした動画は匿名ダウンロード
-できないため結合対象にできません。
+`compile_shorts.py` は当初、結合対象の動画をGitHub Actions上で保持して
+おくのではなく、**すでにYouTubeに公開済みの自分の動画をyt-dlpでダウン
+ロードし直す**方式でした。GitHub Actionsのランナーはジョブごとに使い捨
+てで生成物を永続化していないため、素材を保持し続けるにはリポジトリや外
+部ストレージへの追加のアップロードが必要になり、コストと複雑さが増える
+ため、「動画は一度作ったら消してよい」という前提に立って、必要になった
+時点で(すでに正しく生成・公開済みの)動画をダウンロードし直す方が単純だ
+と考えていたためです。
+
+しかしこの方式は、**GitHub ActionsのランナーのIPがYouTube側にボット
+判定される**(`Sign in to confirm you're not a bot` エラー)問題があり、
+cookie認証を渡しても解決しない事例が別リポジトリ(SayItRight)で確認され
+ています。YouTube側の対ボット対策はデータセンターのIPに対して年々強化
+されており、根本的に不利な戦いです。
+
+そのため、YouTube/yt-dlpに一切依存しない方式に変更しました:
+`generate.py` が生成した動画は、`generate.yml` の
+「Upload generated videos」ステップでGitHub Actionsアーティファクトと
+して既に保存されているため、これを [GitHub Actions API]
+(`/repos/{owner}/{repo}/actions/runs/{run_id}/artifacts`) から取得し
+直します。取得元のrunは、`generate.py` が `upload_history.json` へ記録
+する各エントリの `run_id`(`GITHUB_RUN_ID`)で特定します。この方式なら
+動画のprivacyStatusに関係なく取得できるため、`private` でアップロード
+した動画も結合対象にできます(旧yt-dlp方式では匿名ダウンロードできる
+`public`/`unlisted` にしか使えませんでした)。
+
+この方式変更前にアップロードされたエントリ(`run_id` が記録されていない
+もの)は、どのrunのアーティファクトか特定できないため結合対象外になり
+ます。またGitHub Actionsアーティファクトの既定の保持期間は90日のため、
+`COMPILATION_BATCH_SIZE`(10件)がその期間内にたまらないほど投稿頻度が
+低い運用では、古いエントリのアーティファクトが期限切れになり結合対象か
+ら除外される可能性があります。
 
 ### 9. 同じブランチにsquash mergeを繰り返すと、無関係な変更まで衝突扱いになる
 

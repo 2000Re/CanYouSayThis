@@ -3,12 +3,14 @@ compilation_state.py
 
 compile_shorts.py の結合状態(結合済み・恒久的に取得不可能な動画)を管理する。
 
-yt-dlp/moviepy/google-api-python-client等の重い依存を持たないため、
+moviepy/google-api-python-client等の重い依存を持たないため、
 requirements-dev.txtだけの軽量なテスト環境からもインポートしてテストできる
 (upload_history.pyと同じ狙いでcompile_shorts.pyから切り出している)。
 """
+import io
 import json
 import os
+import zipfile
 
 from config import COMPILATION_STATE_PATH
 
@@ -52,6 +54,20 @@ def select_pending(compilable: list, state: dict) -> list:
     """結合済みでも恒久スキップ済みでもないエントリを、元の順序のまま返す。"""
     exclude = set(state["compiled_video_ids"]) | set(state["skipped_video_ids"])
     return [h for h in compilable if h["video_id"] not in exclude]
+
+
+def find_artifact(artifacts: list, name: str) -> dict | None:
+    """GitHub Actions APIが返すアーティファクト一覧から、名前が一致する
+    ものを探す(見つからなければNone)。"""
+    return next((a for a in artifacts if a.get("name") == name), None)
+
+
+def extract_zip_member(zip_bytes: bytes, member_name: str) -> bytes:
+    """GitHub Actionsアーティファクト(zip)のバイト列から、指定した
+    ファイル1件の中身を取り出す。見つからない場合はKeyErrorを送出する
+    (zipfile.ZipFile.readの標準動作)。"""
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+        return zf.read(member_name)
 
 
 def pillarbox_scale(clip_width: int, clip_height: int, canvas_width: int, canvas_height: int) -> float:

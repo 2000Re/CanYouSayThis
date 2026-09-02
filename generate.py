@@ -175,12 +175,24 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         )
         result["youtube_url"] = youtube_url
 
+        video_id = youtube_url.rsplit("/", 1)[-1]
+
+        # compile_shorts.pyが後で(この回も含めて)GitHub Actions API経由で
+        # このrunのアーティファクトから動画本体を取り出せるよう、video_idを
+        # そのままファイル名にしておく(アーティファクト自体のアップロードは
+        # このgenerate.py実行の後、ワークフロー側で行う)。
+        video_id_path = os.path.join(outdir, f"{video_id}.mp4")
+        os.replace(video_path, video_id_path)
+        result["video"] = video_id_path
+
         # アップロードが成功して初めて履歴に記録する(失敗した回を記録すると、
         # 存在しない動画IDが compile_shorts.py の結合対象に紛れ込むため)
         from upload_history import append_upload
 
-        video_id = youtube_url.rsplit("/", 1)[-1]
-        append_upload(word=word, label=label, video_id=video_id, mode=actual_mode)
+        append_upload(
+            word=word, label=label, video_id=video_id, mode=actual_mode,
+            run_id=os.environ.get("GITHUB_RUN_ID"),
+        )
 
     return result
 
