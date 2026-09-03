@@ -120,7 +120,7 @@ jobs:
       # した追加機能なので、失敗しても後続の処理はブロックしない
       # (compile_shorts.py側で例外を吸収する)。
       - name: Compile Shorts into a regular video (every 10 videos)
-        if: ${{ inputs.upload == 'true' }}
+        if: ${{ inputs.upload }}
         run: python3 compile_shorts.py --privacy-status "${{ inputs.privacy_status }}"
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
