@@ -178,7 +178,7 @@ def pillarbox(clip):
 
 
 def build_compilation_metadata(labels: list, privacy_status: str) -> dict:
-    title = f"{len(labels)} Unpronounceable Words | Compilation #Shorts"
+    title = f"{len(labels)} Unpronounceable Words | Compilation"
     description = (
         f"A compilation of {len(labels)} words nobody can pronounce:\n"
         + ", ".join(labels)
@@ -188,7 +188,7 @@ def build_compilation_metadata(labels: list, privacy_status: str) -> dict:
         "snippet": {
             "title": title,
             "description": description,
-            "tags": ["pronunciation", "unpronounceable", "compilation", "how to pronounce", "shorts"],
+            "tags": ["pronunciation", "unpronounceable", "compilation", "how to pronounce"],
             "categoryId": "24",  # Entertainment (youtube_upload.upload_video()と同じ)
         },
         "status": {
