@@ -313,5 +313,26 @@
     "video_id": "mEn7tlj0-UM",
     "mode": "tts_extreme",
     "run_id": "33966829986"
+  },
+  {
+    "word": "(VVVVVO҃҇҇҈I: ◉ ◉",
+    "label": "(VVVVVO҈I: ◉...",
+    "video_id": "ZFht_e86WWE",
+    "mode": "morse",
+    "run_id": "33990933982"
+  },
+  {
+    "word": "-v͉͙̼́͟͠n̨ͮ̂͠OOOOOO̴͍̦͒ͥ͢v̘̭̬̰̙͘VVV( ⊀ ☼ ֍",
+    "label": "-vnOOOOOOvVV...",
+    "video_id": "0O4B3XiaEtU",
+    "mode": "glitch",
+    "run_id": "33990933982"
+  },
+  {
+    "word": ")o҅҄҇a᷸᷾᷆ᷜ᷵ᷦ᷻ᷥ᷍OOOOnᷝᷙᷖ᷄ᷔ᷆᷃ᷤ- ๑",
+    "label": ")oaOOOOn- ๑",
+    "video_id": "MHyAvpV40zE",
+    "mode": "tts",
+    "run_id": "33990933982"
   }
 ]
