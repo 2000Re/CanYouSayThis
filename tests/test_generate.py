@@ -12,7 +12,7 @@ import config
 import generate as generate_module
 from generate import _random_unique_word, _resolve_mode
 
-REAL_MODES = ("tts", "tts_extreme", "glitch", "morse")
+REAL_MODES = ("tts", "tts_extreme", "glitch")
 
 
 def test_resolve_mode_passes_through_tts():

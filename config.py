@@ -20,7 +20,6 @@ MODE_LABELS = {
     "tts": "Text-to-Speech",
     "glitch": "Synthesized Glitch Audio",
     "tts_extreme": "Distorted Text-to-Speech",
-    "morse": "Morse Code",
 }
 
 # --- 単語ジェネレータ設定 ----------------------------------------------------
