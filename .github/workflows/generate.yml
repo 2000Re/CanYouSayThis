@@ -105,7 +105,7 @@ jobs:
       # 保存しておく必要がある(out/の中身はこの時点以降変化しないため、
       # ここでアップロードして問題ない)。
       - name: Upload generated videos (backup/audit + compile_shorts.py用)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: generated-videos
           path: out/
@@ -156,7 +156,7 @@ jobs:
       # compilation_output/ は10件たまった回にしか作られないため、
       # それ以外の日は対象ファイルなしで正常にスキップされる。
       - name: Upload compilation video as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: compilation-output-${{ github.run_number }}
           path: compilation_output/
