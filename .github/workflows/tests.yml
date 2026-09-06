@@ -28,3 +28,20 @@ jobs:
 
       - name: Run tests
         run: pytest -v
+
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 構文ミス・存在しないコンテキスト/フィールド参照・run:内のシェル
+      # スクリプトの問題(shellcheck相当)などを事前に検出する。
+      # ただしboolean型のinputsを文字列と比較する(例: `inputs.upload == 'true'`)
+      # ような、GitHub Actions側の型システムでは「有効」とみなされる比較は
+      # 検出できない(実際に検証済み)。あくまで構文・型レベルのミスを防ぐ
+      # ためのものであり、意味的な間違いまでは保証しない。
+      - name: Install actionlint
+        run: bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) 1.7.12
+
+      - name: Lint GitHub Actions workflows (actionlint)
+        run: ./actionlint -color

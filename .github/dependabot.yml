@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # requirements.txt / requirements-dev.txt。ruffのデフォルトルールセットが
+  # バージョン間で大きく変わってCIが壊れた前例があるため、依存の更新を
+  # 事前にPRとして把握できるようにする。
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # .github/workflows/*.yml内で使っているactions/checkout等のバージョン
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
