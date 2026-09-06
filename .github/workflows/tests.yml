@@ -11,7 +11,7 @@ jobs:
   pytest:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -32,7 +32,7 @@ jobs:
   actionlint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # 構文ミス・存在しないコンテキスト/フィールド参照・run:内のシェル
       # スクリプトの問題(shellcheck相当)などを事前に検出する。
