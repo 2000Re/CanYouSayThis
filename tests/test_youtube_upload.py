@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from youtube_upload import _quota_summary_lines, _token_age_warning
+from youtube_upload import QUOTA_COST_PER_CALL, _quota_summary_lines, _token_age_warning
 
 
 def test_token_age_warning_none_when_unset():
@@ -57,6 +57,11 @@ def test_quota_summary_lines_reports_consumption_and_remaining():
     assert "300" in text
     assert "9700" in text
     assert "97" in text
+
+
+def test_quota_cost_per_call_includes_playlist_items_insert():
+    # playlistItems.insertは公式ドキュメントの一般的な書き込み操作コスト(50 units)
+    assert QUOTA_COST_PER_CALL["playlistItems.insert"] == 50
 
 
 def test_quota_summary_lines_clamps_remaining_at_zero():

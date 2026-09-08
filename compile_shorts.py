@@ -55,7 +55,7 @@ from compilation_state import (
     select_pending,
 )
 from upload_history import load_upload_history
-from youtube_upload import _quota_summary_lines, get_youtube_client
+from youtube_upload import _quota_summary_lines, add_to_playlist, get_youtube_client
 
 GITHUB_API_BASE = "https://api.github.com"
 
@@ -284,6 +284,16 @@ def main():
         metadata = build_compilation_metadata([b["label"] for b in batch], args.privacy_status)
         video_id = upload_compilation(youtube, output_path, metadata)
         print(f"[Compilation] アップロード完了: https://youtu.be/{video_id}")
+
+        # 任意。設定されていれば、結合動画専用の再生リストに追加する
+        # (失敗しても動画自体は既に公開済みなので、警告に留めて処理は止めない)。
+        compilation_playlist_id = os.environ.get("YOUTUBE_COMPILATION_PLAYLIST_ID")
+        if compilation_playlist_id:
+            try:
+                add_to_playlist(video_id, compilation_playlist_id)
+            except Exception as e:
+                print(f"::warning::結合動画の再生リストへの追加に失敗しました: {e}")
+
         _log_api_usage_summary()
 
         # アップロードが成功して初めて結合済みとして記録する
