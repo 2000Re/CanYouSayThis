@@ -19,6 +19,12 @@ OAuth同意フロー(InstalledAppFlow)は使わない。代わりに、あらか
                             get_youtube_refresh_token.py を実行した日付(YYYY-MM-DD)。
                             設定しておくと、OAuth同意画面が「テスト」ステータスの場合の
                             既知の7日失効ルールが近づいた/過ぎた際に警告を出す。
+    YOUTUBE_SHORTS_PLAYLIST_ID
+                            設定しておくと、generate.pyがアップロードした各Shortsを
+                            このIDの再生リストに自動追加する(add_to_playlist()参照)。
+    YOUTUBE_COMPILATION_PLAYLIST_ID
+                            設定しておくと、compile_shorts.pyがアップロードした結合動画を
+                            このIDの再生リストに自動追加する。
 
 罠: 1つのGoogleアカウントで複数のYouTubeチャンネル(ブランドアカウント)を
 管理している場合、リフレッシュトークンがどのチャンネルに紐づくかは
@@ -56,7 +62,7 @@ _MAX_RETRIES = 8
 
 # YouTube Data API v3の公式ドキュメントに基づく、1回あたりのクォータ消費コスト
 # (日次クォータの目安に対する概算を実行ログに表示するために使う)
-QUOTA_COST_PER_CALL = {"videos.insert": 100}
+QUOTA_COST_PER_CALL = {"videos.insert": 100, "playlistItems.insert": 50}
 _api_call_counts = {name: 0 for name in QUOTA_COST_PER_CALL}
 
 
@@ -244,3 +250,20 @@ def upload_video(video_path, title, description, tags=None, category_id="24",
             raise
 
     return f"https://youtu.be/{response['id']}"
+
+
+def add_to_playlist(video_id, playlist_id):
+    """video_idの動画をplaylist_idの再生リストに追加する。
+
+    動画本体のアップロードとは別のAPI呼び出しなので、失敗しても動画自体は
+    既に公開済みである(呼び出し側はこの関数の例外を警告に留め、処理全体は
+    止めない想定。generate.py / compile_shorts.py 参照)。"""
+    youtube = get_youtube_client()
+    body = {
+        "snippet": {
+            "playlistId": playlist_id,
+            "resourceId": {"kind": "youtube#video", "videoId": video_id},
+        }
+    }
+    _api_call_counts["playlistItems.insert"] += 1
+    youtube.playlistItems().insert(part="snippet", body=body).execute()

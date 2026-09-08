@@ -89,6 +89,8 @@ jobs:
           # 任意。設定しておくと、リフレッシュトークンの7日失効(テスト
           # ステータス時)が近づいた/過ぎた際にログへ警告が出る
           YOUTUBE_REFRESH_TOKEN_ISSUED_AT: ${{ secrets.YOUTUBE_REFRESH_TOKEN_ISSUED_AT }}
+          # 任意。設定しておくと、アップロードした各Shortsをこの再生リストに自動追加する
+          YOUTUBE_SHORTS_PLAYLIST_ID: ${{ secrets.YOUTUBE_SHORTS_PLAYLIST_ID }}
         run: |
           args=(--count "${{ inputs.count }}" --outdir ./out --mode "${{ inputs.mode }}" --voice "${{ inputs.voice }}")
           if [ -n "${{ inputs.seed }}" ]; then
@@ -127,6 +129,8 @@ jobs:
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
           YOUTUBE_REFRESH_TOKEN_ISSUED_AT: ${{ secrets.YOUTUBE_REFRESH_TOKEN_ISSUED_AT }}
+          # 任意。設定しておくと、結合動画をこの再生リストに自動追加する
+          YOUTUBE_COMPILATION_PLAYLIST_ID: ${{ secrets.YOUTUBE_COMPILATION_PLAYLIST_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Commit updated upload history and compilation state

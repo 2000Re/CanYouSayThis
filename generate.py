@@ -202,6 +202,18 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
             run_id=os.environ.get("GITHUB_RUN_ID"),
         )
 
+        # 任意。設定されていれば、アップロードした動画をShorts用の再生リストに
+        # 追加する(失敗しても動画自体は既に公開済みなので、警告に留めて
+        # 処理は止めない)。
+        shorts_playlist_id = os.environ.get("YOUTUBE_SHORTS_PLAYLIST_ID")
+        if shorts_playlist_id:
+            from youtube_upload import add_to_playlist
+
+            try:
+                add_to_playlist(video_id, shorts_playlist_id)
+            except Exception as e:
+                print(f"[Warning] {word}: 再生リストへの追加に失敗しました: {e}")
+
     return result
 
 

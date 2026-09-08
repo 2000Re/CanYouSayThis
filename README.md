@@ -165,6 +165,8 @@ python3 get_youtube_refresh_token.py --client-id YOUR_CLIENT_ID --client-secret 
 | `YOUTUBE_REFRESH_TOKEN` | ○ | 手順2で取得したリフレッシュトークン |
 | `YOUTUBE_CHANNEL_ID` | 任意(強く推奨) | アップロード先として想定しているチャンネルID(`UC...`)。手順2の出力に表示されたものを使う。設定しておくと、認証されたチャンネルがこれと一致しない場合にアップロード前でエラーになり、誤ったチャンネルへの投稿を防げる |
 | `YOUTUBE_REFRESH_TOKEN_ISSUED_AT` | 任意(強く推奨) | 手順2を実行した日付(`YYYY-MM-DD`)。手順2の出力に表示されたものを使う。設定しておくと、OAuth同意画面が「テスト」ステータスの場合の既知の7日失効ルールが近づいた/過ぎた際に実行ログへ警告が出る(下記「リフレッシュトークンの失効監視」を参照) |
+| `YOUTUBE_SHORTS_PLAYLIST_ID` | 任意 | 設定しておくと、アップロードした各Shortsをこの再生リストに自動追加する(下記「再生リストへの自動追加」を参照) |
+| `YOUTUBE_COMPILATION_PLAYLIST_ID` | 任意 | 設定しておくと、結合動画をこの再生リストに自動追加する |
 
 ### 4. 実行
 
@@ -205,6 +207,23 @@ OAuth同意画面の公開ステータスを「テスト」のままにしてい
 出力します(`youtube_upload.log_api_usage_summary()`)。GCP Consoleのクォー
 タ画面を都度開かなくても、ワークフローのログだけで「あとどれくらいアップ
 ロードできそうか」を把握できます。
+
+### 7. 再生リストへの自動追加(任意)
+
+`YOUTUBE_SHORTS_PLAYLIST_ID` / `YOUTUBE_COMPILATION_PLAYLIST_ID` を設定
+しておくと、アップロードした動画をそれぞれの再生リストに自動追加します
+(`youtube_upload.add_to_playlist()`)。Shortsと結合動画(横型の通常動画)
+は画面比率・視聴モードが異なるため、あえて別々の再生リストに分けられる
+ようにしています(1つのリストに混在させると視聴体験が途切れやすいため)。
+
+再生リスト自体は事前にYouTube Studioで手動作成しておく必要があります
+(自動作成はしません)。作成した再生リストのURL
+(`https://www.youtube.com/playlist?list=PLxxxxxxxx`)の`list=`以降の
+文字列がプレイリストIDです。
+
+再生リストへの追加が失敗しても、動画本体のアップロードは既に成功して
+いるため、警告(`[Warning]` / `::warning::`)を出すだけで処理全体は止め
+ません。
 
 ## Shorts結合動画
 
