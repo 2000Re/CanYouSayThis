@@ -60,6 +60,15 @@ def test_decorative_symbols_are_single_characters():
         assert len(ch) == 1
 
 
+def test_decorative_symbols_have_no_duplicates():
+    assert len(DECORATIVE_SYMBOLS) == len(set(DECORATIVE_SYMBOLS))
+
+
+def test_decorative_symbols_are_assigned_codepoints():
+    for ch in DECORATIVE_SYMBOLS:
+        assert unicodedata.category(ch) != "Cn", f"unassigned codepoint: {hex(ord(ch))}"
+
+
 def test_safe_combining_blocks_exclude_known_broken_rendering_codepoint():
     # U+1DFA(COMBINING DOT BELOW LEFT)はUnicode上は割り当て済みで無音
     # 確認も取れているが、Chromium+Notoフォントで実際に描画すると土台文字と
