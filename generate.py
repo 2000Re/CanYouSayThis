@@ -73,11 +73,14 @@ from video_builder import build_video
 from word_generator import random_zalgo_word, readable_label, zalgo_display_word
 
 
-def _youtube_metadata(word, label, mode):
+def _youtube_metadata(word, label, mode, playlist_id=None):
     """生成した単語からYouTubeアップロード用のtitle/description/tagsを組み立てる。
 
     label は readable_label() で結合文字を落とし最大12文字に丸め済みの
-    ものなので、タイトルの100文字制限には十分収まる。"""
+    ものなので、タイトルの100文字制限には十分収まる。
+
+    playlist_id を渡すと、説明文にShorts用再生リストへのリンクを追加し、
+    視聴者が他の動画も連続して見る(回遊する)よう誘導する。"""
     mode_label = config.MODE_LABELS.get(mode, mode)
     title = f'How to Pronounce "{label}" #Shorts'
     description = (
@@ -85,8 +88,13 @@ def _youtube_metadata(word, label, mode):
         f"Word: {word}\n"
         f"Mode: {mode_label}\n\n"
         "Try saying it out loud and comment your attempt! \U0001F5E3️\n\n"
-        "#Shorts #Pronunciation #Unpronounceable #Zalgo #GlitchText #TextToSpeech #TTS #Challenge"
     )
+    if playlist_id:
+        description += (
+            f"▶ Watch more pronunciation challenges: "
+            f"https://www.youtube.com/playlist?list={playlist_id}\n\n"
+        )
+    description += "#Shorts #Pronunciation #Unpronounceable #Zalgo #GlitchText #TextToSpeech #TTS #Challenge"
     tags = [
         "shorts", "pronunciation", "unpronounceable", "how to pronounce", mode,
         "zalgo", "glitch text", "text to speech", "pronunciation challenge",
@@ -180,7 +188,14 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # 遅延importにして、アップロードしない通常利用に影響しないようにする
         from youtube_upload import upload_video
 
-        title, description, tags = _youtube_metadata(word, label, actual_mode)
+        # 任意。設定されていれば、説明文に「もっと見る」用の再生リストリンクを
+        # 載せて視聴者の回遊(連続視聴)を促す。実際に動画を再生リストへ追加
+        # する処理はアップロード成功後(video_id確定後)に別途行う。
+        shorts_playlist_id = os.environ.get("YOUTUBE_SHORTS_PLAYLIST_ID")
+
+        title, description, tags = _youtube_metadata(
+            word, label, actual_mode, playlist_id=shorts_playlist_id
+        )
         youtube_url = upload_video(
             video_path, title=title, description=description, tags=tags,
             privacy_status=privacy_status,
@@ -208,8 +223,8 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
 
         # 任意。設定されていれば、アップロードした動画をShorts用の再生リストに
         # 追加する(失敗しても動画自体は既に公開済みなので、警告に留めて
-        # 処理は止めない)。
-        shorts_playlist_id = os.environ.get("YOUTUBE_SHORTS_PLAYLIST_ID")
+        # 処理は止めない)。shorts_playlist_id自体は説明文へのリンク生成のため
+        # 上のtitle/description組み立て時に既に読み込み済み。
         if shorts_playlist_id:
             from youtube_upload import add_to_playlist
 

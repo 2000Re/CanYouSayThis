@@ -75,3 +75,15 @@ def test_youtube_metadata_tags_include_mode_and_topic_keywords():
     assert "glitch" in tags
     assert "zalgo" in tags
     assert "text to speech" in tags
+
+
+def test_youtube_metadata_omits_playlist_link_when_not_given():
+    _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "playlist?list=" not in description
+
+
+def test_youtube_metadata_includes_playlist_link_when_given():
+    _title, description, _tags = _youtube_metadata(
+        "v́oOn", "voOn", "tts", playlist_id="PLexample123"
+    )
+    assert "https://www.youtube.com/playlist?list=PLexample123" in description
