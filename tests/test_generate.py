@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import config
 import generate as generate_module
-from generate import _random_unique_word, _resolve_mode
+from generate import _random_unique_word, _resolve_mode, _youtube_metadata
 
 REAL_MODES = ("tts", "tts_extreme", "glitch")
 
@@ -50,3 +50,40 @@ def test_random_unique_word_gives_up_after_max_attempts(monkeypatch):
     # 常に衝突する単語しか返らない場合でも無限ループせず、諦めてそのまま返す
     monkeypatch.setattr(generate_module, "random_zalgo_word", lambda: "always-dup")
     assert _random_unique_word({"always-dup"}, max_attempts=3) == "always-dup"
+
+
+def test_youtube_metadata_title_contains_label_and_shorts_hashtag():
+    title, _description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "voOn" in title
+    assert "#Shorts" in title
+
+
+def test_youtube_metadata_description_contains_cta():
+    _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "comment" in description.lower()
+
+
+def test_youtube_metadata_description_contains_hashtags():
+    _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    for hashtag in ("#Shorts", "#Pronunciation", "#Unpronounceable",
+                     "#Zalgo", "#GlitchText", "#TextToSpeech", "#TTS", "#Challenge"):
+        assert hashtag in description
+
+
+def test_youtube_metadata_tags_include_mode_and_topic_keywords():
+    _title, _description, tags = _youtube_metadata("v́oOn", "voOn", "glitch")
+    assert "glitch" in tags
+    assert "zalgo" in tags
+    assert "text to speech" in tags
+
+
+def test_youtube_metadata_omits_playlist_link_when_not_given():
+    _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "playlist?list=" not in description
+
+
+def test_youtube_metadata_includes_playlist_link_when_given():
+    _title, description, _tags = _youtube_metadata(
+        "v́oOn", "voOn", "tts", playlist_id="PLexample123"
+    )
+    assert "https://www.youtube.com/playlist?list=PLexample123" in description
