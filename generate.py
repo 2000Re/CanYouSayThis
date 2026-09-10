@@ -84,9 +84,13 @@ def _youtube_metadata(word, label, mode):
         "Can you pronounce this? \U0001F440\n\n"
         f"Word: {word}\n"
         f"Mode: {mode_label}\n\n"
-        "#Shorts #Pronunciation #Unpronounceable"
+        "Try saying it out loud and comment your attempt! \U0001F5E3️\n\n"
+        "#Shorts #Pronunciation #Unpronounceable #Zalgo #GlitchText #TextToSpeech #TTS #Challenge"
     )
-    tags = ["shorts", "pronunciation", "unpronounceable", "how to pronounce", mode]
+    tags = [
+        "shorts", "pronunciation", "unpronounceable", "how to pronounce", mode,
+        "zalgo", "glitch text", "text to speech", "pronunciation challenge",
+    ]
     return title, description, tags
 
 
