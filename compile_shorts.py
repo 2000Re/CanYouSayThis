@@ -55,6 +55,7 @@ from compilation_state import (
     select_pending,
 )
 from upload_history import load_upload_history
+import youtube_upload
 from youtube_upload import _quota_summary_lines, add_to_playlist, get_youtube_client
 
 GITHUB_API_BASE = "https://api.github.com"
@@ -74,8 +75,24 @@ QUOTA_COST_PER_CALL = {"videos.insert": 100}
 _api_call_counts = {name: 0 for name in QUOTA_COST_PER_CALL}
 
 
+def _combined_quota_summary_lines():
+    """本スクリプト自身の消費分(videos.insert)と、youtube_upload.py側
+    (get_youtube_client()のチャンネル確認 / add_to_playlist())の消費分を
+    合算したクォータサマリー行を返す(printしない、テスト容易性のため)。
+
+    合算しないと、YOUTUBE_CHANNEL_ID / YOUTUBE_COMPILATION_PLAYLIST_ID
+    設定時にchannels.list / playlistItems.insertの消費量(最大51 units)が
+    サマリーに一切反映されない。"""
+    combined_counts = dict(_api_call_counts)
+    combined_costs = dict(QUOTA_COST_PER_CALL)
+    for name, count in youtube_upload._api_call_counts.items():
+        combined_counts[name] = combined_counts.get(name, 0) + count
+        combined_costs.setdefault(name, youtube_upload.QUOTA_COST_PER_CALL[name])
+    return _quota_summary_lines(combined_counts, combined_costs)
+
+
 def _log_api_usage_summary():
-    for line in _quota_summary_lines(_api_call_counts, QUOTA_COST_PER_CALL):
+    for line in _combined_quota_summary_lines():
         print(line)
 
 
@@ -130,6 +147,18 @@ def download_video(entry: dict, output_path: str) -> None:
         headers=headers,
         timeout=config.COMPILATION_GITHUB_API_TIMEOUT_SECONDS,
     )
+    # 直前のexpiredチェックをすり抜けても、一覧取得とダウンロードの間に
+    # アーティファクトが実際に消えている(期限切れ・削除)ことがある。これは
+    # runの404チェックと同じく恒久的な問題なので、raise_for_status()任せに
+    # せずここでも明示的にArtifactUnavailableErrorにする。そうしないと
+    # 「一時的なエラー」としてリトライ後に結合処理全体を中断してしまい、
+    # かつこのエントリはskipped_video_idsに記録されないため、次回以降も
+    # 同じ動画で毎回失敗し続けて結合パイプラインが永久に詰まってしまう。
+    if zip_resp.status_code in (404, 410):
+        raise ArtifactUnavailableError(
+            f"run {run_id} の{config.COMPILATION_ARTIFACT_NAME}アーティファクトの"
+            "ダウンロードURLが無効です(取得直前に削除/期限切れになった可能性があります)"
+        )
     zip_resp.raise_for_status()
 
     member_name = f"{entry['video_id']}.mp4"

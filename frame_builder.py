@@ -76,14 +76,23 @@ _playwright_ctx = {"pw": None, "browser": None}
 
 def _get_browser():
     if _playwright_ctx["browser"] is None:
-        _playwright_ctx["pw"] = sync_playwright().start()
-        # CHROMIUM_PATHは元の開発環境にだけ存在するブラウザの実体パス。
-        # 他の環境(CI含む)には無いので、その場合はPlaywright自身が
-        # 解決するデフォルトのバンドル済みChromiumにフォールバックする。
-        executable_path = CHROMIUM_PATH if os.path.exists(CHROMIUM_PATH) else None
-        _playwright_ctx["browser"] = _playwright_ctx["pw"].chromium.launch(
-            executable_path=executable_path
-        )
+        pw = sync_playwright().start()
+        try:
+            # CHROMIUM_PATHは元の開発環境にだけ存在するブラウザの実体パス。
+            # 他の環境(CI含む)には無いので、その場合はPlaywright自身が
+            # 解決するデフォルトのバンドル済みChromiumにフォールバックする。
+            executable_path = CHROMIUM_PATH if os.path.exists(CHROMIUM_PATH) else None
+            browser = pw.chromium.launch(executable_path=executable_path)
+        except Exception:
+            # launch()が失敗すると、start()済みのドライバープロセスが
+            # 誰にも参照されず残ってしまう(close_browser()はbrowserが
+            # Noneの間は何もしないため)。ここで即座に後片付けしないと、
+            # generate.pyが動画ごとの例外を握りつぶして次に進む作りのため、
+            # 起動失敗のたびにプロセスがリークし続ける。
+            pw.stop()
+            raise
+        _playwright_ctx["pw"] = pw
+        _playwright_ctx["browser"] = browser
     return _playwright_ctx["browser"]
 
 
