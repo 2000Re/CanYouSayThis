@@ -24,18 +24,21 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
    - `random`: 1本ごとに上記3方式からランダムに選びます(`--count`で複数
      本まとめて作る際や、自動実行の日々の投稿が単調にならないようにする
      用途)。
-3. **繰り返し**: 実際のHow-to-Pronounce系動画が "word... word..." のよう
+3. **多言語・声色のランダム化**(任意): `--voice random` を指定すると、
+   [tts/tts_extreme専用] 英語を含む10言語・対応言語では男性/女性ボイスも
+   1本ごとにランダムに選びます。詳しくは後述の「多言語ボイス」を参照。
+4. **繰り返し**: 実際のHow-to-Pronounce系動画が "word... word..." のよう
    に2回言うことが多いのに合わせて、生成した音声をデフォルトで2回繰り返し
    ます。
-4. **動画合成**: "How to Pronounce <word>" 形式のミニマルな静止画フレーム
+5. **動画合成**: "How to Pronounce <word>" 形式のミニマルな静止画フレーム
    を [Playwright](https://playwright.dev/) 経由のChromiumで描画し、音声
    と合成してmp4を書き出します(縦型9:16、YouTube Shorts向け)。動画の尺
    は音声の実際の長さにそのまま追従します(固定尺への無音パディングはし
    ません)。
-5. **YouTubeへの自動アップロード**(任意): `--upload` を付けると、書き出
+6. **YouTubeへの自動アップロード**(任意): `--upload` を付けると、書き出
    したmp4をそのままYouTube Data API v3経由でチャンネルにアップロードし
    ます。
-6. **Shorts結合動画**(任意): アップロードしたShortsが10本たまるごとに、
+7. **Shorts結合動画**(任意): アップロードしたShortsが10本たまるごとに、
    それらを結合した1本の「通常動画」を自動で作ってアップロードします
    (詳しくは後述の「Shorts結合動画」を参照)。
 
@@ -45,6 +48,11 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
 # システム依存(Ubuntu/Debian系の例)
 sudo apt-get install -y espeak-ng ffmpeg
 sudo apt-get install -y fonts-noto-core fonts-noto-extra fonts-noto-ui-core fonts-noto-ui-extra
+
+# --voice random で女性ボイス(英語・フランス語・ドイツ語・ハンガリー語・
+# スウェーデン語)を使う場合のみ必要。未インストールでも男性ボイス・
+# 上記以外の言語は動作する(詳しくは「多言語ボイス」を参照)
+sudo apt-get install -y mbrola mbrola-us1 mbrola-fr4 mbrola-de1 mbrola-hu1 mbrola-sw2
 
 # Python依存
 pip install -r requirements.txt
@@ -72,6 +80,9 @@ python3 generate.py --count 5 --mode tts_extreme --outdir ./out_extreme
 # 3方式を1本ごとにランダムに混ぜて5本生成
 python3 generate.py --count 5 --mode random --outdir ./out_mixed
 
+# 言語・性別(男性/女性)を1本ごとにランダムに選ぶ(詳しくは「多言語ボイス」を参照)
+python3 generate.py --count 5 --voice random --outdir ./out_multilang
+
 # 「答え」を3回繰り返す・乱数シード固定で再現する
 python3 generate.py --count 5 --repeat 3 --seed 42
 
@@ -86,7 +97,7 @@ python3 generate.py --count 3 --upload --privacy-status unlisted
 | `--count` | 生成する本数 | `3` |
 | `--outdir` | 出力ディレクトリ | `./out` |
 | `--mode` | `tts` / `tts_extreme` / `glitch` / `random`(1本ごとにランダム選択) | `tts` |
-| `--voice` | [tts/tts_extreme専用] espeak-ngの声(`en`, `en-us`, `ja` など) | `en` |
+| `--voice` | [tts/tts_extreme専用] espeak-ngの声(`en`, `en-us`, `ja` など / `random`=言語・性別をランダムに選ぶ、詳しくは「多言語ボイス」を参照) | `en` |
 | `--speed` | [tts専用。tts_extremeは毎回ランダムな速度を使うため対象外] 読み上げ速度(words/min) | `150` |
 | `--unit-duration` | [glitch専用] 「答え」1回分の長さ(秒) | `2.0` |
 | `--repeat` | 「答え」を何回繰り返すか | `2` |
@@ -112,6 +123,46 @@ out/
 `compile_shorts.py` が後から`upload_history.json`の`video_id`をキーに
 GitHub Actionsアーティファクト内の該当ファイルを特定できるようにする
 ためです(詳細は「Shorts結合動画」節と「ハマった罠」の8番を参照)。
+
+## 多言語ボイス(`--voice random`)
+
+土台の文字(母音中心)自体は変えず、espeak-ngが読み上げる**言語・性別**だ
+けを1本ごとにランダムに変えることで、同じ単語でも読み上げの響きが毎回変
+わるようにする機能です(`config.VOICE_LANGUAGES`)。
+
+`--voice random` を指定すると、英語を含む以下の10言語からランダムに選ば
+れます。
+
+| 言語 | 男性ボイス | 女性ボイス |
+|---|---|---|
+| 英語 | ○ | ○ |
+| フランス語 | ○ | ○ |
+| ドイツ語 | ○ | ○ |
+| ハンガリー語 | ○ | ○ |
+| スウェーデン語 | ○ | ○ |
+| 中国語(標準語) | ○ | ✕(下記参照) |
+| 広東語 | ○ | ✕(音声データ無し) |
+| フィンランド語 | ○ | ✕(音声データ無し) |
+| アイスランド語 | ○ | ✕(音声データ無し) |
+| ベトナム語 | ○ | ✕(音声データ無し) |
+
+女性ボイスは [MBROLA](http://tcts.fpms.ac.be/synthesis/mbrola.html) エンジ
+ン経由でのみ提供されており、実際に音声合成が成功することを実機で確認でき
+た上記5言語のみ対応しています(セットアップ節の `mbrola-*` パッケージが
+必要)。女性ボイス選択時は、espeak-ngの `-p`(ピッチ)オプションで通常より
+やや高めに補正しています(`config.FEMALE_VOICE_PITCH`)。
+
+中国語の女性ボイス(MBROLAの`cn1`)非対応の理由はパッケージ自体の不具合
+です。詳細は「ハマった罠」の11番を参照してください。
+
+`--voice random` で選ばれた言語/性別は、動画説明文に
+`Voice: French (Female)` のように明記されます。
+
+なお `generate.py` 自体のデフォルト(`--voice` 未指定時)は引き続き `en`
+固定ですが、`generate.yml`(GitHub Actions)側の `voice` 入力のデフォルト
+は `random` にしているため、手動実行やcron-job.org等からの自動実行で
+`voice` を明示的に指定しない場合は多言語・女性ボイスのランダム選択が有効
+になります。
 
 ## YouTubeへの自動アップロード
 
@@ -444,6 +495,23 @@ cookie認証を渡しても解決しない事例が別リポジトリ(SayItRight
   さらに `zalgo_display_word()` にフレーム表示専用の
   `max_marks_per_cluster`(デフォルト4)を設け、実際の単語・音声・説明欄
   はそのままに、表示だけ安全な範囲に切り詰めている。
+
+### 11. 中国語のMBROLA女性ボイス(`mb-cn1`)はDebianパッケージ自体が壊れている
+
+`--voice random`(多言語ボイス機能)で中国語(標準語)の女性ボイスに
+`mbrola-cn1` パッケージの `mb-cn1` を割り当てようとしたところ、
+`espeak-ng -v mb-cn1` が常に
+`Error: The specified espeak-ng voice does not exist.` で失敗した。
+
+原因を追ったところ、パッケージが同梱するespeak-ng用ボイス定義ファイル
+(`/usr/lib/.../espeak-ng-data/voices/mb/mb-cn1`)が
+`mbrola cn1 zh_phtrans` と、存在しない音素変換ファイル `zh_phtrans` を参
+照していた。実際にespeak-ngが同梱しているのは `cmn_phtrans`(中国語標準語
+の実際の言語コードは `cmn`)であり、`zh_phtrans` という名前のファイルはど
+こにも存在しない。`mbrola-cn1` パッケージ自体の設定ミスと考えられる。
+
+回避策が無いため、中国語は男性ボイスのみ対応とし、`config.VOICE_LANGUAGES`
+の `"zh"` エントリの `female` は `None` にしている。
 
 ## プロジェクト構成
 
