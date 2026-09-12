@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import config
 import generate as generate_module
-from generate import _random_unique_word, _resolve_mode, _youtube_metadata
+from generate import _random_unique_word, _resolve_mode, _resolve_voice, _youtube_metadata
 
 REAL_MODES = ("tts", "tts_extreme", "glitch")
 
@@ -87,3 +87,81 @@ def test_youtube_metadata_includes_playlist_link_when_given():
         "v́oOn", "voOn", "tts", playlist_id="PLexample123"
     )
     assert "https://www.youtube.com/playlist?list=PLexample123" in description
+
+
+def test_youtube_metadata_omits_voice_line_when_not_given():
+    _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "Voice:" not in description
+
+
+def test_youtube_metadata_includes_voice_line_when_given():
+    _title, description, _tags = _youtube_metadata(
+        "v́oOn", "voOn", "tts", voice_label="French (Female)"
+    )
+    assert "Voice: French (Female)" in description
+
+
+def test_resolve_voice_passes_through_explicit_code():
+    assert _resolve_voice("en-us") == ("en-us", None, None)
+
+
+def test_resolve_voice_detects_gender_for_explicit_known_female_code():
+    # --voice randomを経由せず直接女性ボイスのコードを指定した場合でも、
+    # ピッチ補正(config.FEMALE_VOICE_PITCH)が効くようgenderは検出される。
+    code, label, gender = _resolve_voice(config.VOICE_LANGUAGES["fr"]["female"])
+    assert code == config.VOICE_LANGUAGES["fr"]["female"]
+    assert label is None
+    assert gender == "female"
+
+
+def test_resolve_voice_explicit_male_code_has_no_gender():
+    code, label, gender = _resolve_voice(config.VOICE_LANGUAGES["fr"]["male"])
+    assert gender is None
+
+
+def test_resolve_voice_random_always_returns_a_known_code_and_label():
+    random.seed(0)
+    for _ in range(50):
+        code, label, gender = _resolve_voice("random")
+        all_codes = {
+            entry[g]
+            for entry in config.VOICE_LANGUAGES.values()
+            for g in ("male", "female")
+            if entry[g]
+        }
+        assert code in all_codes
+        assert label is not None
+        assert gender in ("male", "female")
+
+
+def test_resolve_voice_random_never_picks_female_for_languages_without_it(monkeypatch):
+    # yueにはfemaleが設定されていない(config.VOICE_LANGUAGES参照)ので、
+    # 言語としてyueが選ばれた場合、性別の抽選候補にfemaleが含まれず
+    # 必ずmaleが返ることを確認する。
+    def fake_choice(seq):
+        seq = list(seq)
+        if seq == list(config.VOICE_LANGUAGES):
+            return "yue"
+        assert "female" not in seq
+        return seq[0]
+
+    monkeypatch.setattr(random, "choice", fake_choice)
+    code, label, gender = _resolve_voice("random")
+    assert code == config.VOICE_LANGUAGES["yue"]["male"]
+    assert gender == "male"
+    assert "Male" in label
+
+
+def test_resolve_voice_random_can_pick_female_when_available(monkeypatch):
+    def fake_choice(seq):
+        seq = list(seq)
+        if seq == list(config.VOICE_LANGUAGES):
+            return "fr"
+        assert "female" in seq
+        return "female"
+
+    monkeypatch.setattr(random, "choice", fake_choice)
+    code, label, gender = _resolve_voice("random")
+    assert code == config.VOICE_LANGUAGES["fr"]["female"]
+    assert gender == "female"
+    assert "Female" in label

@@ -22,6 +22,44 @@ MODE_LABELS = {
     "tts_extreme": "Distorted Text-to-Speech",
 }
 
+# --voice random(generate.py _resolve_voice()参照)が抽選する言語/性別の
+# 候補。単語自体は母音中心のBASE_CHARSしか使わないので、言語ごとの発音規則の
+# 違い(鼻母音・声調・アクセントなど)で聞こえ方が変わることを狙った機能。
+#
+# "female"は実機でespeak-ng(MBROLAエンジン)による音声合成が実際に成功する
+# ことを確認できた言語のみ設定しており、それ以外はNone(male音声のみ抽選)。
+# 除外理由:
+#   - 中国語(zh): Debianのmbrola-cn1パッケージが同梱するespeak-ng用ボイス
+#     定義が、存在しない音素変換ファイル(zh_phtrans。実際に存在するのは
+#     cmn_phtrans)を参照しており、"voice does not exist"エラーで合成に
+#     失敗する(パッケージ自体の不具合。実機で検証済み)。
+#   - 広東語(yue)・フィンランド語(fi)・ベトナム語(vi): これらの言語に
+#     対応するMBROLA音声データが存在しない(`apt-cache search mbrola`で
+#     該当なしを確認済み)。
+#   - アイスランド語(is): MBROLA音声(ic1)はあるが男性のみで、女性音声は
+#     存在しない。
+#
+# GitHub Actions側では、maleのespeak-ngボイスコードは追加パッケージ無しで
+# 動くが、femaleが設定されている言語のみ対応するmbrola-*パッケージの
+# インストールが別途必要(generate.yml参照)。
+VOICE_LANGUAGES = {
+    "en":  {"label": "English",    "male": "en",    "female": "mb-us1"},
+    "fr":  {"label": "French",     "male": "fr-fr", "female": "mb-fr4"},
+    "de":  {"label": "German",     "male": "de",    "female": "mb-de1"},
+    "hu":  {"label": "Hungarian",  "male": "hu",    "female": "mb-hu1"},
+    "sv":  {"label": "Swedish",    "male": "sv",    "female": "mb-sw2"},
+    "zh":  {"label": "Mandarin",   "male": "zh",    "female": None},
+    "yue": {"label": "Cantonese",  "male": "yue",   "female": None},
+    "fi":  {"label": "Finnish",    "male": "fi",    "female": None},
+    "is":  {"label": "Icelandic",  "male": "is",    "female": None},
+    "vi":  {"label": "Vietnamese", "male": "vi",    "female": None},
+}
+
+# --voice random で女性ボイスが選ばれた場合に使うespeak-ngのピッチ(-p、
+# 0〜99、デフォルト50)。女性ボイスをより高く聞こえるようにするための
+# 底上げ値。tts_synth.synthesize_tts()参照。
+FEMALE_VOICE_PITCH = 75
+
 # --- 単語ジェネレータ設定 ----------------------------------------------------
 
 # 土台になる文字(TTSが実際に音を出す部分。母音を中心にした「本物の文字」だけ
