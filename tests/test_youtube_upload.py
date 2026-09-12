@@ -64,6 +64,13 @@ def test_quota_cost_per_call_includes_playlist_items_insert():
     assert QUOTA_COST_PER_CALL["playlistItems.insert"] == 50
 
 
+def test_quota_cost_per_call_includes_channels_list():
+    # channels.listは公式ドキュメントの一般的な読み取り操作コスト(1 unit)。
+    # _verify_channel()が実際にAPIを叩くたび消費するが、以前はログの
+    # クォータ集計に含まれていなかった。
+    assert QUOTA_COST_PER_CALL["channels.list"] == 1
+
+
 def test_quota_summary_lines_clamps_remaining_at_zero():
     # 消費量が上限を超えても残容量表示はマイナスにならない
     counts = {"videos.insert": 200}
