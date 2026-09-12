@@ -73,21 +73,28 @@ from video_builder import build_video
 from word_generator import random_zalgo_word, readable_label, zalgo_display_word
 
 
-def _youtube_metadata(word, label, mode, playlist_id=None):
+def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None):
     """生成した単語からYouTubeアップロード用のtitle/description/tagsを組み立てる。
 
     label は readable_label() で結合文字を落とし最大12文字に丸め済みの
     ものなので、タイトルの100文字制限には十分収まる。
 
     playlist_id を渡すと、説明文にShorts用再生リストへのリンクを追加し、
-    視聴者が他の動画も連続して見る(回遊する)よう誘導する。"""
+    視聴者が他の動画も連続して見る(回遊する)よう誘導する。
+
+    voice_label を渡すと(--voice random で言語/性別が抽選された場合のみ)、
+    説明文にどの言語のボイスを使ったかを明記する。"""
     mode_label = config.MODE_LABELS.get(mode, mode)
     title = f'How to Pronounce "{label}" #Shorts'
     description = (
         "Can you pronounce this? \U0001F440\n\n"
         f"Word: {word}\n"
-        f"Mode: {mode_label}\n\n"
-        "Try saying it out loud and comment your attempt! \U0001F5E3️\n\n"
+        f"Mode: {mode_label}\n"
+    )
+    if voice_label:
+        description += f"Voice: {voice_label}\n"
+    description += (
+        "\nTry saying it out loud and comment your attempt! \U0001F5E3️\n\n"
     )
     if playlist_id:
         description += (
@@ -110,6 +117,23 @@ def _resolve_mode(mode):
     return mode
 
 
+def _resolve_voice(voice):
+    """--voice random の場合、config.VOICE_LANGUAGESから言語と性別を
+    ランダムに選び、(実際のespeak-ngボイスコード, 表示用ラベル)を返す。
+    femaleが設定されていない言語はmaleのみが選ばれる。
+
+    それ以外(具体的なボイスコード)はそのまま(voice, None)を返す
+    (この場合、動画説明文に言語ラベルは追加しない)。"""
+    if voice != "random":
+        return voice, None
+    lang_code = random.choice(list(config.VOICE_LANGUAGES))
+    entry = config.VOICE_LANGUAGES[lang_code]
+    genders = ["male"] + (["female"] if entry["female"] else [])
+    gender = random.choice(genders)
+    label = f"{entry['label']} ({gender.capitalize()})"
+    return entry[gender], label
+
+
 def _random_unique_word(existing_words, max_attempts=20):
     """existing_words に含まれない単語が出るまで生成を試みる。
 
@@ -129,6 +153,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
                   repeat=config.DEFAULT_REPEAT, repeat_gap=config.DEFAULT_REPEAT_GAP,
                   fade=config.DEFAULT_FADE, upload=False, privacy_status="public"):
     actual_mode = _resolve_mode(mode)
+    actual_voice, voice_label = _resolve_voice(voice)
 
     if upload:
         # チャンネルへの重複投稿を避けるため、アップロード済みの単語と
@@ -157,9 +182,9 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
 
     if actual_mode == "tts":
         # espeak-ngが吐く長さがそのまま採用される(パディングはしない)
-        synthesize_tts(word, raw_wav, voice=voice, speed=speed)
+        synthesize_tts(word, raw_wav, voice=actual_voice, speed=speed)
     elif actual_mode == "tts_extreme":
-        synthesize_tts_extreme(word, raw_wav, voice=voice)
+        synthesize_tts_extreme(word, raw_wav, voice=actual_voice)
     elif actual_mode == "glitch":
         # unit_durationが「1回分」の長さ。--repeatで指定した回数ぶん、
         # これがそのまま繰り返される(動画の総尺は自動的に決まる)
@@ -181,7 +206,10 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     os.remove(fin_wav)
     os.remove(frame_path)
 
-    result = {"word": word, "label": label, "video": video_path, "audio": mp3_path, "mode": actual_mode}
+    result = {
+        "word": word, "label": label, "video": video_path, "audio": mp3_path,
+        "mode": actual_mode, "voice": actual_voice, "voice_label": voice_label,
+    }
 
     if upload:
         # --upload時のみ必要な依存関係(google-api-python-client等)なので
@@ -194,7 +222,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         shorts_playlist_id = os.environ.get("YOUTUBE_SHORTS_PLAYLIST_ID")
 
         title, description, tags = _youtube_metadata(
-            word, label, actual_mode, playlist_id=shorts_playlist_id
+            word, label, actual_mode, playlist_id=shorts_playlist_id, voice_label=voice_label
         )
         youtube_url = upload_video(
             video_path, title=title, description=description, tags=tags,
@@ -247,7 +275,9 @@ def main():
                           "glitch=合成グリッチ音を当てる / "
                           "random=1本ごとに上記3方式からランダムに選ぶ")
     ap.add_argument("--voice", type=str, default=config.DEFAULT_VOICE,
-                     help="[tts/tts_extreme専用] espeak-ngの声(例: en, en-us, ja)")
+                     help="[tts/tts_extreme専用] espeak-ngの声(例: en, en-us, ja)。"
+                          "random=1本ごとにconfig.VOICE_LANGUAGESから言語・性別を"
+                          "ランダムに選ぶ(発音の違いで聞こえ方が変わる)")
     ap.add_argument("--speed", type=int, default=config.DEFAULT_SPEED,
                      help="[tts専用。tts_extremeは毎回ランダムな速度を使うため対象外] "
                           "読み上げ速度(words/min)")
@@ -292,7 +322,8 @@ def main():
                 print(f"[{i}/{args.count}] failed: {e}")
                 failures.append((i, e))
                 continue
-            print(f"[{i}/{args.count}] ({r['mode']}) {r['video']}  <-  {r['label']}")
+            voice_suffix = f" [{r['voice_label']}]" if r["voice_label"] else ""
+            print(f"[{i}/{args.count}] ({r['mode']}){voice_suffix} {r['video']}  <-  {r['label']}")
             if "youtube_url" in r:
                 print(f"    uploaded -> {r['youtube_url']}")
             results.append(r)

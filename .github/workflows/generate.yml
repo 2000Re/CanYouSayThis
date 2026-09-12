@@ -18,7 +18,7 @@ on:
           - glitch
           - random
       voice:
-        description: "[tts/tts_extreme専用] espeak-ngの声 (例: en, en-us, ja)"
+        description: "[tts/tts_extreme専用] espeak-ngの声 (例: en, en-us, ja / random=言語・性別をランダムに選ぶ)"
         required: false
         default: "en"
       seed:
@@ -68,7 +68,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y espeak-ng ffmpeg \
-            fonts-noto-core fonts-noto-extra fonts-noto-ui-core fonts-noto-ui-extra
+            fonts-noto-core fonts-noto-extra fonts-noto-ui-core fonts-noto-ui-extra \
+            mbrola mbrola-us1 mbrola-fr4 mbrola-de1 mbrola-hu1 mbrola-sw2
+          # mbrola-*は--voice random(config.VOICE_LANGUAGES参照)の女性ボイス用。
+          # 中国語・広東語・フィンランド語・ベトナム語・アイスランド語は
+          # 対応するMBROLA音声が存在しない/壊れているため男性ボイスのみ
+          # (追加パッケージ無しでespeak-ng本体だけで動作する)。
 
       - name: Install Python dependencies
         run: |
