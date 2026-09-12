@@ -20,7 +20,7 @@ on:
       voice:
         description: "[tts/tts_extreme専用] espeak-ngの声 (例: en, en-us, ja / random=言語・性別をランダムに選ぶ)"
         required: false
-        default: "en"
+        default: "random"
       seed:
         description: "乱数シード(再現したい場合。空欄なら毎回ランダム)"
         required: false
