@@ -14,16 +14,21 @@ EXTREME_VOICE_VARIANTS = [
 ]
 
 
-def synthesize_tts(word, wav_path, voice="en", speed=150):
-    """espeak-ngに単語を読ませ、生の音声(パディング無し)をwav_pathへ書き出す"""
+def synthesize_tts(word, wav_path, voice="en", speed=150, pitch=None):
+    """espeak-ngに単語を読ませ、生の音声(パディング無し)をwav_pathへ書き出す。
+
+    pitch(espeak-ngの-p、0〜99、デフォルト50)を指定すると、ボイス本来の
+    ピッチカーブに対して声の高さを底上げ/引き下げできる。generate.pyでは
+    女性ボイス選択時にこれで少し高めに寄せている(config.FEMALE_VOICE_PITCH
+    参照)。未指定時はespeak-ngのデフォルトのまま。"""
     txt_path = wav_path + ".txt"
     with open(txt_path, "w", encoding="utf-8") as f:
         f.write(word)
-    subprocess.run(
-        ["espeak-ng", "-v", voice, "-s", str(speed), "-f", txt_path, "-w", wav_path],
-        check=True,
-        capture_output=True,
-    )
+    command = ["espeak-ng", "-v", voice, "-s", str(speed)]
+    if pitch is not None:
+        command += ["-p", str(pitch)]
+    command += ["-f", txt_path, "-w", wav_path]
+    subprocess.run(command, check=True, capture_output=True)
     os.remove(txt_path)
 
 

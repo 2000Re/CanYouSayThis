@@ -102,21 +102,36 @@ def test_youtube_metadata_includes_voice_line_when_given():
 
 
 def test_resolve_voice_passes_through_explicit_code():
-    assert _resolve_voice("en-us") == ("en-us", None)
+    assert _resolve_voice("en-us") == ("en-us", None, None)
+
+
+def test_resolve_voice_detects_gender_for_explicit_known_female_code():
+    # --voice randomを経由せず直接女性ボイスのコードを指定した場合でも、
+    # ピッチ補正(config.FEMALE_VOICE_PITCH)が効くようgenderは検出される。
+    code, label, gender = _resolve_voice(config.VOICE_LANGUAGES["fr"]["female"])
+    assert code == config.VOICE_LANGUAGES["fr"]["female"]
+    assert label is None
+    assert gender == "female"
+
+
+def test_resolve_voice_explicit_male_code_has_no_gender():
+    code, label, gender = _resolve_voice(config.VOICE_LANGUAGES["fr"]["male"])
+    assert gender is None
 
 
 def test_resolve_voice_random_always_returns_a_known_code_and_label():
     random.seed(0)
     for _ in range(50):
-        code, label = _resolve_voice("random")
+        code, label, gender = _resolve_voice("random")
         all_codes = {
-            entry[gender]
+            entry[g]
             for entry in config.VOICE_LANGUAGES.values()
-            for gender in ("male", "female")
-            if entry[gender]
+            for g in ("male", "female")
+            if entry[g]
         }
         assert code in all_codes
         assert label is not None
+        assert gender in ("male", "female")
 
 
 def test_resolve_voice_random_never_picks_female_for_languages_without_it(monkeypatch):
@@ -131,8 +146,9 @@ def test_resolve_voice_random_never_picks_female_for_languages_without_it(monkey
         return seq[0]
 
     monkeypatch.setattr(random, "choice", fake_choice)
-    code, label = _resolve_voice("random")
+    code, label, gender = _resolve_voice("random")
     assert code == config.VOICE_LANGUAGES["yue"]["male"]
+    assert gender == "male"
     assert "Male" in label
 
 
@@ -145,6 +161,7 @@ def test_resolve_voice_random_can_pick_female_when_available(monkeypatch):
         return "female"
 
     monkeypatch.setattr(random, "choice", fake_choice)
-    code, label = _resolve_voice("random")
+    code, label, gender = _resolve_voice("random")
     assert code == config.VOICE_LANGUAGES["fr"]["female"]
+    assert gender == "female"
     assert "Female" in label

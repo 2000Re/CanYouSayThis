@@ -55,6 +55,11 @@ VOICE_LANGUAGES = {
     "vi":  {"label": "Vietnamese", "male": "vi",    "female": None},
 }
 
+# --voice random で女性ボイスが選ばれた場合に使うespeak-ngのピッチ(-p、
+# 0〜99、デフォルト50)。女性ボイスをより高く聞こえるようにするための
+# 底上げ値。tts_synth.synthesize_tts()参照。
+FEMALE_VOICE_PITCH = 75
+
 # --- 単語ジェネレータ設定 ----------------------------------------------------
 
 # 土台になる文字(TTSが実際に音を出す部分。母音を中心にした「本物の文字」だけ

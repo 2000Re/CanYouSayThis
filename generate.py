@@ -119,19 +119,26 @@ def _resolve_mode(mode):
 
 def _resolve_voice(voice):
     """--voice random の場合、config.VOICE_LANGUAGESから言語と性別を
-    ランダムに選び、(実際のespeak-ngボイスコード, 表示用ラベル)を返す。
-    femaleが設定されていない言語はmaleのみが選ばれる。
+    ランダムに選び、(実際のespeak-ngボイスコード, 表示用ラベル, 性別)を
+    返す。femaleが設定されていない言語はmaleのみが選ばれる。
 
-    それ以外(具体的なボイスコード)はそのまま(voice, None)を返す
-    (この場合、動画説明文に言語ラベルは追加しない)。"""
+    それ以外(具体的なボイスコード)は動画説明文への言語ラベルは追加しない
+    (label=None)が、config.VOICE_LANGUAGESのfemaleボイスコードと一致する
+    場合は性別だけ"female"として返す。--voice randomを経由しなくても
+    女性ボイスを直接指定した場合にピッチ補正(config.FEMALE_VOICE_PITCH)が
+    かかるようにするため。"""
     if voice != "random":
-        return voice, None
+        known_female_codes = {
+            entry["female"] for entry in config.VOICE_LANGUAGES.values() if entry["female"]
+        }
+        gender = "female" if voice in known_female_codes else None
+        return voice, None, gender
     lang_code = random.choice(list(config.VOICE_LANGUAGES))
     entry = config.VOICE_LANGUAGES[lang_code]
     genders = ["male"] + (["female"] if entry["female"] else [])
     gender = random.choice(genders)
     label = f"{entry['label']} ({gender.capitalize()})"
-    return entry[gender], label
+    return entry[gender], label, gender
 
 
 def _random_unique_word(existing_words, max_attempts=20):
@@ -153,7 +160,8 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
                   repeat=config.DEFAULT_REPEAT, repeat_gap=config.DEFAULT_REPEAT_GAP,
                   fade=config.DEFAULT_FADE, upload=False, privacy_status="public"):
     actual_mode = _resolve_mode(mode)
-    actual_voice, voice_label = _resolve_voice(voice)
+    actual_voice, voice_label, voice_gender = _resolve_voice(voice)
+    voice_pitch = config.FEMALE_VOICE_PITCH if voice_gender == "female" else None
 
     if upload:
         # チャンネルへの重複投稿を避けるため、アップロード済みの単語と
@@ -182,7 +190,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
 
     if actual_mode == "tts":
         # espeak-ngが吐く長さがそのまま採用される(パディングはしない)
-        synthesize_tts(word, raw_wav, voice=actual_voice, speed=speed)
+        synthesize_tts(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     elif actual_mode == "tts_extreme":
         synthesize_tts_extreme(word, raw_wav, voice=actual_voice)
     elif actual_mode == "glitch":
