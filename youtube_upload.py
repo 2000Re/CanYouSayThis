@@ -62,7 +62,7 @@ _MAX_RETRIES = 8
 
 # YouTube Data API v3の公式ドキュメントに基づく、1回あたりのクォータ消費コスト
 # (日次クォータの目安に対する概算を実行ログに表示するために使う)
-QUOTA_COST_PER_CALL = {"videos.insert": 100, "playlistItems.insert": 50}
+QUOTA_COST_PER_CALL = {"videos.insert": 100, "playlistItems.insert": 50, "channels.list": 1}
 _api_call_counts = {name: 0 for name in QUOTA_COST_PER_CALL}
 
 
@@ -166,14 +166,28 @@ def _load_credentials():
     )
 
 
+_channel_verified = False
+
+
 def _verify_channel(youtube):
     """YOUTUBE_CHANNEL_ID が設定されていれば、認証されたチャンネルと一致するか確認する。
-    未設定なら何もしない(後方互換のため必須にはしていない)。"""
+    未設定なら何もしない(後方互換のため必須にはしていない)。
+
+    1プロセス内でチャンネルが途中で変わることはないため、検証に成功したら
+    以降の呼び出しはAPIを叩かずスキップする(--count で複数本アップロードする際、
+    upload_video()/add_to_playlist() それぞれが get_youtube_client() 経由でこの
+    関数を呼ぶため、キャッシュしないと動画本数の倍近いchannels.list呼び出しが
+    無駄に発生してしまう)。失敗時はキャッシュせず、次回呼び出し時も再検証する。"""
+    global _channel_verified
+    if _channel_verified:
+        return
+
     expected_id = os.environ.get("YOUTUBE_CHANNEL_ID")
     if not expected_id:
         return
 
     try:
+        _api_call_counts["channels.list"] += 1
         resp = youtube.channels().list(part="id,snippet", mine=True).execute()
     except HttpError as e:
         if e.resp.status == 403:
@@ -200,6 +214,8 @@ def _verify_channel(youtube):
             "YouTube上でアクティブだったチャンネルが使われるため、意図したチャンネルで"
             "get_youtube_refresh_token.py を実行し直してください。"
         )
+
+    _channel_verified = True
 
 
 def get_youtube_client():
@@ -236,11 +252,13 @@ def upload_video(video_path, title, description, tags=None, category_id="24",
     media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
     request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
 
+    # 一時的なサーバーエラーでリトライが発生しても、実際に消費されるクォータは
+    # 動画1本ぶんだけなので、リトライのたびに加算せずここで1回だけ数える。
+    _api_call_counts["videos.insert"] += 1
     response = None
     retries = 0
     while response is None:
         try:
-            _api_call_counts["videos.insert"] += 1
             _status, response = request.next_chunk()
         except HttpError as e:
             if e.resp.status in _RETRIABLE_STATUS_CODES and retries < _MAX_RETRIES:
