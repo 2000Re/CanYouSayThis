@@ -71,8 +71,8 @@ from glitch_synth import synthesize_glitch_chunk
 from tts_synth import synthesize_tts, synthesize_tts_extreme
 from video_builder import build_video
 from word_generator import (
+    random_abugida_word,
     random_script_word,
-    random_thai_word,
     random_zalgo_word,
     readable_label,
     zalgo_display_word,
@@ -159,8 +159,8 @@ def _native_script_for_voice(voice_code):
             continue
         if entry["script"] == "cluster":
             return lambda: random_script_word(entry["chars"])
-        if entry["script"] == "thai":
-            return random_thai_word
+        if entry["script"] == "abugida":
+            return lambda: random_abugida_word(entry["consonants"], entry["vowels"])
     return None
 
 

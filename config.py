@@ -7,6 +7,8 @@
 「ハマった罠」の節を参照。
 """
 
+import unicodedata
+
 # --- 動画共通設定 -----------------------------------------------------------
 
 CHROMIUM_PATH = "/opt/pw-browsers/chromium"  # Playwright同梱のChromium
@@ -24,17 +26,61 @@ MODE_LABELS = {
 
 # --voice random が「実在の文字体系」の言語を選んだ場合、単語自体をその
 # 言語の文字からランダムに組み立てる(word_generator.random_script_word() /
-# random_thai_word())。BASE_CHARSを流用したZalgo単語と違い、装飾記号・
+# random_abugida_word())。BASE_CHARSを流用したZalgo単語と違い、装飾記号・
 # Zalgoの結合文字(いずれも英語音声での無音確認しか取れていない)は使わず、
 # 実機でChromium+Notoフォントによる描画とespeak-ngでの音声合成の両方が
-# 正常に動くことを確認済みの3言語のみ対応している。
+# 正常に動くことを確認済みの言語のみ対応している。
 RUSSIAN_LETTERS = list("абвгдежзийклмнопрстуфхцчшщъыьэюя")
 GEORGIAN_LETTERS = list("აბგდევზთიკლმნოპჟრსტუფქღყშჩცძწჭხჯჰ")
-# タイ文字は子音字+母音記号(前後左右に付く、単体では使わない)で音節を
-# 作る文字体系なので、子音・母音記号を別々のリストに分けている
-# (word_generator.random_thai_word()参照)。
+
+
+def _assigned_chars(ranges):
+    """Unicodeのコードポイント範囲(閉区間のタプルのリスト)から、未割り当て
+    (unicodedata.category() == 'Cn')のコードポイントを除いた文字のリストを
+    作る。手打ちで文字を列挙するのが非現実的な言語(文字数が多い/範囲が
+    広い)向け。未割り当てコードポイントはフォントが対応しておらず「豆腐」の
+    原因になるため、SAFE_COMBINING_BLOCKSと同じ理由で除外している。"""
+    out = []
+    for start, end in ranges:
+        for cp in range(start, end + 1):
+            if unicodedata.category(chr(cp)) != "Cn":
+                out.append(chr(cp))
+    return out
+
+
+# タイ文字・ミャンマー文字・シンハラ文字・タミル文字・テルグ文字・ベンガル
+# 文字は、子音字+母音記号(前後左右に付く、単体では使わない)で音節を作る
+# 「アブギダ」と呼ばれる文字体系なので、子音・母音記号を別々のリストに分けて
+# いる(word_generator.random_abugida_word()参照)。
 THAI_CONSONANTS = list("กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ")
 THAI_VOWEL_MARKS = list("ะาิีึืุูเแโใไ")
+
+# アラビア文字・ヘブライ文字・アルメニア文字・アムハラ文字(エチオピア)・
+# チェロキー文字は、母音記号が任意(アラビア語・ヘブライ語)だったり、文字
+# 自体が既に完結した音節(アムハラ文字・チェロキー文字)だったりするため、
+# random_script_word()(文字をランダムに並べるだけ、同じ文字の連打あり)で
+# 十分自然な見た目になる。
+ARABIC_LETTERS = _assigned_chars([(0x0621, 0x064A)])
+HEBREW_LETTERS = _assigned_chars([(0x05D0, 0x05EA)])
+ARMENIAN_LETTERS = _assigned_chars([(0x0561, 0x0586)])
+AMHARIC_SYLLABLES = _assigned_chars(
+    [(0x1200, 0x1248), (0x1250, 0x1256), (0x1260, 0x1288), (0x1290, 0x12B0), (0x12C0, 0x12C0)]
+)
+CHEROKEE_SYLLABLES = _assigned_chars([(0x13A0, 0x13F5)])
+
+# ミャンマー文字・シンハラ文字・タミル文字・テルグ文字・ベンガル文字も
+# タイ文字と同じアブギダ(子音字+母音記号)なので、子音・母音記号を分けて
+# 定義する。
+MYANMAR_CONSONANTS = _assigned_chars([(0x1000, 0x1020)])
+MYANMAR_VOWEL_MARKS = _assigned_chars([(0x102B, 0x1030), (0x1032, 0x1037)])
+SINHALA_CONSONANTS = _assigned_chars([(0x0D9A, 0x0DC6)])
+SINHALA_VOWEL_MARKS = _assigned_chars([(0x0DCF, 0x0DDF)])
+TAMIL_CONSONANTS = _assigned_chars([(0x0B95, 0x0BB9)])
+TAMIL_VOWEL_MARKS = _assigned_chars([(0x0BBE, 0x0BCD)])
+TELUGU_CONSONANTS = _assigned_chars([(0x0C15, 0x0C39)])
+TELUGU_VOWEL_MARKS = _assigned_chars([(0x0C3E, 0x0C4C)])
+BENGALI_CONSONANTS = _assigned_chars([(0x0995, 0x09B9)])
+BENGALI_VOWEL_MARKS = _assigned_chars([(0x09BE, 0x09CC)])
 
 # --voice random(generate.py _resolve_voice()参照)が抽選する言語/性別の
 # 候補。単語自体は母音中心のBASE_CHARSしか使わないので、言語ごとの発音規則の
@@ -53,28 +99,41 @@ THAI_VOWEL_MARKS = list("ะาิีึืุูเแโใไ")
 #   - アイスランド語(is): MBROLA音声(ic1)はあるが男性のみで、女性音声は
 #     存在しない。
 #
-# "script"/"chars"は実在の文字体系を使う言語にのみ設定する(generate.py
-# _native_script_for_voice()参照)。"cluster"はrandom_script_word()、
-# "thai"はrandom_thai_word()にそれぞれ渡す。両方未設定(None)の言語は
-# 従来通りBASE_CHARSベースのZalgo単語を使う。
+# "script"は実在の文字体系を使う言語にのみ設定する(generate.py
+# _native_script_for_voice()参照)。
+#   - "cluster": random_script_word()に"chars"を渡す(文字をランダムに
+#     並べるだけで自然な見た目になる文字体系向け)。
+#   - "abugida": random_abugida_word()に"consonants"/"vowels"を渡す
+#     (子音字+母音記号で音節を作る文字体系向け)。
+# いずれも未設定(None)の言語は従来通りBASE_CHARSベースのZalgo単語を使う。
 #
 # GitHub Actions側では、maleのespeak-ngボイスコードは追加パッケージ無しで
 # 動くが、femaleが設定されている言語のみ対応するmbrola-*パッケージの
 # インストールが別途必要(generate.yml参照)。
 VOICE_LANGUAGES = {
-    "en":  {"label": "English",    "male": "en",    "female": "mb-us1", "script": None, "chars": None},
-    "fr":  {"label": "French",     "male": "fr-fr", "female": "mb-fr4", "script": None, "chars": None},
-    "de":  {"label": "German",     "male": "de",    "female": "mb-de1", "script": None, "chars": None},
-    "hu":  {"label": "Hungarian",  "male": "hu",    "female": "mb-hu1", "script": None, "chars": None},
-    "sv":  {"label": "Swedish",    "male": "sv",    "female": "mb-sw2", "script": None, "chars": None},
-    "zh":  {"label": "Mandarin",   "male": "zh",    "female": None, "script": None, "chars": None},
-    "yue": {"label": "Cantonese",  "male": "yue",   "female": None, "script": None, "chars": None},
-    "fi":  {"label": "Finnish",    "male": "fi",    "female": None, "script": None, "chars": None},
-    "is":  {"label": "Icelandic",  "male": "is",    "female": None, "script": None, "chars": None},
-    "vi":  {"label": "Vietnamese", "male": "vi",    "female": None, "script": None, "chars": None},
-    "ru":  {"label": "Russian",    "male": "ru",    "female": None, "script": "cluster", "chars": RUSSIAN_LETTERS},
-    "ka":  {"label": "Georgian",   "male": "ka",    "female": None, "script": "cluster", "chars": GEORGIAN_LETTERS},
-    "th":  {"label": "Thai",       "male": "th",    "female": None, "script": "thai", "chars": None},
+    "en":  {"label": "English",    "male": "en",    "female": "mb-us1", "script": None, "chars": None, "consonants": None, "vowels": None},
+    "fr":  {"label": "French",     "male": "fr-fr", "female": "mb-fr4", "script": None, "chars": None, "consonants": None, "vowels": None},
+    "de":  {"label": "German",     "male": "de",    "female": "mb-de1", "script": None, "chars": None, "consonants": None, "vowels": None},
+    "hu":  {"label": "Hungarian",  "male": "hu",    "female": "mb-hu1", "script": None, "chars": None, "consonants": None, "vowels": None},
+    "sv":  {"label": "Swedish",    "male": "sv",    "female": "mb-sw2", "script": None, "chars": None, "consonants": None, "vowels": None},
+    "zh":  {"label": "Mandarin",   "male": "zh",    "female": None, "script": None, "chars": None, "consonants": None, "vowels": None},
+    "yue": {"label": "Cantonese",  "male": "yue",   "female": None, "script": None, "chars": None, "consonants": None, "vowels": None},
+    "fi":  {"label": "Finnish",    "male": "fi",    "female": None, "script": None, "chars": None, "consonants": None, "vowels": None},
+    "is":  {"label": "Icelandic",  "male": "is",    "female": None, "script": None, "chars": None, "consonants": None, "vowels": None},
+    "vi":  {"label": "Vietnamese", "male": "vi",    "female": None, "script": None, "chars": None, "consonants": None, "vowels": None},
+    "ru":  {"label": "Russian",    "male": "ru",    "female": None, "script": "cluster", "chars": RUSSIAN_LETTERS, "consonants": None, "vowels": None},
+    "ka":  {"label": "Georgian",   "male": "ka",    "female": None, "script": "cluster", "chars": GEORGIAN_LETTERS, "consonants": None, "vowels": None},
+    "th":  {"label": "Thai",       "male": "th",    "female": None, "script": "abugida", "chars": None, "consonants": THAI_CONSONANTS, "vowels": THAI_VOWEL_MARKS},
+    "ar":  {"label": "Arabic",     "male": "ar",    "female": None, "script": "cluster", "chars": ARABIC_LETTERS, "consonants": None, "vowels": None},
+    "he":  {"label": "Hebrew",     "male": "he",    "female": None, "script": "cluster", "chars": HEBREW_LETTERS, "consonants": None, "vowels": None},
+    "hy":  {"label": "Armenian",   "male": "hy",    "female": None, "script": "cluster", "chars": ARMENIAN_LETTERS, "consonants": None, "vowels": None},
+    "am":  {"label": "Amharic",    "male": "am",    "female": None, "script": "cluster", "chars": AMHARIC_SYLLABLES, "consonants": None, "vowels": None},
+    "chr": {"label": "Cherokee",   "male": "chr",   "female": None, "script": "cluster", "chars": CHEROKEE_SYLLABLES, "consonants": None, "vowels": None},
+    "my":  {"label": "Myanmar",    "male": "my",    "female": None, "script": "abugida", "chars": None, "consonants": MYANMAR_CONSONANTS, "vowels": MYANMAR_VOWEL_MARKS},
+    "si":  {"label": "Sinhala",    "male": "si",    "female": None, "script": "abugida", "chars": None, "consonants": SINHALA_CONSONANTS, "vowels": SINHALA_VOWEL_MARKS},
+    "ta":  {"label": "Tamil",      "male": "ta",    "female": None, "script": "abugida", "chars": None, "consonants": TAMIL_CONSONANTS, "vowels": TAMIL_VOWEL_MARKS},
+    "te":  {"label": "Telugu",     "male": "te",    "female": None, "script": "abugida", "chars": None, "consonants": TELUGU_CONSONANTS, "vowels": TELUGU_VOWEL_MARKS},
+    "bn":  {"label": "Bengali",    "male": "bn",    "female": None, "script": "abugida", "chars": None, "consonants": BENGALI_CONSONANTS, "vowels": BENGALI_VOWEL_MARKS},
 }
 
 # --voice random で女性ボイスが選ばれた場合に使うespeak-ngのピッチ(-p、
@@ -167,7 +226,9 @@ FRAME_CSS_FONT_STACK = (
     "'Noto Sans','Noto Sans CJK JP','Noto Sans Symbols','Noto Sans Symbols2',"
     "'Noto Sans Thai','Noto Sans Devanagari','Noto Sans Hebrew','Noto Sans Arabic',"
     "'Noto Sans Bengali','Noto Sans Sinhala','Noto Sans Tibetan','Noto Sans Yi',"
-    "'Noto Sans Cherokee','Noto Sans Mongolian','Noto Sans Georgian','DejaVu Sans',sans-serif"
+    "'Noto Sans Cherokee','Noto Sans Mongolian','Noto Sans Georgian',"
+    "'Noto Sans Armenian','Noto Sans Ethiopic','Noto Sans Myanmar',"
+    "'Noto Sans Tamil','Noto Sans Telugu','DejaVu Sans',sans-serif"
 )
 
 # --- デフォルトのCLIパラメータ -----------------------------------------------

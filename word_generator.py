@@ -78,20 +78,31 @@ def random_script_word(chars, n_chars=(6, 10), cluster_chance=0.4, cluster_len=(
     return "".join(out[:n])
 
 
-def random_thai_word(n_syllables=(4, 7), vowel_chance=0.7):
-    """タイ文字は子音字1つ + 母音記号(前後左右に付く、単体では使わない)
-    で音節を作る文字体系のため、random_script_word()とは別の専用ロジックを
-    用意する(子音だけを並べると、espeak-ngが子音の名前を1つずつ読み上げて
+def random_abugida_word(consonants, vowels, n_syllables=(4, 7), vowel_chance=0.7):
+    """タイ文字・ミャンマー文字・シンハラ文字・タミル文字・テルグ文字・
+    ベンガル文字のように、子音字1つ + 母音記号(前後左右に付く、単体では
+    使わない)で音節を作る「アブギダ」文字体系向けの単語生成。
+    random_script_word()とは別の専用ロジックを用意している(子音だけを
+    並べると、タイ文字では espeak-ng が子音の名前を1つずつ読み上げて
     しまい、単語というよりアルファベット読みになることを実機で確認済み)。
 
     実在の単語ではなく、子音+母音記号をランダムに組み合わせた造語。"""
     n = random.randint(*n_syllables)
     out = []
     for _ in range(n):
-        out.append(random.choice(THAI_CONSONANTS))
+        out.append(random.choice(consonants))
         if random.random() < vowel_chance:
-            out.append(random.choice(THAI_VOWEL_MARKS))
+            out.append(random.choice(vowels))
     return "".join(out)
+
+
+def random_thai_word(n_syllables=(4, 7), vowel_chance=0.7):
+    """random_abugida_word()のタイ文字専用ラッパー(後方互換のため残して
+    ある。generate.pyは他のアブギダ言語と同じくrandom_abugida_word()を
+    直接使う)。"""
+    return random_abugida_word(
+        THAI_CONSONANTS, THAI_VOWEL_MARKS, n_syllables=n_syllables, vowel_chance=vowel_chance
+    )
 
 
 def readable_label(word, max_base_chars=12):

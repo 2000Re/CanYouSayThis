@@ -74,8 +74,9 @@ def test_native_script_for_voice_returns_none_for_latin_languages():
 
 
 def test_native_script_for_voice_returns_generator_for_cluster_languages():
-    # ロシア語・ジョージア語はrandom_script_word()ベースの生成関数が返る
-    for lang in ("ru", "ka"):
+    # 文字をランダムに並べるだけの言語はrandom_script_word()ベースの
+    # 生成関数が返る
+    for lang in ("ru", "ka", "ar", "he", "hy", "am", "chr"):
         generator = _native_script_for_voice(config.VOICE_LANGUAGES[lang]["male"])
         assert generator is not None
         word = generator()
@@ -83,13 +84,18 @@ def test_native_script_for_voice_returns_generator_for_cluster_languages():
         assert all(ch in config.VOICE_LANGUAGES[lang]["chars"] for ch in word)
 
 
-def test_native_script_for_voice_returns_generator_for_thai():
-    generator = _native_script_for_voice(config.VOICE_LANGUAGES["th"]["male"])
-    assert generator is not None
-    word = generator()
-    assert len(word) > 0
-    allowed = set(config.THAI_CONSONANTS) | set(config.THAI_VOWEL_MARKS)
-    assert all(ch in allowed for ch in word)
+def test_native_script_for_voice_returns_generator_for_abugida_languages():
+    # 子音字+母音記号で音節を作る言語はrandom_abugida_word()ベースの
+    # 生成関数が返り、子音・母音記号以外の文字は混ざらない
+    for lang in ("th", "my", "si", "ta", "te", "bn"):
+        entry = config.VOICE_LANGUAGES[lang]
+        generator = _native_script_for_voice(entry["male"])
+        assert generator is not None
+        word = generator()
+        assert len(word) > 0
+        allowed = set(entry["consonants"]) | set(entry["vowels"])
+        assert all(ch in allowed for ch in word)
+        assert word[0] in entry["consonants"]
 
 
 def test_youtube_metadata_title_contains_label_and_shorts_hashtag():
