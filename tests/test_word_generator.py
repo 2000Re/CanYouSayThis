@@ -8,8 +8,16 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config import DECORATIVE_SYMBOLS, SAFE_COMBINING_BLOCKS
-from word_generator import random_zalgo_word, readable_label, zalgo_display_word
+import config
+from config import DECORATIVE_SYMBOLS, SAFE_COMBINING_BLOCKS, THAI_CONSONANTS, THAI_VOWEL_MARKS
+from word_generator import (
+    random_abugida_word,
+    random_script_word,
+    random_thai_word,
+    random_zalgo_word,
+    readable_label,
+    zalgo_display_word,
+)
 
 
 def test_random_zalgo_word_is_nonempty_string():
@@ -102,3 +110,76 @@ def test_zalgo_display_word_caps_marks_per_cluster():
 
 def test_zalgo_display_word_never_empty():
     assert zalgo_display_word(chr(0x0301) * 5) == "???"
+
+
+def test_random_script_word_is_nonempty_and_only_uses_given_chars():
+    chars = list("абвг")
+    random.seed(1)
+    for _ in range(50):
+        word = random_script_word(chars)
+        assert len(word) > 0
+        assert all(ch in chars for ch in word)
+
+
+def test_random_script_word_respects_length_range():
+    chars = list("абвг")
+    random.seed(2)
+    for _ in range(50):
+        word = random_script_word(chars, n_chars=(6, 6))
+        assert len(word) == 6
+
+
+def test_random_thai_word_is_nonempty_string():
+    random.seed(3)
+    word = random_thai_word()
+    assert len(word) > 0
+
+
+def test_random_thai_word_starts_each_syllable_with_a_consonant():
+    # 母音記号は単体で使わない(子音の後にしか付けない)ことの確認。
+    # 出力の各文字は子音か母音記号のどちらかであり、母音記号だけが
+    # 連続することはない(母音記号の直前は必ず子音であるはず)。
+    random.seed(4)
+    for _ in range(50):
+        word = random_thai_word()
+        for ch in word:
+            assert ch in THAI_CONSONANTS or ch in THAI_VOWEL_MARKS
+        assert word[0] in THAI_CONSONANTS
+
+
+def test_random_abugida_word_is_nonempty_and_only_uses_given_pools():
+    consonants = list("kstn")
+    vowels = list("aeiou")
+    random.seed(5)
+    for _ in range(50):
+        word = random_abugida_word(consonants, vowels)
+        assert len(word) > 0
+        assert word[0] in consonants
+        for ch in word:
+            assert ch in consonants or ch in vowels
+
+
+def test_random_thai_word_is_a_thin_wrapper_around_random_abugida_word():
+    random.seed(6)
+    expected = random_abugida_word(THAI_CONSONANTS, THAI_VOWEL_MARKS)
+    random.seed(6)
+    assert random_thai_word() == expected
+
+
+def test_new_language_character_pools_are_nonempty_and_assigned_codepoints():
+    # 10言語拡張で追加した文字プールが、いずれも空でなく未割り当て
+    # コードポイントを含まないことの確認(config._assigned_chars()の
+    # フィルタが正しく効いていることの回帰防止)。
+    pools = [
+        config.ARABIC_LETTERS, config.HEBREW_LETTERS, config.ARMENIAN_LETTERS,
+        config.AMHARIC_SYLLABLES, config.CHEROKEE_SYLLABLES,
+        config.MYANMAR_CONSONANTS, config.MYANMAR_VOWEL_MARKS,
+        config.SINHALA_CONSONANTS, config.SINHALA_VOWEL_MARKS,
+        config.TAMIL_CONSONANTS, config.TAMIL_VOWEL_MARKS,
+        config.TELUGU_CONSONANTS, config.TELUGU_VOWEL_MARKS,
+        config.BENGALI_CONSONANTS, config.BENGALI_VOWEL_MARKS,
+    ]
+    for pool in pools:
+        assert len(pool) > 0
+        for ch in pool:
+            assert unicodedata.category(ch) != "Cn", f"unassigned codepoint: {hex(ord(ch))}"

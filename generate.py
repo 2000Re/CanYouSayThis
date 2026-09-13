@@ -70,7 +70,13 @@ from frame_builder import build_frame, close_browser
 from glitch_synth import synthesize_glitch_chunk
 from tts_synth import synthesize_tts, synthesize_tts_extreme
 from video_builder import build_video
-from word_generator import random_zalgo_word, readable_label, zalgo_display_word
+from word_generator import (
+    random_abugida_word,
+    random_script_word,
+    random_zalgo_word,
+    readable_label,
+    zalgo_display_word,
+)
 
 
 def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None):
@@ -141,17 +147,34 @@ def _resolve_voice(voice):
     return entry[gender], label, gender
 
 
-def _random_unique_word(existing_words, max_attempts=20):
+def _native_script_for_voice(voice_code):
+    """voice_codeがconfig.VOICE_LANGUAGESの中で「実在の文字体系を使う言語」
+    (script指定あり)に該当する場合、その単語生成関数を返す。該当しなければ
+    None(呼び出し側は従来通りrandom_zalgo_word()を使う)。
+
+    --voice random経由でも、"ru"等の対応言語コードを直接指定した場合でも
+    同じ単語生成に切り替わる(_resolve_voice()の女性ボイス判定と同じ考え方)。"""
+    for entry in config.VOICE_LANGUAGES.values():
+        if voice_code not in (entry["male"], entry["female"]):
+            continue
+        if entry["script"] == "cluster":
+            return lambda: random_script_word(entry["chars"])
+        if entry["script"] == "abugida":
+            return lambda: random_abugida_word(entry["consonants"], entry["vowels"])
+    return None
+
+
+def _random_unique_word(existing_words, word_generator=random_zalgo_word, max_attempts=20):
     """existing_words に含まれない単語が出るまで生成を試みる。
 
     組み合わせ数が膨大なので衝突はほぼ起きないが、チャンネルへの重複投稿を
     避けるため念のため再抽選する。max_attempts回試しても衝突する場合は
     (ほぼ起こり得ないが)無限ループを避けるためそのまま返す。"""
-    word = random_zalgo_word()
+    word = word_generator()
     for _ in range(max_attempts - 1):
         if word not in existing_words:
             break
-        word = random_zalgo_word()
+        word = word_generator()
     return word
 
 
@@ -162,6 +185,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     actual_mode = _resolve_mode(mode)
     actual_voice, voice_label, voice_gender = _resolve_voice(voice)
     voice_pitch = config.FEMALE_VOICE_PITCH if voice_gender == "female" else None
+    word_generator = _native_script_for_voice(actual_voice) or random_zalgo_word
 
     if upload:
         # チャンネルへの重複投稿を避けるため、アップロード済みの単語と
@@ -170,9 +194,9 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         from upload_history import load_upload_history
 
         existing_words = {entry["word"] for entry in load_upload_history()}
-        word = _random_unique_word(existing_words)
+        word = _random_unique_word(existing_words, word_generator=word_generator)
     else:
-        word = random_zalgo_word()
+        word = word_generator()
     label = readable_label(word)
     frame_word = zalgo_display_word(word)
 

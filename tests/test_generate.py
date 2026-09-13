@@ -9,8 +9,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import config
-import generate as generate_module
-from generate import _random_unique_word, _resolve_mode, _resolve_voice, _youtube_metadata
+from generate import (
+    _native_script_for_voice,
+    _random_unique_word,
+    _resolve_mode,
+    _resolve_voice,
+    _youtube_metadata,
+)
+from word_generator import random_zalgo_word
 
 REAL_MODES = ("tts", "tts_extreme", "glitch")
 
@@ -35,21 +41,61 @@ def test_resolve_mode_random_can_pick_all_modes():
     assert picks == set(config.MODE_LABELS)
 
 
-def test_random_unique_word_returns_first_pick_when_no_collision(monkeypatch):
-    monkeypatch.setattr(generate_module, "random_zalgo_word", lambda: "fresh")
-    assert _random_unique_word(set()) == "fresh"
+def test_random_unique_word_returns_first_pick_when_no_collision():
+    assert _random_unique_word(set(), word_generator=lambda: "fresh") == "fresh"
 
 
-def test_random_unique_word_retries_until_not_in_existing(monkeypatch):
+def test_random_unique_word_retries_until_not_in_existing():
     picks = iter(["dup", "dup", "unique"])
-    monkeypatch.setattr(generate_module, "random_zalgo_word", lambda: next(picks))
-    assert _random_unique_word({"dup"}) == "unique"
+    assert _random_unique_word({"dup"}, word_generator=lambda: next(picks)) == "unique"
 
 
-def test_random_unique_word_gives_up_after_max_attempts(monkeypatch):
+def test_random_unique_word_gives_up_after_max_attempts():
     # 常に衝突する単語しか返らない場合でも無限ループせず、諦めてそのまま返す
-    monkeypatch.setattr(generate_module, "random_zalgo_word", lambda: "always-dup")
-    assert _random_unique_word({"always-dup"}, max_attempts=3) == "always-dup"
+    result = _random_unique_word(
+        {"always-dup"}, word_generator=lambda: "always-dup", max_attempts=3
+    )
+    assert result == "always-dup"
+
+
+def test_random_unique_word_defaults_to_random_zalgo_word():
+    # word_generator省略時は、従来通りrandom_zalgo_word()が使われることの確認
+    # (同じシードで直接呼んだ場合と同じ結果になるはず)
+    random.seed(0)
+    expected = random_zalgo_word()
+    random.seed(0)
+    assert _random_unique_word(set()) == expected
+
+
+def test_native_script_for_voice_returns_none_for_latin_languages():
+    # "script"未設定の言語(英語等)は従来通りNone(random_zalgo_word()を使う)
+    assert _native_script_for_voice(config.VOICE_LANGUAGES["en"]["male"]) is None
+    assert _native_script_for_voice("en-us") is None
+
+
+def test_native_script_for_voice_returns_generator_for_cluster_languages():
+    # 文字をランダムに並べるだけの言語はrandom_script_word()ベースの
+    # 生成関数が返る
+    for lang in ("ru", "ka", "ar", "he", "hy", "am", "chr"):
+        generator = _native_script_for_voice(config.VOICE_LANGUAGES[lang]["male"])
+        assert generator is not None
+        word = generator()
+        assert len(word) > 0
+        assert all(ch in config.VOICE_LANGUAGES[lang]["chars"] for ch in word)
+
+
+def test_native_script_for_voice_returns_generator_for_abugida_languages():
+    # 子音字+母音記号で音節を作る言語はrandom_abugida_word()ベースの
+    # 生成関数が返り、子音・母音記号以外の文字は混ざらない
+    for lang in ("th", "my", "si", "ta", "te", "bn"):
+        entry = config.VOICE_LANGUAGES[lang]
+        generator = _native_script_for_voice(entry["male"])
+        assert generator is not None
+        word = generator()
+        assert len(word) > 0
+        allowed = set(entry["consonants"]) | set(entry["vowels"])
+        assert all(ch in allowed for ch in word)
+        assert word[0] in entry["consonants"]
 
 
 def test_youtube_metadata_title_contains_label_and_shorts_hashtag():

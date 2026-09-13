@@ -14,6 +14,8 @@ from config import (
     DECORATIVE_SYMBOLS,
     SAFE_COMBINING_BLOCKS,
     SEPARATOR_SYMBOLS,
+    THAI_CONSONANTS,
+    THAI_VOWEL_MARKS,
 )
 
 
@@ -54,6 +56,53 @@ def random_zalgo_word(base_len=(6, 12), stack_depth=(3, 10), repeat_run_chance=0
     deco = " ".join(random.choice(DECORATIVE_SYMBOLS) for _ in range(n_deco))
 
     return f"{word} {deco}"
+
+
+def random_script_word(chars, n_chars=(6, 10), cluster_chance=0.4, cluster_len=(2, 4)):
+    """--voice random で実在の文字体系(キリル文字・ジョージア文字など)が
+    選ばれた場合用の単語生成。Zalgoの結合文字・装飾記号(いずれも英語音声
+    での無音確認しか取れていない)は使わず、指定文字体系の文字だけで単語
+    を組み立てる。
+
+    実在の単語ではなく、その言語の文字をランダムに並べた造語。
+    random_zalgo_word()の「同じ文字の連続塊」と同様、一定確率で同じ文字を
+    連打し、その言語らしい子音クラスターの見た目を作る。"""
+    n = random.randint(*n_chars)
+    out = []
+    while len(out) < n:
+        ch = random.choice(chars)
+        if random.random() < cluster_chance:
+            out.extend([ch] * random.randint(*cluster_len))
+        else:
+            out.append(ch)
+    return "".join(out[:n])
+
+
+def random_abugida_word(consonants, vowels, n_syllables=(4, 7), vowel_chance=0.7):
+    """タイ文字・ミャンマー文字・シンハラ文字・タミル文字・テルグ文字・
+    ベンガル文字のように、子音字1つ + 母音記号(前後左右に付く、単体では
+    使わない)で音節を作る「アブギダ」文字体系向けの単語生成。
+    random_script_word()とは別の専用ロジックを用意している(子音だけを
+    並べると、タイ文字では espeak-ng が子音の名前を1つずつ読み上げて
+    しまい、単語というよりアルファベット読みになることを実機で確認済み)。
+
+    実在の単語ではなく、子音+母音記号をランダムに組み合わせた造語。"""
+    n = random.randint(*n_syllables)
+    out = []
+    for _ in range(n):
+        out.append(random.choice(consonants))
+        if random.random() < vowel_chance:
+            out.append(random.choice(vowels))
+    return "".join(out)
+
+
+def random_thai_word(n_syllables=(4, 7), vowel_chance=0.7):
+    """random_abugida_word()のタイ文字専用ラッパー(後方互換のため残して
+    ある。generate.pyは他のアブギダ言語と同じくrandom_abugida_word()を
+    直接使う)。"""
+    return random_abugida_word(
+        THAI_CONSONANTS, THAI_VOWEL_MARKS, n_syllables=n_syllables, vowel_chance=vowel_chance
+    )
 
 
 def readable_label(word, max_base_chars=12):
