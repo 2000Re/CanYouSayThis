@@ -22,6 +22,20 @@ MODE_LABELS = {
     "tts_extreme": "Distorted Text-to-Speech",
 }
 
+# --voice random が「実在の文字体系」の言語を選んだ場合、単語自体をその
+# 言語の文字からランダムに組み立てる(word_generator.random_script_word() /
+# random_thai_word())。BASE_CHARSを流用したZalgo単語と違い、装飾記号・
+# Zalgoの結合文字(いずれも英語音声での無音確認しか取れていない)は使わず、
+# 実機でChromium+Notoフォントによる描画とespeak-ngでの音声合成の両方が
+# 正常に動くことを確認済みの3言語のみ対応している。
+RUSSIAN_LETTERS = list("абвгдежзийклмнопрстуфхцчшщъыьэюя")
+GEORGIAN_LETTERS = list("აბგდევზთიკლმნოპჟრსტუფქღყშჩცძწჭხჯჰ")
+# タイ文字は子音字+母音記号(前後左右に付く、単体では使わない)で音節を
+# 作る文字体系なので、子音・母音記号を別々のリストに分けている
+# (word_generator.random_thai_word()参照)。
+THAI_CONSONANTS = list("กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ")
+THAI_VOWEL_MARKS = list("ะาิีึืุูเแโใไ")
+
 # --voice random(generate.py _resolve_voice()参照)が抽選する言語/性別の
 # 候補。単語自体は母音中心のBASE_CHARSしか使わないので、言語ごとの発音規則の
 # 違い(鼻母音・声調・アクセントなど)で聞こえ方が変わることを狙った機能。
@@ -33,26 +47,34 @@ MODE_LABELS = {
 #     定義が、存在しない音素変換ファイル(zh_phtrans。実際に存在するのは
 #     cmn_phtrans)を参照しており、"voice does not exist"エラーで合成に
 #     失敗する(パッケージ自体の不具合。実機で検証済み)。
-#   - 広東語(yue)・フィンランド語(fi)・ベトナム語(vi): これらの言語に
-#     対応するMBROLA音声データが存在しない(`apt-cache search mbrola`で
-#     該当なしを確認済み)。
+#   - 広東語(yue)・フィンランド語(fi)・ベトナム語(vi)・ロシア語(ru)・
+#     ジョージア語(ka)・タイ語(th): これらの言語に対応するMBROLA音声
+#     データが存在しない(`apt-cache search mbrola`で該当なしを確認済み)。
 #   - アイスランド語(is): MBROLA音声(ic1)はあるが男性のみで、女性音声は
 #     存在しない。
+#
+# "script"/"chars"は実在の文字体系を使う言語にのみ設定する(generate.py
+# _native_script_for_voice()参照)。"cluster"はrandom_script_word()、
+# "thai"はrandom_thai_word()にそれぞれ渡す。両方未設定(None)の言語は
+# 従来通りBASE_CHARSベースのZalgo単語を使う。
 #
 # GitHub Actions側では、maleのespeak-ngボイスコードは追加パッケージ無しで
 # 動くが、femaleが設定されている言語のみ対応するmbrola-*パッケージの
 # インストールが別途必要(generate.yml参照)。
 VOICE_LANGUAGES = {
-    "en":  {"label": "English",    "male": "en",    "female": "mb-us1"},
-    "fr":  {"label": "French",     "male": "fr-fr", "female": "mb-fr4"},
-    "de":  {"label": "German",     "male": "de",    "female": "mb-de1"},
-    "hu":  {"label": "Hungarian",  "male": "hu",    "female": "mb-hu1"},
-    "sv":  {"label": "Swedish",    "male": "sv",    "female": "mb-sw2"},
-    "zh":  {"label": "Mandarin",   "male": "zh",    "female": None},
-    "yue": {"label": "Cantonese",  "male": "yue",   "female": None},
-    "fi":  {"label": "Finnish",    "male": "fi",    "female": None},
-    "is":  {"label": "Icelandic",  "male": "is",    "female": None},
-    "vi":  {"label": "Vietnamese", "male": "vi",    "female": None},
+    "en":  {"label": "English",    "male": "en",    "female": "mb-us1", "script": None, "chars": None},
+    "fr":  {"label": "French",     "male": "fr-fr", "female": "mb-fr4", "script": None, "chars": None},
+    "de":  {"label": "German",     "male": "de",    "female": "mb-de1", "script": None, "chars": None},
+    "hu":  {"label": "Hungarian",  "male": "hu",    "female": "mb-hu1", "script": None, "chars": None},
+    "sv":  {"label": "Swedish",    "male": "sv",    "female": "mb-sw2", "script": None, "chars": None},
+    "zh":  {"label": "Mandarin",   "male": "zh",    "female": None, "script": None, "chars": None},
+    "yue": {"label": "Cantonese",  "male": "yue",   "female": None, "script": None, "chars": None},
+    "fi":  {"label": "Finnish",    "male": "fi",    "female": None, "script": None, "chars": None},
+    "is":  {"label": "Icelandic",  "male": "is",    "female": None, "script": None, "chars": None},
+    "vi":  {"label": "Vietnamese", "male": "vi",    "female": None, "script": None, "chars": None},
+    "ru":  {"label": "Russian",    "male": "ru",    "female": None, "script": "cluster", "chars": RUSSIAN_LETTERS},
+    "ka":  {"label": "Georgian",   "male": "ka",    "female": None, "script": "cluster", "chars": GEORGIAN_LETTERS},
+    "th":  {"label": "Thai",       "male": "th",    "female": None, "script": "thai", "chars": None},
 }
 
 # --voice random で女性ボイスが選ばれた場合に使うespeak-ngのピッチ(-p、
@@ -145,7 +167,7 @@ FRAME_CSS_FONT_STACK = (
     "'Noto Sans','Noto Sans CJK JP','Noto Sans Symbols','Noto Sans Symbols2',"
     "'Noto Sans Thai','Noto Sans Devanagari','Noto Sans Hebrew','Noto Sans Arabic',"
     "'Noto Sans Bengali','Noto Sans Sinhala','Noto Sans Tibetan','Noto Sans Yi',"
-    "'Noto Sans Cherokee','Noto Sans Mongolian','DejaVu Sans',sans-serif"
+    "'Noto Sans Cherokee','Noto Sans Mongolian','Noto Sans Georgian','DejaVu Sans',sans-serif"
 )
 
 # --- デフォルトのCLIパラメータ -----------------------------------------------

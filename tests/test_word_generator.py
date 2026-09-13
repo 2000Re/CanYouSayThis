@@ -8,8 +8,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config import DECORATIVE_SYMBOLS, SAFE_COMBINING_BLOCKS
-from word_generator import random_zalgo_word, readable_label, zalgo_display_word
+from config import DECORATIVE_SYMBOLS, SAFE_COMBINING_BLOCKS, THAI_CONSONANTS, THAI_VOWEL_MARKS
+from word_generator import (
+    random_script_word,
+    random_thai_word,
+    random_zalgo_word,
+    readable_label,
+    zalgo_display_word,
+)
 
 
 def test_random_zalgo_word_is_nonempty_string():
@@ -102,3 +108,38 @@ def test_zalgo_display_word_caps_marks_per_cluster():
 
 def test_zalgo_display_word_never_empty():
     assert zalgo_display_word(chr(0x0301) * 5) == "???"
+
+
+def test_random_script_word_is_nonempty_and_only_uses_given_chars():
+    chars = list("абвг")
+    random.seed(1)
+    for _ in range(50):
+        word = random_script_word(chars)
+        assert len(word) > 0
+        assert all(ch in chars for ch in word)
+
+
+def test_random_script_word_respects_length_range():
+    chars = list("абвг")
+    random.seed(2)
+    for _ in range(50):
+        word = random_script_word(chars, n_chars=(6, 6))
+        assert len(word) == 6
+
+
+def test_random_thai_word_is_nonempty_string():
+    random.seed(3)
+    word = random_thai_word()
+    assert len(word) > 0
+
+
+def test_random_thai_word_starts_each_syllable_with_a_consonant():
+    # 母音記号は単体で使わない(子音の後にしか付けない)ことの確認。
+    # 出力の各文字は子音か母音記号のどちらかであり、母音記号だけが
+    # 連続することはない(母音記号の直前は必ず子音であるはず)。
+    random.seed(4)
+    for _ in range(50):
+        word = random_thai_word()
+        for ch in word:
+            assert ch in THAI_CONSONANTS or ch in THAI_VOWEL_MARKS
+        assert word[0] in THAI_CONSONANTS
