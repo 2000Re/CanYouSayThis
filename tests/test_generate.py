@@ -14,6 +14,7 @@ from generate import (
     _random_unique_word,
     _resolve_mode,
     _resolve_voice,
+    _voice_pitch_for,
     _youtube_metadata,
 )
 from word_generator import random_zalgo_word
@@ -147,6 +148,20 @@ def test_youtube_metadata_includes_voice_line_when_given():
     assert "Voice: French (Female)" in description
 
 
+def test_youtube_metadata_omits_native_script_note_by_default():
+    _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "not a real word" not in description
+
+
+def test_youtube_metadata_includes_native_script_note_when_flagged():
+    # 実在の文字体系(アラビア文字等)で生成した回は、実在の単語ではなく
+    # ランダムな造語である旨を説明文に明記する
+    _title, description, _tags = _youtube_metadata(
+        "صغاافك", "صغاافك", "tts", voice_label="Arabic (Male)", is_native_script=True
+    )
+    assert "not a real word" in description
+
+
 def test_resolve_voice_passes_through_explicit_code():
     assert _resolve_voice("en-us") == ("en-us", None, None)
 
@@ -180,34 +195,94 @@ def test_resolve_voice_random_always_returns_a_known_code_and_label():
         assert gender in ("male", "female")
 
 
-def test_resolve_voice_random_never_picks_female_for_languages_without_it(monkeypatch):
-    # yueにはfemaleが設定されていない(config.VOICE_LANGUAGES参照)ので、
-    # 言語としてyueが選ばれた場合、性別の抽選候補にfemaleが含まれず
-    # 必ずmaleが返ることを確認する。
+def test_all_voice_languages_have_both_genders():
+    # 10言語拡張時の改善で、MBROLA非対応言語にも"+f3"フォルマント
+    # バリアントで疑似的な女性ボイスを割り当てたため、全言語がmale/female
+    # 両方を持つはずであることの回帰防止(config.VOICE_LANGUAGES参照)。
+    for code, entry in config.VOICE_LANGUAGES.items():
+        assert entry["male"], code
+        assert entry["female"], code
+
+
+def test_resolve_voice_random_picks_from_native_script_pool_below_threshold(monkeypatch):
+    # random.random() が NATIVE_SCRIPT_VOICE_CHANCE 未満のときは、実在の
+    # 文字体系を使う言語のプールから選ばれる(config._resolve_voice()参照)。
+    native_codes = [c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is not None]
+
     def fake_choice(seq):
         seq = list(seq)
-        if seq == list(config.VOICE_LANGUAGES):
-            return "yue"
-        assert "female" not in seq
+        if seq == native_codes:
+            return "ar"
+        assert "female" in seq
         return seq[0]
 
+    monkeypatch.setattr(random, "random", lambda: 0.0)
     monkeypatch.setattr(random, "choice", fake_choice)
     code, label, gender = _resolve_voice("random")
-    assert code == config.VOICE_LANGUAGES["yue"]["male"]
-    assert gender == "male"
-    assert "Male" in label
+    assert code == config.VOICE_LANGUAGES["ar"]["male"]
+    assert label.startswith("Arabic")
+
+
+def test_resolve_voice_random_picks_from_latin_pool_above_threshold(monkeypatch):
+    # random.random() が NATIVE_SCRIPT_VOICE_CHANCE 以上のときは、ラテン文字
+    # (Zalgo)系の言語のプールから選ばれる。
+    latin_codes = [c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is None]
+
+    def fake_choice(seq):
+        seq = list(seq)
+        if seq == latin_codes:
+            return "fr"
+        assert "female" in seq
+        return seq[0]
+
+    monkeypatch.setattr(random, "random", lambda: 0.999)
+    monkeypatch.setattr(random, "choice", fake_choice)
+    code, label, gender = _resolve_voice("random")
+    assert code == config.VOICE_LANGUAGES["fr"]["male"]
+    assert label.startswith("French")
 
 
 def test_resolve_voice_random_can_pick_female_when_available(monkeypatch):
+    latin_codes = [c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is None]
+
     def fake_choice(seq):
         seq = list(seq)
-        if seq == list(config.VOICE_LANGUAGES):
+        if seq == latin_codes:
             return "fr"
         assert "female" in seq
         return "female"
 
+    monkeypatch.setattr(random, "random", lambda: 0.999)
     monkeypatch.setattr(random, "choice", fake_choice)
     code, label, gender = _resolve_voice("random")
     assert code == config.VOICE_LANGUAGES["fr"]["female"]
     assert gender == "female"
     assert "Female" in label
+
+
+def test_resolve_voice_random_weighting_matches_native_script_chance():
+    # 統計的な検証: 十分な試行回数で、実在文字体系言語が選ばれる比率が
+    # config.NATIVE_SCRIPT_VOICE_CHANCEに近いことを確認する。
+    random.seed(0)
+    native_codes = {c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is not None}
+    trials = 3000
+    hits = 0
+    for _ in range(trials):
+        code, _label, _gender = _resolve_voice("random")
+        lang_code = next(
+            c for c, e in config.VOICE_LANGUAGES.items() if code in (e["male"], e["female"])
+        )
+        if lang_code in native_codes:
+            hits += 1
+    ratio = hits / trials
+    assert abs(ratio - config.NATIVE_SCRIPT_VOICE_CHANCE) < 0.05
+
+
+def test_voice_pitch_for_boosts_only_mbrola_female_voices():
+    # config.FEMALE_VOICE_PITCHはMBROLA由来("mb-"で始まる)女性ボイス専用。
+    # "+f3"フォルマントバリアント由来の女性ボイスは対象外(重ねると
+    # 高くなりすぎるため)。
+    assert _voice_pitch_for("mb-us1", "female") == config.FEMALE_VOICE_PITCH
+    assert _voice_pitch_for("ar+f3", "female") is None
+    assert _voice_pitch_for("en", "male") is None
+    assert _voice_pitch_for("mb-us1", None) is None
