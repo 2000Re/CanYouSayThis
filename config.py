@@ -86,18 +86,27 @@ BENGALI_VOWEL_MARKS = _assigned_chars([(0x09BE, 0x09CC)])
 # 候補。単語自体は母音中心のBASE_CHARSしか使わないので、言語ごとの発音規則の
 # 違い(鼻母音・声調・アクセントなど)で聞こえ方が変わることを狙った機能。
 #
-# "female"は実機でespeak-ng(MBROLAエンジン)による音声合成が実際に成功する
-# ことを確認できた言語のみ設定しており、それ以外はNone(male音声のみ抽選)。
-# 除外理由:
-#   - 中国語(zh): Debianのmbrola-cn1パッケージが同梱するespeak-ng用ボイス
-#     定義が、存在しない音素変換ファイル(zh_phtrans。実際に存在するのは
-#     cmn_phtrans)を参照しており、"voice does not exist"エラーで合成に
-#     失敗する(パッケージ自体の不具合。実機で検証済み)。
-#   - 広東語(yue)・フィンランド語(fi)・ベトナム語(vi)・ロシア語(ru)・
-#     ジョージア語(ka)・タイ語(th): これらの言語に対応するMBROLA音声
-#     データが存在しない(`apt-cache search mbrola`で該当なしを確認済み)。
-#   - アイスランド語(is): MBROLA音声(ic1)はあるが男性のみで、女性音声は
-#     存在しない。
+# "female"には2種類の由来がある:
+#   (1) MBROLA音声("mb-"で始まるコード): 実機でespeak-ng(MBROLAエンジン)
+#       による音声合成が実際に成功することを確認できた5言語(en/fr/de/hu/sv)
+#       のみ。専用の音声データパッケージ(mbrola-*、generate.yml参照)が必要
+#       な代わり、より自然な声質になる。
+#   (2) espeak-ng内蔵の"+f3"フォルマントバリアント: MBROLA音声データが存在
+#       しない/壊れている言語向けに、任意のmaleボイスコードへ"+f3"を付ける
+#       だけで使える組み込みの女性寄りフォルマント変換(tts_synth.pyの
+#       EXTREME_VOICE_VARIANTSで使っている「ボイス+バリアント名」と同じ
+#       仕組み)。追加パッケージ不要で全言語をカバーできるため、(1)が使えない
+#       残り18言語すべてに
+#       採用している。実機でf0(基本周波数)を測定し、素の声(約108Hz)から
+#       約194Hzへ明確に上がる(MBROLA版の約235Hzに近い自然な範囲)ことを
+#       確認済み。(1)と違い、この"+f3"自体が既に十分な高さなので
+#       FEMALE_VOICE_PITCHは重ねて適用しない(generate.py generate_one()
+#       参照。実機で両方重ねると約258Hzまで上がりすぎることを確認したため)。
+#       なお中国語(標準語)だけは"zh+f3"ではエラーになり、実際に動くのは
+#       "cmn+f3"(espeak-ng内部の本来のコード。旧来"zh"はmaleとしては動くが
+#       variant付与には非対応)だったため、女性ボイスのみ"cmn+f3"を使う。
+#       これにより、mbrola-cn1パッケージの不具合(後述のハマった罠11番)を
+#       経由せずに中国語の女性ボイスにも対応できている。
 #
 # "script"は実在の文字体系を使う言語にのみ設定する(generate.py
 # _native_script_for_voice()参照)。
@@ -107,8 +116,9 @@ BENGALI_VOWEL_MARKS = _assigned_chars([(0x09BE, 0x09CC)])
 #     (子音字+母音記号で音節を作る文字体系向け)。
 # いずれも未設定(None)の言語は従来通りBASE_CHARSベースのZalgo単語を使う。
 #
-# GitHub Actions側では、maleのespeak-ngボイスコードは追加パッケージ無しで
-# 動くが、femaleが設定されている言語のみ対応するmbrola-*パッケージの
+# GitHub Actions側では、maleのespeak-ngボイスコードも"+f3"バリアントも
+# espeak-ng本体だけで追加パッケージ無しに動くが、MBROLA由来のfemaleが
+# 設定されている5言語(en/fr/de/hu/sv)のみ対応するmbrola-*パッケージの
 # インストールが別途必要(generate.yml参照)。
 VOICE_LANGUAGES = {
     "en":  {"label": "English",    "male": "en",    "female": "mb-us1", "script": None, "chars": None, "consonants": None, "vowels": None},
@@ -116,30 +126,43 @@ VOICE_LANGUAGES = {
     "de":  {"label": "German",     "male": "de",    "female": "mb-de1", "script": None, "chars": None, "consonants": None, "vowels": None},
     "hu":  {"label": "Hungarian",  "male": "hu",    "female": "mb-hu1", "script": None, "chars": None, "consonants": None, "vowels": None},
     "sv":  {"label": "Swedish",    "male": "sv",    "female": "mb-sw2", "script": None, "chars": None, "consonants": None, "vowels": None},
-    "zh":  {"label": "Mandarin",   "male": "zh",    "female": None, "script": None, "chars": None, "consonants": None, "vowels": None},
-    "yue": {"label": "Cantonese",  "male": "yue",   "female": None, "script": None, "chars": None, "consonants": None, "vowels": None},
-    "fi":  {"label": "Finnish",    "male": "fi",    "female": None, "script": None, "chars": None, "consonants": None, "vowels": None},
-    "is":  {"label": "Icelandic",  "male": "is",    "female": None, "script": None, "chars": None, "consonants": None, "vowels": None},
-    "vi":  {"label": "Vietnamese", "male": "vi",    "female": None, "script": None, "chars": None, "consonants": None, "vowels": None},
-    "ru":  {"label": "Russian",    "male": "ru",    "female": None, "script": "cluster", "chars": RUSSIAN_LETTERS, "consonants": None, "vowels": None},
-    "ka":  {"label": "Georgian",   "male": "ka",    "female": None, "script": "cluster", "chars": GEORGIAN_LETTERS, "consonants": None, "vowels": None},
-    "th":  {"label": "Thai",       "male": "th",    "female": None, "script": "abugida", "chars": None, "consonants": THAI_CONSONANTS, "vowels": THAI_VOWEL_MARKS},
-    "ar":  {"label": "Arabic",     "male": "ar",    "female": None, "script": "cluster", "chars": ARABIC_LETTERS, "consonants": None, "vowels": None},
-    "he":  {"label": "Hebrew",     "male": "he",    "female": None, "script": "cluster", "chars": HEBREW_LETTERS, "consonants": None, "vowels": None},
-    "hy":  {"label": "Armenian",   "male": "hy",    "female": None, "script": "cluster", "chars": ARMENIAN_LETTERS, "consonants": None, "vowels": None},
-    "am":  {"label": "Amharic",    "male": "am",    "female": None, "script": "cluster", "chars": AMHARIC_SYLLABLES, "consonants": None, "vowels": None},
-    "chr": {"label": "Cherokee",   "male": "chr",   "female": None, "script": "cluster", "chars": CHEROKEE_SYLLABLES, "consonants": None, "vowels": None},
-    "my":  {"label": "Myanmar",    "male": "my",    "female": None, "script": "abugida", "chars": None, "consonants": MYANMAR_CONSONANTS, "vowels": MYANMAR_VOWEL_MARKS},
-    "si":  {"label": "Sinhala",    "male": "si",    "female": None, "script": "abugida", "chars": None, "consonants": SINHALA_CONSONANTS, "vowels": SINHALA_VOWEL_MARKS},
-    "ta":  {"label": "Tamil",      "male": "ta",    "female": None, "script": "abugida", "chars": None, "consonants": TAMIL_CONSONANTS, "vowels": TAMIL_VOWEL_MARKS},
-    "te":  {"label": "Telugu",     "male": "te",    "female": None, "script": "abugida", "chars": None, "consonants": TELUGU_CONSONANTS, "vowels": TELUGU_VOWEL_MARKS},
-    "bn":  {"label": "Bengali",    "male": "bn",    "female": None, "script": "abugida", "chars": None, "consonants": BENGALI_CONSONANTS, "vowels": BENGALI_VOWEL_MARKS},
+    "zh":  {"label": "Mandarin",   "male": "zh",    "female": "cmn+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
+    "yue": {"label": "Cantonese",  "male": "yue",   "female": "yue+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
+    "fi":  {"label": "Finnish",    "male": "fi",    "female": "fi+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
+    "is":  {"label": "Icelandic",  "male": "is",    "female": "is+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
+    "vi":  {"label": "Vietnamese", "male": "vi",    "female": "vi+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
+    "ru":  {"label": "Russian",    "male": "ru",    "female": "ru+f3", "script": "cluster", "chars": RUSSIAN_LETTERS, "consonants": None, "vowels": None},
+    "ka":  {"label": "Georgian",   "male": "ka",    "female": "ka+f3", "script": "cluster", "chars": GEORGIAN_LETTERS, "consonants": None, "vowels": None},
+    "th":  {"label": "Thai",       "male": "th",    "female": "th+f3", "script": "abugida", "chars": None, "consonants": THAI_CONSONANTS, "vowels": THAI_VOWEL_MARKS},
+    "ar":  {"label": "Arabic",     "male": "ar",    "female": "ar+f3", "script": "cluster", "chars": ARABIC_LETTERS, "consonants": None, "vowels": None},
+    "he":  {"label": "Hebrew",     "male": "he",    "female": "he+f3", "script": "cluster", "chars": HEBREW_LETTERS, "consonants": None, "vowels": None},
+    "hy":  {"label": "Armenian",   "male": "hy",    "female": "hy+f3", "script": "cluster", "chars": ARMENIAN_LETTERS, "consonants": None, "vowels": None},
+    "am":  {"label": "Amharic",    "male": "am",    "female": "am+f3", "script": "cluster", "chars": AMHARIC_SYLLABLES, "consonants": None, "vowels": None},
+    "chr": {"label": "Cherokee",   "male": "chr",   "female": "chr+f3", "script": "cluster", "chars": CHEROKEE_SYLLABLES, "consonants": None, "vowels": None},
+    "my":  {"label": "Myanmar",    "male": "my",    "female": "my+f3", "script": "abugida", "chars": None, "consonants": MYANMAR_CONSONANTS, "vowels": MYANMAR_VOWEL_MARKS},
+    "si":  {"label": "Sinhala",    "male": "si",    "female": "si+f3", "script": "abugida", "chars": None, "consonants": SINHALA_CONSONANTS, "vowels": SINHALA_VOWEL_MARKS},
+    "ta":  {"label": "Tamil",      "male": "ta",    "female": "ta+f3", "script": "abugida", "chars": None, "consonants": TAMIL_CONSONANTS, "vowels": TAMIL_VOWEL_MARKS},
+    "te":  {"label": "Telugu",     "male": "te",    "female": "te+f3", "script": "abugida", "chars": None, "consonants": TELUGU_CONSONANTS, "vowels": TELUGU_VOWEL_MARKS},
+    "bn":  {"label": "Bengali",    "male": "bn",    "female": "bn+f3", "script": "abugida", "chars": None, "consonants": BENGALI_CONSONANTS, "vowels": BENGALI_VOWEL_MARKS},
 }
 
 # --voice random で女性ボイスが選ばれた場合に使うespeak-ngのピッチ(-p、
-# 0〜99、デフォルト50)。女性ボイスをより高く聞こえるようにするための
-# 底上げ値。tts_synth.synthesize_tts()参照。
+# 0〜99、デフォルト50)。MBROLA由来の女性ボイス(femaleコードが"mb-"で
+# 始まる5言語)は素のままだとやや低めに聞こえたため、この値で底上げする。
+# "+f3"フォルマントバリアント由来の女性ボイスはそれ単体で既に十分な高さに
+# なるため対象外(generate.py generate_one()参照)。tts_synth.synthesize_tts()も
+# 参照。
 FEMALE_VOICE_PITCH = 75
+
+# --voice random で「実在の文字体系を使う言語」が選ばれる確率。
+# 10言語拡張(アラビア語・ヘブライ語・アルメニア語・アムハラ語・チェロキー
+# 語・ミャンマー語・シンハラ語・タミル語・テルグ語・ベンガル語)の追加で
+# 実在文字体系の言語がラテン文字(Zalgo)系の言語より多くなった(23言語中13)。
+# 均等抽選のままだと本来の売りだったZalgo単語より実在文字体系の単語が
+# 多数派になってしまうため、2段階抽選(まずこの確率で「実在文字体系」か
+# 「ラテン文字(Zalgo)」かを決め、その中から言語を均等抽選する)にして
+# 元の比率に近づけている(generate.py _resolve_voice()参照)。
+NATIVE_SCRIPT_VOICE_CHANCE = 0.3
 
 # --- 単語ジェネレータ設定 ----------------------------------------------------
 

@@ -79,7 +79,7 @@ from word_generator import (
 )
 
 
-def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None):
+def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_native_script=False):
     """生成した単語からYouTubeアップロード用のtitle/description/tagsを組み立てる。
 
     label は readable_label() で結合文字を落とし最大12文字に丸め済みの
@@ -89,7 +89,12 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None):
     視聴者が他の動画も連続して見る(回遊する)よう誘導する。
 
     voice_label を渡すと(--voice random で言語/性別が抽選された場合のみ)、
-    説明文にどの言語のボイスを使ったかを明記する。"""
+    説明文にどの言語のボイスを使ったかを明記する。
+
+    is_native_script=Trueの場合(アラビア文字・キリル文字等、実在の文字体系
+    で単語を生成した回)、実在するその言語の単語ではなくランダムな造語である
+    旨を説明文に明記する。Zalgo単語(ラテン文字+結合文字)は見た目からして
+    実在の単語でないことが明らかなので対象外。"""
     mode_label = config.MODE_LABELS.get(mode, mode)
     title = f'How to Pronounce "{label}" #Shorts'
     description = (
@@ -99,6 +104,11 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None):
     )
     if voice_label:
         description += f"Voice: {voice_label}\n"
+    if is_native_script:
+        description += (
+            "(This is a randomly generated sequence of letters, not a real word "
+            "in that language!)\n"
+        )
     description += (
         "\nTry saying it out loud and comment your attempt! \U0001F5E3️\n\n"
     )
@@ -139,7 +149,14 @@ def _resolve_voice(voice):
         }
         gender = "female" if voice in known_female_codes else None
         return voice, None, gender
-    lang_code = random.choice(list(config.VOICE_LANGUAGES))
+    # 実在文字体系の言語(script指定あり)がラテン文字(Zalgo)系の言語より
+    # 多くなったため、まず「実在文字体系」か「ラテン文字」かを
+    # config.NATIVE_SCRIPT_VOICE_CHANCEの確率で決めてから、その中で言語を
+    # 均等抽選する(config.VOICE_LANGUAGES参照)。
+    native_script_codes = [c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is not None]
+    latin_codes = [c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is None]
+    pool = native_script_codes if random.random() < config.NATIVE_SCRIPT_VOICE_CHANCE else latin_codes
+    lang_code = random.choice(pool)
     entry = config.VOICE_LANGUAGES[lang_code]
     genders = ["male"] + (["female"] if entry["female"] else [])
     gender = random.choice(genders)
@@ -164,6 +181,19 @@ def _native_script_for_voice(voice_code):
     return None
 
 
+def _voice_pitch_for(voice_code, gender):
+    """espeak-ngへ渡すピッチ(-p)補正値を決める。
+
+    config.FEMALE_VOICE_PITCHはMBROLA由来の女性ボイス("mb-"で始まる
+    voice_code)専用の補正。"+f3"フォルマントバリアント由来の女性ボイス
+    (config.VOICE_LANGUAGESの他言語)はそれ単体で既に十分な高さになって
+    おり、実機で重ねて適用すると高くなりすぎることを確認済みのため対象外
+    (config.py VOICE_LANGUAGESのコメント参照)。"""
+    if gender == "female" and voice_code.startswith("mb-"):
+        return config.FEMALE_VOICE_PITCH
+    return None
+
+
 def _random_unique_word(existing_words, word_generator=random_zalgo_word, max_attempts=20):
     """existing_words に含まれない単語が出るまで生成を試みる。
 
@@ -184,8 +214,9 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
                   fade=config.DEFAULT_FADE, upload=False, privacy_status="public"):
     actual_mode = _resolve_mode(mode)
     actual_voice, voice_label, voice_gender = _resolve_voice(voice)
-    voice_pitch = config.FEMALE_VOICE_PITCH if voice_gender == "female" else None
+    voice_pitch = _voice_pitch_for(actual_voice, voice_gender)
     word_generator = _native_script_for_voice(actual_voice) or random_zalgo_word
+    used_native_script = word_generator is not random_zalgo_word
 
     if upload:
         # チャンネルへの重複投稿を避けるため、アップロード済みの単語と
@@ -254,7 +285,8 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         shorts_playlist_id = os.environ.get("YOUTUBE_SHORTS_PLAYLIST_ID")
 
         title, description, tags = _youtube_metadata(
-            word, label, actual_mode, playlist_id=shorts_playlist_id, voice_label=voice_label
+            word, label, actual_mode, playlist_id=shorts_playlist_id, voice_label=voice_label,
+            is_native_script=used_native_script,
         )
         youtube_url = upload_video(
             video_path, title=title, description=description, tags=tags,
