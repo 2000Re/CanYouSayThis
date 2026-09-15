@@ -124,30 +124,35 @@ BENGALI_VOWEL_MARKS = _assigned_chars([(0x09BE, 0x09CC)])
 # espeak-ng本体だけで追加パッケージ無しに動くが、MBROLA由来のfemaleが
 # 設定されている5言語(en/fr/de/hu/sv)のみ対応するmbrola-*パッケージの
 # インストールが別途必要(generate.yml参照)。
+# "hashtag_word"は、その言語の話者がYouTube内で自国語のまま検索した際に
+# 見つけてもらえるよう、動画説明文の末尾に追加する「発音」の意味の現地語
+# ハッシュタグ(generate.py _youtube_metadata()参照)。英語は既に
+# #Pronunciationがあるため不要(None)。チェロキー語は確度の高い語彙を
+# 確認できなかったため未設定(None)のままにしている。
 VOICE_LANGUAGES = {
-    "en":  {"label": "English",    "male": "en",    "female": "mb-us1", "script": None, "chars": None, "consonants": None, "vowels": None},
-    "fr":  {"label": "French",     "male": "fr-fr", "female": "mb-fr4", "script": None, "chars": None, "consonants": None, "vowels": None},
-    "de":  {"label": "German",     "male": "de",    "female": "mb-de1", "script": None, "chars": None, "consonants": None, "vowels": None},
-    "hu":  {"label": "Hungarian",  "male": "hu",    "female": "mb-hu1", "script": None, "chars": None, "consonants": None, "vowels": None},
-    "sv":  {"label": "Swedish",    "male": "sv",    "female": "mb-sw2", "script": None, "chars": None, "consonants": None, "vowels": None},
-    "zh":  {"label": "Mandarin",   "male": "cmn",   "female": "cmn+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
-    "yue": {"label": "Cantonese",  "male": "yue",   "female": "yue+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
-    "fi":  {"label": "Finnish",    "male": "fi",    "female": "fi+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
-    "is":  {"label": "Icelandic",  "male": "is",    "female": "is+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
-    "vi":  {"label": "Vietnamese", "male": "vi",    "female": "vi+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
-    "ru":  {"label": "Russian",    "male": "ru",    "female": "ru+f3", "script": "cluster", "chars": RUSSIAN_LETTERS, "consonants": None, "vowels": None},
-    "ka":  {"label": "Georgian",   "male": "ka",    "female": "ka+f3", "script": "cluster", "chars": GEORGIAN_LETTERS, "consonants": None, "vowels": None},
-    "th":  {"label": "Thai",       "male": "th",    "female": "th+f3", "script": "abugida", "chars": None, "consonants": THAI_CONSONANTS, "vowels": THAI_VOWEL_MARKS},
-    "ar":  {"label": "Arabic",     "male": "ar",    "female": "ar+f3", "script": "cluster", "chars": ARABIC_LETTERS, "consonants": None, "vowels": None},
-    "he":  {"label": "Hebrew",     "male": "he",    "female": "he+f3", "script": "cluster", "chars": HEBREW_LETTERS, "consonants": None, "vowels": None},
-    "hy":  {"label": "Armenian",   "male": "hy",    "female": "hy+f3", "script": "cluster", "chars": ARMENIAN_LETTERS, "consonants": None, "vowels": None},
-    "am":  {"label": "Amharic",    "male": "am",    "female": "am+f3", "script": "cluster", "chars": AMHARIC_SYLLABLES, "consonants": None, "vowels": None},
-    "chr": {"label": "Cherokee",   "male": "chr",   "female": "chr+f3", "script": "cluster", "chars": CHEROKEE_SYLLABLES, "consonants": None, "vowels": None},
-    "my":  {"label": "Myanmar",    "male": "my",    "female": "my+f3", "script": "abugida", "chars": None, "consonants": MYANMAR_CONSONANTS, "vowels": MYANMAR_VOWEL_MARKS},
-    "si":  {"label": "Sinhala",    "male": "si",    "female": "si+f3", "script": "abugida", "chars": None, "consonants": SINHALA_CONSONANTS, "vowels": SINHALA_VOWEL_MARKS},
-    "ta":  {"label": "Tamil",      "male": "ta",    "female": "ta+f3", "script": "abugida", "chars": None, "consonants": TAMIL_CONSONANTS, "vowels": TAMIL_VOWEL_MARKS},
-    "te":  {"label": "Telugu",     "male": "te",    "female": "te+f3", "script": "abugida", "chars": None, "consonants": TELUGU_CONSONANTS, "vowels": TELUGU_VOWEL_MARKS},
-    "bn":  {"label": "Bengali",    "male": "bn",    "female": "bn+f3", "script": "abugida", "chars": None, "consonants": BENGALI_CONSONANTS, "vowels": BENGALI_VOWEL_MARKS},
+    "en":  {"label": "English",    "male": "en",    "female": "mb-us1", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": None},
+    "fr":  {"label": "French",     "male": "fr-fr", "female": "mb-fr4", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Prononciation"},
+    "de":  {"label": "German",     "male": "de",    "female": "mb-de1", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Aussprache"},
+    "hu":  {"label": "Hungarian",  "male": "hu",    "female": "mb-hu1", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Kiejtés"},
+    "sv":  {"label": "Swedish",    "male": "sv",    "female": "mb-sw2", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Uttal"},
+    "zh":  {"label": "Mandarin",   "male": "cmn",   "female": "cmn+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "发音"},
+    "yue": {"label": "Cantonese",  "male": "yue",   "female": "yue+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "發音"},
+    "fi":  {"label": "Finnish",    "male": "fi",    "female": "fi+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Ääntäminen"},
+    "is":  {"label": "Icelandic",  "male": "is",    "female": "is+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Framburður"},
+    "vi":  {"label": "Vietnamese", "male": "vi",    "female": "vi+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "PhátÂm"},
+    "ru":  {"label": "Russian",    "male": "ru",    "female": "ru+f3", "script": "cluster", "chars": RUSSIAN_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "Произношение"},
+    "ka":  {"label": "Georgian",   "male": "ka",    "female": "ka+f3", "script": "cluster", "chars": GEORGIAN_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "გამოთქმა"},
+    "th":  {"label": "Thai",       "male": "th",    "female": "th+f3", "script": "abugida", "chars": None, "consonants": THAI_CONSONANTS, "vowels": THAI_VOWEL_MARKS, "hashtag_word": "การออกเสียง"},
+    "ar":  {"label": "Arabic",     "male": "ar",    "female": "ar+f3", "script": "cluster", "chars": ARABIC_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "نطق"},
+    "he":  {"label": "Hebrew",     "male": "he",    "female": "he+f3", "script": "cluster", "chars": HEBREW_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "הגייה"},
+    "hy":  {"label": "Armenian",   "male": "hy",    "female": "hy+f3", "script": "cluster", "chars": ARMENIAN_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "Արտասանություն"},
+    "am":  {"label": "Amharic",    "male": "am",    "female": "am+f3", "script": "cluster", "chars": AMHARIC_SYLLABLES, "consonants": None, "vowels": None, "hashtag_word": "አጠራር"},
+    "chr": {"label": "Cherokee",   "male": "chr",   "female": "chr+f3", "script": "cluster", "chars": CHEROKEE_SYLLABLES, "consonants": None, "vowels": None, "hashtag_word": None},
+    "my":  {"label": "Myanmar",    "male": "my",    "female": "my+f3", "script": "abugida", "chars": None, "consonants": MYANMAR_CONSONANTS, "vowels": MYANMAR_VOWEL_MARKS, "hashtag_word": "အသံထွက်"},
+    "si":  {"label": "Sinhala",    "male": "si",    "female": "si+f3", "script": "abugida", "chars": None, "consonants": SINHALA_CONSONANTS, "vowels": SINHALA_VOWEL_MARKS, "hashtag_word": "උච්චාරණය"},
+    "ta":  {"label": "Tamil",      "male": "ta",    "female": "ta+f3", "script": "abugida", "chars": None, "consonants": TAMIL_CONSONANTS, "vowels": TAMIL_VOWEL_MARKS, "hashtag_word": "உச்சரிப்பு"},
+    "te":  {"label": "Telugu",     "male": "te",    "female": "te+f3", "script": "abugida", "chars": None, "consonants": TELUGU_CONSONANTS, "vowels": TELUGU_VOWEL_MARKS, "hashtag_word": "ఉచ్చారణ"},
+    "bn":  {"label": "Bengali",    "male": "bn",    "female": "bn+f3", "script": "abugida", "chars": None, "consonants": BENGALI_CONSONANTS, "vowels": BENGALI_VOWEL_MARKS, "hashtag_word": "উচ্চারণ"},
 }
 
 # --voice random で女性ボイスが選ばれた場合に使うespeak-ngのピッチ(-p、

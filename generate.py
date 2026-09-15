@@ -79,7 +79,8 @@ from word_generator import (
 )
 
 
-def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_native_script=False):
+def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_native_script=False,
+                       lang_code=None):
     """生成した単語からYouTubeアップロード用のtitle/description/tagsを組み立てる。
 
     label は readable_label() で結合文字を落とし最大12文字に丸め済みの
@@ -94,7 +95,14 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     is_native_script=Trueの場合(アラビア文字・キリル文字等、実在の文字体系
     で単語を生成した回)、実在するその言語の単語ではなくランダムな造語である
     旨を説明文に明記する。Zalgo単語(ラテン文字+結合文字)は見た目からして
-    実在の単語でないことが明らかなので対象外。"""
+    実在の単語でないことが明らかなので対象外。
+
+    lang_code を渡すと(config.VOICE_LANGUAGESのキー、例: "ar")、その言語で
+    「発音」を意味するハッシュタグ(config.VOICE_LANGUAGESの"hashtag_word")
+    を英語ハッシュタグに追加する。英語圏の視聴者向けの#Pronunciation等と
+    違い、その言語の話者が母語のまま検索した際に見つけてもらいやすくする
+    ための施策。該当する語が用意されていない言語(英語自身、チェロキー語)
+    では何も追加しない。"""
     mode_label = config.MODE_LABELS.get(mode, mode)
     title = f'How to Pronounce "{label}" #Shorts'
     description = (
@@ -117,11 +125,16 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
             f"▶ Watch more pronunciation challenges: "
             f"https://www.youtube.com/playlist?list={playlist_id}\n\n"
         )
+    native_hashtag_word = (config.VOICE_LANGUAGES.get(lang_code) or {}).get("hashtag_word")
     description += "#Shorts #Pronunciation #Unpronounceable #Zalgo #GlitchText #TextToSpeech #TTS #Challenge"
+    if native_hashtag_word:
+        description += f" #{native_hashtag_word}"
     tags = [
         "shorts", "pronunciation", "unpronounceable", "how to pronounce", mode,
         "zalgo", "glitch text", "text to speech", "pronunciation challenge",
     ]
+    if native_hashtag_word:
+        tags.append(native_hashtag_word)
     return title, description, tags
 
 
@@ -178,6 +191,19 @@ def _native_script_for_voice(voice_code):
             return lambda: random_script_word(entry["chars"])
         if entry["script"] == "abugida":
             return lambda: random_abugida_word(entry["consonants"], entry["vowels"])
+    return None
+
+
+def _lang_code_for_voice(voice_code):
+    """voice_codeがconfig.VOICE_LANGUAGESの中のどの言語のmale/femaleボイス
+    コードと一致するか調べ、一致する言語コード(config.VOICE_LANGUAGESの
+    キー。例: "ar")を返す。該当しなければNone。
+
+    _native_script_for_voice()・_voice_pitch_for()と同じく、--voice random
+    経由でも直接コードを指定した場合でも同じ判定になる。"""
+    for lang_code, entry in config.VOICE_LANGUAGES.items():
+        if voice_code in (entry["male"], entry["female"]):
+            return lang_code
     return None
 
 
@@ -286,7 +312,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
 
         title, description, tags = _youtube_metadata(
             word, label, actual_mode, playlist_id=shorts_playlist_id, voice_label=voice_label,
-            is_native_script=used_native_script,
+            is_native_script=used_native_script, lang_code=_lang_code_for_voice(actual_voice),
         )
         youtube_url = upload_video(
             video_path, title=title, description=description, tags=tags,
