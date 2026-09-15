@@ -96,17 +96,21 @@ BENGALI_VOWEL_MARKS = _assigned_chars([(0x09BE, 0x09CC)])
 #       だけで使える組み込みの女性寄りフォルマント変換(tts_synth.pyの
 #       EXTREME_VOICE_VARIANTSで使っている「ボイス+バリアント名」と同じ
 #       仕組み)。追加パッケージ不要で全言語をカバーできるため、(1)が使えない
-#       残り18言語すべてに
-#       採用している。実機でf0(基本周波数)を測定し、素の声(約108Hz)から
-#       約194Hzへ明確に上がる(MBROLA版の約235Hzに近い自然な範囲)ことを
-#       確認済み。(1)と違い、この"+f3"自体が既に十分な高さなので
-#       FEMALE_VOICE_PITCHは重ねて適用しない(generate.py generate_one()
-#       参照。実機で両方重ねると約258Hzまで上がりすぎることを確認したため)。
-#       なお中国語(標準語)だけは"zh+f3"ではエラーになり、実際に動くのは
-#       "cmn+f3"(espeak-ng内部の本来のコード。旧来"zh"はmaleとしては動くが
-#       variant付与には非対応)だったため、女性ボイスのみ"cmn+f3"を使う。
-#       これにより、mbrola-cn1パッケージの不具合(後述のハマった罠11番)を
-#       経由せずに中国語の女性ボイスにも対応できている。
+#       残り18言語すべてに採用している。実機でf0(基本周波数)を測定し、
+#       素の声(約108Hz)から約194Hzへ明確に上がる(MBROLA版の約235Hzに
+#       近い自然な範囲)ことを確認済み。(1)と違い、この"+f3"自体が既に
+#       十分な高さなのでFEMALE_VOICE_PITCHは重ねて適用しない
+#       (generate.py generate_one()参照。実機で両方重ねると約258Hzまで
+#       上がりすぎることを確認したため)。
+#       なお中国語(標準語)は、male/female問わずコードとして"zh"ではなく
+#       "cmn"(espeak-ng内部の本来のコード)を使っている。"zh"はエイリアス
+#       としてボイス単体では動くが、"+バリアント名"を付けると
+#       "voice does not exist"エラーになる(全23言語×男女×
+#       EXTREME_VOICE_VARIANTS全種の総当たりで実機検証し、壊れているのは
+#       "zh"のみと確認済み)。tts_extremeモードでランダムに選ばれた声へ
+#       バリアントを付与する際にこの問題を踏むため、maleも"cmn"に統一して
+#       いる。これにより、mbrola-cn1パッケージの不具合(後述のハマった罠
+#       11番)を経由せずに中国語の女性ボイスにも対応できている。
 #
 # "script"は実在の文字体系を使う言語にのみ設定する(generate.py
 # _native_script_for_voice()参照)。
@@ -126,7 +130,7 @@ VOICE_LANGUAGES = {
     "de":  {"label": "German",     "male": "de",    "female": "mb-de1", "script": None, "chars": None, "consonants": None, "vowels": None},
     "hu":  {"label": "Hungarian",  "male": "hu",    "female": "mb-hu1", "script": None, "chars": None, "consonants": None, "vowels": None},
     "sv":  {"label": "Swedish",    "male": "sv",    "female": "mb-sw2", "script": None, "chars": None, "consonants": None, "vowels": None},
-    "zh":  {"label": "Mandarin",   "male": "zh",    "female": "cmn+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
+    "zh":  {"label": "Mandarin",   "male": "cmn",   "female": "cmn+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
     "yue": {"label": "Cantonese",  "male": "yue",   "female": "yue+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
     "fi":  {"label": "Finnish",    "male": "fi",    "female": "fi+f3", "script": None, "chars": None, "consonants": None, "vowels": None},
     "is":  {"label": "Icelandic",  "male": "is",    "female": "is+f3", "script": None, "chars": None, "consonants": None, "vowels": None},

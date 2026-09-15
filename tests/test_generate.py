@@ -195,6 +195,17 @@ def test_resolve_voice_random_always_returns_a_known_code_and_label():
         assert gender in ("male", "female")
 
 
+def test_voice_languages_avoid_known_broken_zh_alias():
+    # "zh"はespeak-ngのエイリアスとしてボイス単体では動くが、"+バリアント名"
+    # を付けると"voice does not exist"エラーになる不具合が実機(全23言語×
+    # 男女×EXTREME_VOICE_VARIANTS全種の総当たり)で見つかった。本来のコード
+    # "cmn"は単体・バリアント付与どちらも動く。tts_extremeモードでランダムに
+    # バリアントが付与されるため、"zh"を再度使わないようにする回帰防止。
+    for entry in config.VOICE_LANGUAGES.values():
+        assert entry["male"] != "zh"
+        assert entry["female"] != "zh"
+
+
 def test_all_voice_languages_have_both_genders():
     # 10言語拡張時の改善で、MBROLA非対応言語にも"+f3"フォルマント
     # バリアントで疑似的な女性ボイスを割り当てたため、全言語がmale/female
