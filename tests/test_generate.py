@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import config
 from generate import (
+    _lang_code_for_voice,
     _native_script_for_voice,
     _random_unique_word,
     _resolve_mode,
@@ -160,6 +161,45 @@ def test_youtube_metadata_includes_native_script_note_when_flagged():
         "صغاافك", "صغاافك", "tts", voice_label="Arabic (Male)", is_native_script=True
     )
     assert "not a real word" in description
+
+
+def test_youtube_metadata_omits_native_hashtag_when_lang_code_not_given():
+    _title, description, tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert description.count("#") == 8
+    assert config.VOICE_LANGUAGES["ar"]["hashtag_word"] not in tags
+
+
+def test_youtube_metadata_includes_native_hashtag_when_lang_code_given():
+    # その言語の話者が母語のまま検索して見つけられるよう、「発音」を意味する
+    # 現地語ハッシュタグを説明文とtagsの両方に追加する(config.VOICE_LANGUAGES
+    # の"hashtag_word"参照)。
+    hashtag_word = config.VOICE_LANGUAGES["ar"]["hashtag_word"]
+    _title, description, tags = _youtube_metadata(
+        "صغاافك", "صغاافك", "tts", voice_label="Arabic (Male)", lang_code="ar"
+    )
+    assert f"#{hashtag_word}" in description
+    assert hashtag_word in tags
+
+
+def test_youtube_metadata_omits_native_hashtag_for_languages_without_one():
+    # 英語自身とチェロキー語はhashtag_wordがNoneなので追加しない
+    # (固定の8個の英語ハッシュタグのみになる)
+    for lang_code in ("en", "chr"):
+        assert config.VOICE_LANGUAGES[lang_code]["hashtag_word"] is None
+        _title, description, _tags = _youtube_metadata(
+            "word", "word", "tts", lang_code=lang_code
+        )
+        assert description.count("#") == 8
+
+
+def test_lang_code_for_voice_returns_none_for_unknown_code():
+    assert _lang_code_for_voice("en-us") is None
+
+
+def test_lang_code_for_voice_matches_male_and_female_codes():
+    for lang_code, entry in config.VOICE_LANGUAGES.items():
+        assert _lang_code_for_voice(entry["male"]) == lang_code
+        assert _lang_code_for_voice(entry["female"]) == lang_code
 
 
 def test_resolve_voice_passes_through_explicit_code():
