@@ -24,20 +24,6 @@ MODE_LABELS = {
     "tts_extreme": "Distorted Text-to-Speech",
 }
 
-# 動画フレーム(frame_builder.py)で単語の文字色として使う、モードごとの
-# アクセントカラー。YouTube Studioの一覧のような小さいサムネイル表示だと、
-# 全動画が同じ白背景+黒文字でほぼ見分けがつかない問題があったため、
-# フレーム自体をダーク背景にし、単語をモードに応じたネオンカラーで
-# 目立たせるようにした(言語ではなくモード単位にしているのは、
-# generate.pyのbuild_frame()呼び出し時点で言語よりモードの方が扱いやすい
-# 値のため。README「フレームのダークテーマ化」参照)。
-MODE_ACCENT_COLORS = {
-    "tts": "#5fd0e0",
-    "tts_extreme": "#ef5da8",
-    "glitch": "#f3d94a",
-}
-DEFAULT_MODE_ACCENT_COLOR = "#5fd0e0"  # MODE_ACCENT_COLORSに無いモード用の保険
-
 # --voice random が「実在の文字体系」の言語を選んだ場合、単語自体をその
 # 言語の文字からランダムに組み立てる(word_generator.random_script_word() /
 # random_abugida_word())。BASE_CHARSを流用したZalgo単語と違い、装飾記号・
