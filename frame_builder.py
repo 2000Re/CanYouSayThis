@@ -12,14 +12,7 @@ import os
 
 from playwright.sync_api import sync_playwright
 
-from config import (
-    CHROMIUM_PATH,
-    DEFAULT_MODE_ACCENT_COLOR,
-    FRAME_CSS_FONT_STACK,
-    FRAME_SIZE,
-    MODE_ACCENT_COLORS,
-    MODE_LABELS,
-)
+from config import CHROMIUM_PATH, FRAME_CSS_FONT_STACK, FRAME_SIZE, MODE_LABELS
 
 # サムネイルとしての見栄えを優先し、「What」よりも肝心の単語そのものを
 # どかんと大きく見せるレイアウト。"How to Pronounce" は上の小さいキッカー
@@ -27,22 +20,16 @@ from config import (
 # フォントサイズ等はすべて {width}/{height} を含むプレースホルダで渡し、
 # build_frame() が横幅1280px基準からのスケール比で計算する(縦型Shorts
 # サイズ(1080x1920)などフレーム幅が変わっても崩れないようにするため)。
-#
-# 背景はダーク({background_color})にし、単語の文字色はモードごとの
-# アクセントカラー({word_color}、config.MODE_ACCENT_COLORS)にしている。
-# 元は白背景+黒文字だったが、YouTube Studioの一覧のような小さい
-# サムネイル表示だと全動画がほぼ同じ見た目になり見分けがつかなかった
-# ため(README「フレームのダークテーマ化」参照)。
 FRAME_HTML_TEMPLATE = """
 <html><head><meta charset="utf-8"><style>
-  body {{ margin:0; width:{width}px; height:{height}px; background:{background_color};
+  body {{ margin:0; width:{width}px; height:{height}px; background:white;
          font-family: {font_stack};
          display:flex; flex-direction:column; align-items:center; justify-content:center; }}
   p.kicker {{ font-size:{kicker_font_size}px; font-weight:700; letter-spacing:4px; text-transform:uppercase;
-              color:#8d9199; margin:0 0 8px 0; }}
+              color:#333; margin:0 0 8px 0; }}
   h1.word {{ font-size:{word_font_size}px; font-weight:900; margin:{word_margin_top}px 30px; text-align:center;
-             word-break:break-word; max-width:{word_max_width}px; line-height:1.05; color:{word_color}; }}
-  p.sub {{ color:#6e727a; font-size:{sub_font_size}px; margin-top:28px; }}
+             word-break:break-word; max-width:{word_max_width}px; line-height:1.05; color:black; }}
+  p.sub {{ color:#777; font-size:{sub_font_size}px; margin-top:28px; }}
   .icon {{ margin-top:20px; }}
 </style></head>
 <body>
@@ -50,14 +37,12 @@ FRAME_HTML_TEMPLATE = """
 <h1 class="word">{word}</h1>
 <p class="sub">[{mode_label} / Unpronounceable word]</p>
 <svg class="icon" width="{icon_size}" height="{icon_size}" viewBox="0 0 140 140">
-  <polygon points="10,50 50,50 90,10 90,130 50,90 10,90" fill="#f2f1ea"/>
-  <path d="M100,70 A30,30 0 0 0 100,30" stroke="#f2f1ea" stroke-width="6" fill="none"/>
-  <path d="M100,95 A55,55 0 0 0 100,5" stroke="#f2f1ea" stroke-width="6" fill="none"/>
+  <polygon points="10,50 50,50 90,10 90,130 50,90 10,90" fill="black"/>
+  <path d="M100,70 A30,30 0 0 0 100,30" stroke="black" stroke-width="6" fill="none"/>
+  <path d="M100,95 A55,55 0 0 0 100,5" stroke="black" stroke-width="6" fill="none"/>
 </svg>
 </body></html>
 """
-
-_BACKGROUND_COLOR = "#131417"
 
 # 以下の基準値はすべて横幅1280px(旧デフォルトの16:9フレーム)を基準に
 # 調整したもの。build_frame() でフレーム幅に応じて一律スケールする。
@@ -143,8 +128,6 @@ def build_frame(word_label, frame_path, mode="tts", size=FRAME_SIZE, display_wor
         sub_font_size=round(_BASELINE_SUB_FONT_SIZE * scale),
         icon_size=round(_BASELINE_ICON_SIZE * scale),
         word_margin_top=round(_BASELINE_WORD_MARGIN_TOP * scale),
-        background_color=_BACKGROUND_COLOR,
-        word_color=MODE_ACCENT_COLORS.get(mode, DEFAULT_MODE_ACCENT_COLOR),
     )
     html_path = frame_path + ".html"
     with open(html_path, "w", encoding="utf-8") as f:
