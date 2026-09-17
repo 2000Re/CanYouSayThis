@@ -9,6 +9,7 @@ requirements-dev.txtだけの軽量なテスト環境からもインポートし
 """
 import json
 import os
+from datetime import datetime, timezone
 
 from config import UPLOAD_HISTORY_PATH
 
@@ -16,10 +17,15 @@ from config import UPLOAD_HISTORY_PATH
 def load_upload_history() -> list:
     """アップロード成功履歴を古い→新しい順で読み込む。
 
-    各要素は {"word": str, "label": str, "video_id": str, "mode": str, "run_id": str|None}。
+    各要素は {"word": str, "label": str, "video_id": str, "mode": str,
+    "run_id": str|None, "uploaded_at": str|None}。
     run_idはcompile_shorts.pyが、この動画が生成された回のGitHub Actions
     アーティファクトを取得し直すために使う(GITHUB_RUN_IDはGitHub Actions
     が各実行に自動設定する環境変数。ローカル実行等でrunがない場合はNone)。
+    uploaded_atはappend_upload()呼び出し時点(=YouTubeへのアップロード
+    成功直後)のUTC時刻のISO 8601文字列。この項目を追加する前に記録された
+    古いエントリには含まれない("uploaded_at"キー自体が無い)ため、
+    参照する側は entry.get("uploaded_at") を使うこと。
 
     ここへの記録は generate.py が youtube_upload.upload_video() の成功を
     確認した後にのみ行う。TTS/動画生成/アップロードのいずれかで失敗した
@@ -48,7 +54,13 @@ def save_upload_history(history: list) -> None:
 
 
 def append_upload(word: str, label: str, video_id: str, mode: str, run_id: str | None = None) -> None:
-    """1件のアップロード成功を履歴に追記する。"""
+    """1件のアップロード成功を履歴に追記する。
+
+    uploaded_atはこの呼び出し時点(YouTubeへのアップロード成功直後)の
+    UTC時刻を自動で記録する。呼び出し側(generate.py)が意識する必要は無い。"""
     history = load_upload_history()
-    history.append({"word": word, "label": label, "video_id": video_id, "mode": mode, "run_id": run_id})
+    history.append({
+        "word": word, "label": label, "video_id": video_id, "mode": mode, "run_id": run_id,
+        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+    })
     save_upload_history(history)
