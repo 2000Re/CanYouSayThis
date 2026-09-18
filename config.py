@@ -96,7 +96,7 @@ BENGALI_VOWEL_MARKS = _assigned_chars([(0x09BE, 0x09CC)])
 #       だけで使える組み込みの女性寄りフォルマント変換(tts_synth.pyの
 #       EXTREME_VOICE_VARIANTSで使っている「ボイス+バリアント名」と同じ
 #       仕組み)。追加パッケージ不要で全言語をカバーできるため、(1)が使えない
-#       残り19言語すべてに採用している。実機でf0(基本周波数)を測定し、
+#       残り20言語すべてに採用している。実機でf0(基本周波数)を測定し、
 #       素の声(約108Hz)から約194Hzへ明確に上がる(MBROLA版の約235Hzに
 #       近い自然な範囲)ことを確認済み。(1)と違い、この"+f3"自体が既に
 #       十分な高さなのでFEMALE_VOICE_PITCHは重ねて適用しない
@@ -141,6 +141,7 @@ VOICE_LANGUAGES = {
     "is":  {"label": "Icelandic",  "male": "is",    "female": "is+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Framburður"},
     "vi":  {"label": "Vietnamese", "male": "vi",    "female": "vi+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "PhátÂm"},
     "id":  {"label": "Indonesian", "male": "id",    "female": "id+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Pengucapan"},
+    "ms":  {"label": "Malay",      "male": "ms",    "female": "ms+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Sebutan"},
     "ru":  {"label": "Russian",    "male": "ru",    "female": "ru+f3", "script": "cluster", "chars": RUSSIAN_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "Произношение"},
     "ka":  {"label": "Georgian",   "male": "ka",    "female": "ka+f3", "script": "cluster", "chars": GEORGIAN_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "გამოთქმა"},
     "th":  {"label": "Thai",       "male": "th",    "female": "th+f3", "script": "abugida", "chars": None, "consonants": THAI_CONSONANTS, "vowels": THAI_VOWEL_MARKS, "hashtag_word": "การออกเสียง"},
@@ -167,7 +168,7 @@ FEMALE_VOICE_PITCH = 75
 # --voice random で「実在の文字体系を使う言語」が選ばれる確率。
 # 10言語拡張(アラビア語・ヘブライ語・アルメニア語・アムハラ語・チェロキー
 # 語・ミャンマー語・シンハラ語・タミル語・テルグ語・ベンガル語)の追加で
-# 実在文字体系の言語がラテン文字(Zalgo)系の言語より多くなった(24言語中13)。
+# 実在文字体系の言語がラテン文字(Zalgo)系の言語より多くなった(25言語中13)。
 # 均等抽選のままだと本来の売りだったZalgo単語より実在文字体系の単語が
 # 多数派になってしまうため、2段階抽選(まずこの確率で「実在文字体系」か
 # 「ラテン文字(Zalgo)」かを決め、その中から言語を均等抽選する)にして
