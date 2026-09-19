@@ -125,6 +125,13 @@ def test_youtube_metadata_tags_include_mode_and_topic_keywords():
     assert "text to speech" in tags
 
 
+def test_youtube_metadata_description_contains_subscribe_cta():
+    # 新規視聴者がほとんど(コア視聴者0.1%未満)というアナリティクスの偏りを
+    # 踏まえ、playlist_idの有無に関わらず常に登録CTAを含める回帰テスト。
+    _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "Subscribe" in description
+
+
 def test_youtube_metadata_omits_playlist_link_when_not_given():
     _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "playlist?list=" not in description

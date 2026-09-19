@@ -89,6 +89,11 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     playlist_id を渡すと、説明文にShorts用再生リストへのリンクを追加し、
     視聴者が他の動画も連続して見る(回遊する)よう誘導する。
 
+    説明文には playlist_id の有無に関わらず、常に登録を促すCTA(Call To
+    Action)の一文を入れる。アナリティクスで新規視聴者がほとんど(97%超)
+    でコア視聴者が0.1%未満という偏りが見えたため、1本だけ見て離脱する
+    視聴者にも登録を明示的に呼びかける狙い。
+
     voice_label を渡すと(--voice random で言語/性別が抽選された場合のみ)、
     説明文にどの言語のボイスを使ったかを明記する。
 
@@ -125,6 +130,7 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
             f"▶ Watch more pronunciation challenges: "
             f"https://www.youtube.com/playlist?list={playlist_id}\n\n"
         )
+    description += "\U0001F514 Subscribe for a new unpronounceable word every day!\n\n"
     native_hashtag_word = (config.VOICE_LANGUAGES.get(lang_code) or {}).get("hashtag_word")
     description += "#Shorts #Pronunciation #Unpronounceable #Zalgo #GlitchText #TextToSpeech #TTS #Challenge"
     if native_hashtag_word:
