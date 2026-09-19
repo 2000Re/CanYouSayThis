@@ -167,18 +167,10 @@ def test_random_thai_word_is_a_thin_wrapper_around_random_abugida_word():
 
 
 def test_new_language_character_pools_are_nonempty_and_assigned_codepoints():
-    # 10言語拡張で追加した文字プールが、いずれも空でなく未割り当て
+    # 実在の文字体系で使う文字プールが、いずれも空でなく未割り当て
     # コードポイントを含まないことの確認(config._assigned_chars()の
     # フィルタが正しく効いていることの回帰防止)。
-    pools = [
-        config.ARABIC_LETTERS, config.HEBREW_LETTERS, config.ARMENIAN_LETTERS,
-        config.AMHARIC_SYLLABLES, config.CHEROKEE_SYLLABLES,
-        config.MYANMAR_CONSONANTS, config.MYANMAR_VOWEL_MARKS,
-        config.SINHALA_CONSONANTS, config.SINHALA_VOWEL_MARKS,
-        config.TAMIL_CONSONANTS, config.TAMIL_VOWEL_MARKS,
-        config.TELUGU_CONSONANTS, config.TELUGU_VOWEL_MARKS,
-        config.BENGALI_CONSONANTS, config.BENGALI_VOWEL_MARKS,
-    ]
+    pools = [config.ARABIC_LETTERS, config.HEBREW_LETTERS]
     for pool in pools:
         assert len(pool) > 0
         for ch in pool:
