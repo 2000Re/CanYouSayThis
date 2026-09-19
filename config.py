@@ -31,7 +31,6 @@ MODE_LABELS = {
 # 実機でChromium+Notoフォントによる描画とespeak-ngでの音声合成の両方が
 # 正常に動くことを確認済みの言語のみ対応している。
 RUSSIAN_LETTERS = list("абвгдежзийклмнопрстуфхцчшщъыьэюя")
-GEORGIAN_LETTERS = list("აბგდევზთიკლმნოპჟრსტუფქღყშჩცძწჭხჯჰ")
 
 
 def _assigned_chars(ranges):
@@ -48,39 +47,16 @@ def _assigned_chars(ranges):
     return out
 
 
-# タイ文字・ミャンマー文字・シンハラ文字・タミル文字・テルグ文字・ベンガル
-# 文字は、子音字+母音記号(前後左右に付く、単体では使わない)で音節を作る
-# 「アブギダ」と呼ばれる文字体系なので、子音・母音記号を別々のリストに分けて
-# いる(word_generator.random_abugida_word()参照)。
+# タイ文字は、子音字+母音記号(前後左右に付く、単体では使わない)で音節を
+# 作る「アブギダ」と呼ばれる文字体系なので、子音・母音記号を別々のリストに
+# 分けている(word_generator.random_abugida_word()参照)。
 THAI_CONSONANTS = list("กขฃคฅฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ")
 THAI_VOWEL_MARKS = list("ะาิีึืุูเแโใไ")
 
-# アラビア文字・ヘブライ文字・アルメニア文字・アムハラ文字(エチオピア)・
-# チェロキー文字は、母音記号が任意(アラビア語・ヘブライ語)だったり、文字
-# 自体が既に完結した音節(アムハラ文字・チェロキー文字)だったりするため、
-# random_script_word()(文字をランダムに並べるだけ、同じ文字の連打あり)で
-# 十分自然な見た目になる。
+# アラビア文字・ヘブライ文字は、母音記号が任意なため、random_script_word()
+# (文字をランダムに並べるだけ、同じ文字の連打あり)で十分自然な見た目になる。
 ARABIC_LETTERS = _assigned_chars([(0x0621, 0x064A)])
 HEBREW_LETTERS = _assigned_chars([(0x05D0, 0x05EA)])
-ARMENIAN_LETTERS = _assigned_chars([(0x0561, 0x0586)])
-AMHARIC_SYLLABLES = _assigned_chars(
-    [(0x1200, 0x1248), (0x1250, 0x1256), (0x1260, 0x1288), (0x1290, 0x12B0), (0x12C0, 0x12C0)]
-)
-CHEROKEE_SYLLABLES = _assigned_chars([(0x13A0, 0x13F5)])
-
-# ミャンマー文字・シンハラ文字・タミル文字・テルグ文字・ベンガル文字も
-# タイ文字と同じアブギダ(子音字+母音記号)なので、子音・母音記号を分けて
-# 定義する。
-MYANMAR_CONSONANTS = _assigned_chars([(0x1000, 0x1020)])
-MYANMAR_VOWEL_MARKS = _assigned_chars([(0x102B, 0x1030), (0x1032, 0x1037)])
-SINHALA_CONSONANTS = _assigned_chars([(0x0D9A, 0x0DC6)])
-SINHALA_VOWEL_MARKS = _assigned_chars([(0x0DCF, 0x0DDF)])
-TAMIL_CONSONANTS = _assigned_chars([(0x0B95, 0x0BB9)])
-TAMIL_VOWEL_MARKS = _assigned_chars([(0x0BBE, 0x0BCD)])
-TELUGU_CONSONANTS = _assigned_chars([(0x0C15, 0x0C39)])
-TELUGU_VOWEL_MARKS = _assigned_chars([(0x0C3E, 0x0C4C)])
-BENGALI_CONSONANTS = _assigned_chars([(0x0995, 0x09B9)])
-BENGALI_VOWEL_MARKS = _assigned_chars([(0x09BE, 0x09CC)])
 
 # --voice random(generate.py _resolve_voice()参照)が抽選する言語/性別の
 # 候補。単語自体は母音中心のBASE_CHARSしか使わないので、言語ごとの発音規則の
@@ -96,7 +72,7 @@ BENGALI_VOWEL_MARKS = _assigned_chars([(0x09BE, 0x09CC)])
 #       だけで使える組み込みの女性寄りフォルマント変換(tts_synth.pyの
 #       EXTREME_VOICE_VARIANTSで使っている「ボイス+バリアント名」と同じ
 #       仕組み)。追加パッケージ不要で全言語をカバーできるため、(1)が使えない
-#       残り21言語すべてに採用している。実機でf0(基本周波数)を測定し、
+#       残り12言語すべてに採用している。実機でf0(基本周波数)を測定し、
 #       素の声(約108Hz)から約194Hzへ明確に上がる(MBROLA版の約235Hzに
 #       近い自然な範囲)ことを確認済み。(1)と違い、この"+f3"自体が既に
 #       十分な高さなのでFEMALE_VOICE_PITCHは重ねて適用しない
@@ -127,8 +103,7 @@ BENGALI_VOWEL_MARKS = _assigned_chars([(0x09BE, 0x09CC)])
 # "hashtag_word"は、その言語の話者がYouTube内で自国語のまま検索した際に
 # 見つけてもらえるよう、動画説明文の末尾に追加する「発音」の意味の現地語
 # ハッシュタグ(generate.py _youtube_metadata()参照)。英語は既に
-# #Pronunciationがあるため不要(None)。チェロキー語は確度の高い語彙を
-# 確認できなかったため未設定(None)のままにしている。
+# #Pronunciationがあるため不要(None)。
 VOICE_LANGUAGES = {
     "en":  {"label": "English",    "male": "en",    "female": "mb-us1", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": None},
     "fr":  {"label": "French",     "male": "fr-fr", "female": "mb-fr4", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Prononciation"},
@@ -147,18 +122,9 @@ VOICE_LANGUAGES = {
     "pt":  {"label": "Portuguese (Portugal)", "male": "pt", "female": "mb-pt1", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Pronúncia"},
     "ro":  {"label": "Romanian",   "male": "ro",    "female": "ro+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Pronunție"},
     "ru":  {"label": "Russian",    "male": "ru",    "female": "ru+f3", "script": "cluster", "chars": RUSSIAN_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "Произношение"},
-    "ka":  {"label": "Georgian",   "male": "ka",    "female": "ka+f3", "script": "cluster", "chars": GEORGIAN_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "გამოთქმა"},
     "th":  {"label": "Thai",       "male": "th",    "female": "th+f3", "script": "abugida", "chars": None, "consonants": THAI_CONSONANTS, "vowels": THAI_VOWEL_MARKS, "hashtag_word": "การออกเสียง"},
     "ar":  {"label": "Arabic",     "male": "ar",    "female": "ar+f3", "script": "cluster", "chars": ARABIC_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "نطق"},
     "he":  {"label": "Hebrew",     "male": "he",    "female": "he+f3", "script": "cluster", "chars": HEBREW_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "הגייה"},
-    "hy":  {"label": "Armenian",   "male": "hy",    "female": "hy+f3", "script": "cluster", "chars": ARMENIAN_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "Արտասանություն"},
-    "am":  {"label": "Amharic",    "male": "am",    "female": "am+f3", "script": "cluster", "chars": AMHARIC_SYLLABLES, "consonants": None, "vowels": None, "hashtag_word": "አጠራር"},
-    "chr": {"label": "Cherokee",   "male": "chr",   "female": "chr+f3", "script": "cluster", "chars": CHEROKEE_SYLLABLES, "consonants": None, "vowels": None, "hashtag_word": None},
-    "my":  {"label": "Myanmar",    "male": "my",    "female": "my+f3", "script": "abugida", "chars": None, "consonants": MYANMAR_CONSONANTS, "vowels": MYANMAR_VOWEL_MARKS, "hashtag_word": "အသံထွက်"},
-    "si":  {"label": "Sinhala",    "male": "si",    "female": "si+f3", "script": "abugida", "chars": None, "consonants": SINHALA_CONSONANTS, "vowels": SINHALA_VOWEL_MARKS, "hashtag_word": "උච්චාරණය"},
-    "ta":  {"label": "Tamil",      "male": "ta",    "female": "ta+f3", "script": "abugida", "chars": None, "consonants": TAMIL_CONSONANTS, "vowels": TAMIL_VOWEL_MARKS, "hashtag_word": "உச்சரிப்பு"},
-    "te":  {"label": "Telugu",     "male": "te",    "female": "te+f3", "script": "abugida", "chars": None, "consonants": TELUGU_CONSONANTS, "vowels": TELUGU_VOWEL_MARKS, "hashtag_word": "ఉచ్చారణ"},
-    "bn":  {"label": "Bengali",    "male": "bn",    "female": "bn+f3", "script": "abugida", "chars": None, "consonants": BENGALI_CONSONANTS, "vowels": BENGALI_VOWEL_MARKS, "hashtag_word": "উচ্চারণ"},
 }
 
 # --voice random で女性ボイスが選ばれた場合に使うespeak-ngのピッチ(-p、
@@ -170,13 +136,14 @@ VOICE_LANGUAGES = {
 FEMALE_VOICE_PITCH = 75
 
 # --voice random で「実在の文字体系を使う言語」が選ばれる確率。
-# 10言語拡張(アラビア語・ヘブライ語・アルメニア語・アムハラ語・チェロキー
-# 語・ミャンマー語・シンハラ語・タミル語・テルグ語・ベンガル語)の追加で
-# 実在文字体系の言語がラテン文字(Zalgo)系の言語より多くなった(29言語中13)。
-# 均等抽選のままだと本来の売りだったZalgo単語より実在文字体系の単語が
-# 多数派になってしまうため、2段階抽選(まずこの確率で「実在文字体系」か
-# 「ラテン文字(Zalgo)」かを決め、その中から言語を均等抽選する)にして
-# 元の比率に近づけている(generate.py _resolve_voice()参照)。
+# 実在文字体系の言語(ロシア語・タイ語・アラビア語・ヘブライ語の4言語)は、
+# 視聴地域データの裏付けが無い言語(アルメニア語・アムハラ語・グルジア語・
+# チェロキー語・ミャンマー語・シンハラ語・タミル語・テルグ語・ベンガル語の
+# 9言語)を削除したことで、ラテン文字(Zalgo)系の言語(16言語)に対して
+# 少数派に戻っている(20言語中4)。それでも均等抽選(4/20=20%)よりやや
+# 高めの0.3に据え置いているのは、これらの言語が持つ「見た目のインパクト」
+# (視覚的なnoveltyがこのチャンネルの売りの一部)を一定の頻度で保つ狙い
+# (generate.py _resolve_voice()参照)。
 NATIVE_SCRIPT_VOICE_CHANCE = 0.3
 
 # --- 単語ジェネレータ設定 ----------------------------------------------------
@@ -263,10 +230,8 @@ DECORATIVE_SYMBOLS = list(
 FRAME_CSS_FONT_STACK = (
     "'Noto Sans','Noto Sans CJK JP','Noto Sans Symbols','Noto Sans Symbols2',"
     "'Noto Sans Thai','Noto Sans Devanagari','Noto Sans Hebrew','Noto Sans Arabic',"
-    "'Noto Sans Bengali','Noto Sans Sinhala','Noto Sans Tibetan','Noto Sans Yi',"
-    "'Noto Sans Cherokee','Noto Sans Mongolian','Noto Sans Georgian',"
-    "'Noto Sans Armenian','Noto Sans Ethiopic','Noto Sans Myanmar',"
-    "'Noto Sans Tamil','Noto Sans Telugu','DejaVu Sans',sans-serif"
+    "'Noto Sans Tibetan','Noto Sans Yi','Noto Sans Mongolian',"
+    "'DejaVu Sans',sans-serif"
 )
 
 # --- デフォルトのCLIパラメータ -----------------------------------------------

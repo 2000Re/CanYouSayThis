@@ -78,7 +78,7 @@ def test_native_script_for_voice_returns_none_for_latin_languages():
 def test_native_script_for_voice_returns_generator_for_cluster_languages():
     # 文字をランダムに並べるだけの言語はrandom_script_word()ベースの
     # 生成関数が返る
-    for lang in ("ru", "ka", "ar", "he", "hy", "am", "chr"):
+    for lang in ("ru", "ar", "he"):
         generator = _native_script_for_voice(config.VOICE_LANGUAGES[lang]["male"])
         assert generator is not None
         word = generator()
@@ -89,7 +89,7 @@ def test_native_script_for_voice_returns_generator_for_cluster_languages():
 def test_native_script_for_voice_returns_generator_for_abugida_languages():
     # 子音字+母音記号で音節を作る言語はrandom_abugida_word()ベースの
     # 生成関数が返り、子音・母音記号以外の文字は混ざらない
-    for lang in ("th", "my", "si", "ta", "te", "bn"):
+    for lang in ("th",):
         entry = config.VOICE_LANGUAGES[lang]
         generator = _native_script_for_voice(entry["male"])
         assert generator is not None
@@ -189,9 +189,9 @@ def test_youtube_metadata_includes_native_hashtag_when_lang_code_given():
 
 
 def test_youtube_metadata_omits_native_hashtag_for_languages_without_one():
-    # 英語自身とチェロキー語はhashtag_wordがNoneなので追加しない
-    # (固定の8個の英語ハッシュタグのみになる)
-    for lang_code in ("en", "chr"):
+    # 英語自身はhashtag_wordがNoneなので追加しない(固定の8個の英語
+    # ハッシュタグのみになる)
+    for lang_code in ("en",):
         assert config.VOICE_LANGUAGES[lang_code]["hashtag_word"] is None
         _title, description, _tags = _youtube_metadata(
             "word", "word", "tts", lang_code=lang_code
