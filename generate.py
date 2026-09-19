@@ -145,10 +145,13 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
 
 
 def _resolve_mode(mode):
-    """--mode random の場合、tts/glitchのどちらかを1本ごとにランダムに選ぶ。
-    それ以外(tts / glitch)はそのまま返す。"""
+    """--mode random の場合、config.MODE_WEIGHTSの重みに従って1本ごとに
+    ランダムに選ぶ(重み未設定のモードは他と同じ重み1として扱う)。
+    それ以外(tts / glitch / tts_extreme)はそのまま返す。"""
     if mode == "random":
-        return random.choice(list(config.MODE_LABELS))
+        modes = list(config.MODE_LABELS)
+        weights = [config.MODE_WEIGHTS.get(m, 1) for m in modes]
+        return random.choices(modes, weights=weights)[0]
     return mode
 
 

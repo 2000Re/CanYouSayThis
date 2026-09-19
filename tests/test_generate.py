@@ -43,6 +43,24 @@ def test_resolve_mode_random_can_pick_all_modes():
     assert picks == set(config.MODE_LABELS)
 
 
+def test_resolve_mode_random_weighting_matches_mode_weights():
+    # 統計的な検証: 十分な試行回数で、各モードが選ばれる比率が
+    # config.MODE_WEIGHTSの相対的な重みに近いことを確認する
+    # (glitchは「発音してみて」という説得力が弱いという判断で意図的に
+    # 比率を下げているため、その回帰防止)。
+    random.seed(0)
+    trials = 6000
+    counts = {mode: 0 for mode in config.MODE_LABELS}
+    for _ in range(trials):
+        counts[_resolve_mode("random")] += 1
+
+    total_weight = sum(config.MODE_WEIGHTS.get(m, 1) for m in config.MODE_LABELS)
+    for mode in config.MODE_LABELS:
+        expected_ratio = config.MODE_WEIGHTS.get(mode, 1) / total_weight
+        actual_ratio = counts[mode] / trials
+        assert abs(actual_ratio - expected_ratio) < 0.03, mode
+
+
 def test_random_unique_word_returns_first_pick_when_no_collision():
     assert _random_unique_word(set(), word_generator=lambda: "fresh") == "fresh"
 
