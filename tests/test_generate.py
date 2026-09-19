@@ -143,6 +143,16 @@ def test_youtube_metadata_tags_include_mode_and_topic_keywords():
     assert "text to speech" in tags
 
 
+def test_youtube_metadata_description_contains_alternate_search_keywords():
+    # タイトル・タグの言語名追加(A/B)とは違う切り口の検索キーワード
+    # ("tongue twister"/"language learners")を、言語が判明していない回でも
+    # 常に含めることの回帰防止。
+    _title, description, tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "tongue twister" in description.lower()
+    assert "language learners" in description.lower()
+    assert "tongue twister" in tags
+
+
 def test_youtube_metadata_description_contains_subscribe_cta():
     # 新規視聴者がほとんど(コア視聴者0.1%未満)というアナリティクスの偏りを
     # 踏まえ、playlist_idの有無に関わらず常に登録CTAを含める回帰テスト。

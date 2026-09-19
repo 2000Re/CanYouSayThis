@@ -102,6 +102,11 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     旨を説明文に明記する。Zalgo単語(ラテン文字+結合文字)は見た目からして
     実在の単語でないことが明らかなので対象外。
 
+    説明文には「tongue twister」「language learners」という、上記のタイト
+    ル・タグの言語名追加とは違う切り口の検索キーワードを含む一文も常に
+    入れる(自然な文として、他の施策と競合しない形で追加する検索流入策)。
+    タグにも"tongue twister"を追加する。
+
     lang_code を渡すと(config.VOICE_LANGUAGESのキー、例: "ar")、
       - タイトルに言語名を追加する(例: `in French?`)。「french
         pronunciation」のような、言語名込みの検索クエリにタイトルレベルで
@@ -139,6 +144,8 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
         )
     description += (
         "\nTry saying it out loud and comment your attempt! \U0001F5E3️\n\n"
+        "The ultimate tongue twister for language learners, TTS fans, and "
+        "anyone up for a pronunciation challenge!\n\n"
     )
     if playlist_id:
         description += (
@@ -153,6 +160,7 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     tags = [
         "shorts", "pronunciation", "unpronounceable", "how to pronounce", mode,
         "zalgo", "glitch text", "text to speech", "pronunciation challenge",
+        "tongue twister",
     ]
     if lang_label:
         tags.append(f"{lang_label.lower()} pronunciation")
