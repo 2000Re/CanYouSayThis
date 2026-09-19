@@ -11,6 +11,8 @@ GitHub Secretsに登録しておく運用にしている(取得したトーク�
 
 事前準備(Google Cloud Console):
     1. プロジェクトを作成し、「YouTube Data API v3」を有効化する
+       (youtube_analytics.pyも使う場合は「YouTube Analytics API」も
+       個別に有効化しておくこと。別のAPIとして扱われるため)
     2. 「OAuth同意画面」を設定する(公開ステータスは「テスト」のままでよい。
        その場合は自分のGoogleアカウントを「テストユーザー」に追加すること)。
        「データアクセス」→「スコープを追加または削除」で、下記SCOPESに
@@ -56,9 +58,17 @@ from googleapiclient.discovery import build
 # 側にそのスコープが登録されていない場合に正しく付与されないことがあるため、
 # 同意画面の「機密性の高いスコープ」に登録した youtube / youtube.readonly と
 # 一致させている。
+#
+# yt-analytics.readonly は youtube_analytics.py(モード別の再生数・視聴維持率
+# 集計)が使う読み取り専用スコープ。OAuthのリフレッシュトークンはスコープが
+# 発行時に焼き付けられる仕様のため、既存のリフレッシュトークンにこのスコープ
+# を後から追加することはできず、このスクリプトを再実行して新しいリフレッシュ
+# トークンを取得し直す必要がある(YOUTUBE_CLIENT_ID/YOUTUBE_CLIENT_SECRET自体
+# は変更不要)。
 SCOPES = [
     "https://www.googleapis.com/auth/youtube",
     "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/yt-analytics.readonly",
 ]
 
 

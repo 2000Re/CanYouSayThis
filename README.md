@@ -436,6 +436,59 @@ python3 compile_shorts.py --privacy-status unlisted
 [例: `2000Re/CanYouSayThis`] の環境変数も必要。GitHub Actionsのワークフロー
 内では両方とも自動で設定されるため、この指定はローカル実行時のみ必要)
 
+## モード別パフォーマンス集計(`youtube_analytics.py`)
+
+[YouTube Analytics API](https://developers.google.com/youtube/analytics)を
+使って、アップロード済みの各Shortsの再生数・視聴維持率を取得し、
+`upload_history.json`の`mode`(`tts`/`tts_extreme`/`glitch`)と突き合わせて
+集計します。`--mode random`の抽選比率(`config.MODE_WEIGHTS`)を「glitchは
+単語を読み上げないので説得力が弱い」という主観だけで下げた判断を、後から
+データで裏付け・再調整するために用意しました。
+
+**投稿タイミングの影響を正規化した指標を使う**: 生の再生数だけで比較すると、
+YouTubeのアルゴリズムによる展開は投稿からの経過日数に強く依存するため、
+新しい動画ほど不利になるノイズが乗ります(投稿一覧の再生数が投稿日と強く
+相関していた、という実際の観察に基づく)。そのため「投稿から何日視聴可能
+だったか」で正規化した1日あたり再生数(`avg_views_per_day`)を主指標として
+います(`_days_available()` / `summarize_by_mode()`参照)。
+
+```bash
+python3 youtube_analytics.py                # 過去28日間を集計(デフォルト)
+python3 youtube_analytics.py --days 14       # 過去14日間を集計
+python3 youtube_analytics.py --start-date 2026-09-01 --end-date 2026-09-19
+```
+
+出力例:
+
+```
+=== モード別 再生数・視聴維持率集計(2026-08-22 〜 2026-09-19、対象87本) ===
+  tts: 35本 / 1日あたり平均12.40回(単純平均210.5回, 視聴維持率38.2%)
+  tts_extreme: 34本 / 1日あたり平均11.80回(単純平均195.3回, 視聴維持率41.0%)
+  glitch: 18本 / 1日あたり平均7.10回(単純平均88.9回, 視聴維持率22.5%)
+```
+
+**必要な環境変数**: `--upload`/`compile_shorts.py`と同じ`YOUTUBE_CLIENT_ID`/
+`YOUTUBE_CLIENT_SECRET`/`YOUTUBE_REFRESH_TOKEN`を使いますが、
+`YOUTUBE_REFRESH_TOKEN`は`yt-analytics.readonly`スコープを含めて**発行し
+直したもの**である必要があります。OAuthのリフレッシュトークンはスコープが
+発行時に焼き付けられる仕様のため、既存のトークンのままではスコープ不足で
+失敗します。手順:
+
+1. Google Cloud Consoleで、プロジェクトの「APIとサービス」→「ライブラリ」
+   から「YouTube Analytics API」を有効化する(YouTube Data API v3とは別の
+   APIとして個別に有効化が必要)
+2. 「OAuth同意画面」→「データアクセス」→「スコープを追加または削除」で
+   `.../auth/yt-analytics.readonly`を追加する
+3. `get_youtube_refresh_token.py`(このスコープを含む`SCOPES`に更新済み)
+   を再実行し、新しい`YOUTUBE_REFRESH_TOKEN`を取得してGitHub Secrets/
+   ローカルの環境変数を上書きする(`YOUTUBE_CLIENT_ID`/`SECRET`は変更不要)
+
+**注意**: `youtube_analytics.py`のAPI呼び出し部分は、このリポジトリの他の
+機能(espeak-ng・MBROLA等)と違い、本物のGoogle認証情報を用いた実際のAPI
+応答での動作確認がまだ取れていません。公式ドキュメントに基づいて実装して
+いますが、初回実行時は出力結果をYouTube Studioの表示と突き合わせて確認して
+ください。
+
 ## YouTubeチャンネル用アセット(アイコン・バナー)
 
 チャンネルアイコンとバナー画像も同じ仕組み(Chromium描画)で生成できます。
@@ -802,6 +855,7 @@ youtube_upload.py             YouTube Data API v3への動画アップロード 
 upload_history.py             アップロード成功履歴(upload_history.json)の読み書き
 compilation_state.py          Shorts結合動画の状態(compilation_state.json)管理
 compile_shorts.py             Shortsが10本たまるごとに結合動画を作りアップロード
+youtube_analytics.py          YouTube Analytics APIでモード別の再生数・視聴維持率を集計
 get_youtube_refresh_token.py  YouTubeアップロード用リフレッシュトークンの取得(ローカルで一度だけ実行)
 generate.py                   CLIエントリポイント
 generate_channel_art.py       YouTubeチャンネル用アイコン・バナーの生成

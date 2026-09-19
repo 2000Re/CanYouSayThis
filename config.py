@@ -310,3 +310,14 @@ DAILY_UPLOAD_LIMIT = 100   # videos.insertとは別枠の「1日あたりの動�
 # youtube_upload.get_youtube_client() がこの日数を目安に警告を出す。
 TOKEN_EXPIRY_DAYS = 7          # テストステータスでの既知の失効日数
 TOKEN_WARNING_AFTER_DAYS = 5   # この日数を過ぎたら「そろそろ」の警告を出す
+
+# --- youtube_analytics.py: モード別の再生数・視聴維持率集計 -------------------
+#
+# YouTube Analytics API(youtubeAnalytics v2)のreports.query()は、videoの
+# フィルタに渡せるID数の公式な上限が明記されていない。GETリクエストのURL長
+# を安全な範囲に収めるための保守的な安全マージンとして、この件数でバッチ
+# 分割する(実際のAPIレスポンスで動作確認済みの値ではない点に注意)。
+ANALYTICS_VIDEO_BATCH_SIZE = 100
+# --start-date/--end-date省略時に使う集計対象の日数。YouTube Studio
+# 「アナリティクス」タブのデフォルト表示期間(過去28日間)に合わせている。
+ANALYTICS_DEFAULT_LOOKBACK_DAYS = 28
