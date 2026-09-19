@@ -385,6 +385,14 @@ OAuth同意画面の公開ステータスを「テスト」のままにしてい
 いるため、警告(`[Warning]` / `::warning::`)を出すだけで処理全体は止め
 ません。
 
+### 8. 概要欄の登録CTA
+
+アナリティクスで新規視聴者97%超・コア視聴者0.1%未満という偏りが見えた
+ため、`generate.py`がアップロードする全Shortsの概要欄末尾に、常に
+「🔔 Subscribe for a new unpronounceable word every day!」という登録を
+促す一文を自動で入れています(`_youtube_metadata()`。`YOUTUBE_SHORTS_
+PLAYLIST_ID`の設定有無に関わらず入ります)。
+
 ## Shorts結合動画
 
 アップロードしたShorts動画の履歴(`upload_history.json`)が10本たまるごと
