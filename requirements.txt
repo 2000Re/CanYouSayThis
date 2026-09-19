@@ -1,5 +1,5 @@
 playwright>=1.40
-google-api-python-client>=2.100
+google-api-python-client>=2.200.0
 google-auth>=2.23
 google-auth-httplib2>=0.2
 requests>=2.31
