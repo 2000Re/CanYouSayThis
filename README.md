@@ -483,6 +483,14 @@ python3 youtube_analytics.py --start-date 2026-09-01 --end-date 2026-09-19
    を再実行し、新しい`YOUTUBE_REFRESH_TOKEN`を取得してGitHub Secrets/
    ローカルの環境変数を上書きする(`YOUTUBE_CLIENT_ID`/`SECRET`は変更不要)
 
+**GitHub Actionsから実行する場合**: `.github/workflows/analytics.yml`
+(workflow_dispatch)から手動実行できます。`generate.yml`と同じ
+`YOUTUBE_CLIENT_ID`/`YOUTUBE_CLIENT_SECRET`/`YOUTUBE_REFRESH_TOKEN`の
+Secretsをそのまま使うため、追加のSecrets登録は不要です(上記の手順3で
+`YOUTUBE_REFRESH_TOKEN`をyt-analytics.readonlyスコープ込みのものに更新
+済みであること)。`days`(デフォルト28)、または`start_date`/`end_date`を
+入力して実行すると、集計結果がActionsのログに出力されます。
+
 **注意**: `youtube_analytics.py`のAPI呼び出し部分は、このリポジトリの他の
 機能(espeak-ng・MBROLA等)と違い、本物のGoogle認証情報を用いた実際のAPI
 応答での動作確認がまだ取れていません。公式ドキュメントに基づいて実装して
