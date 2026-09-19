@@ -483,6 +483,14 @@ python3 youtube_analytics.py --start-date 2026-09-01 --end-date 2026-09-19
    を再実行し、新しい`YOUTUBE_REFRESH_TOKEN`を取得してGitHub Secrets/
    ローカルの環境変数を上書きする(`YOUTUBE_CLIENT_ID`/`SECRET`は変更不要)
 
+> **⚠️ `google.auth.exceptions.RefreshError: invalid_scope`が出る場合**:
+> ほぼ確実に、手順3を実行した時点のローカルのリポジトリが古く(この
+> `yt-analytics.readonly`追加より前のコードのまま)、発行されたリフレッシュ
+> トークンにこのスコープが乗っていないのが原因です。`git pull origin main`
+> で最新化してから手順3をやり直し、ブラウザの同意画面に「YouTube
+> Analyticsのレポートを表示する」等の権限項目が表示されることを確認して
+> ください。
+
 **GitHub Actionsから実行する場合**: `.github/workflows/analytics.yml`
 (workflow_dispatch)から手動実行できます。`generate.yml`と同じ
 `YOUTUBE_CLIENT_ID`/`YOUTUBE_CLIENT_SECRET`/`YOUTUBE_REFRESH_TOKEN`の

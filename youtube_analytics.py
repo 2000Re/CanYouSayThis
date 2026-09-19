@@ -47,16 +47,23 @@ from upload_history import load_upload_history
 
 # yt-analytics.readonlyは再生数・視聴維持率等の読み取り専用スコープ
 # (収益データが必要な場合はyt-analytics-monetary.readonlyが別途必要だが、
-# 本モジュールは使わない)。
-ANALYTICS_SCOPES = ["https://www.googleapis.com/auth/yt-analytics.readonly"]
+# 本モジュールは使わない)。YOUTUBE_REFRESH_TOKENがこのスコープを含めて
+# 発行されている必要がある(get_youtube_refresh_token.py参照)。
 
 
 def get_analytics_client():
     """認証済みのYouTube Analytics APIクライアントを返す。
 
     youtube_upload._load_credentials()を再利用し、YOUTUBE_CLIENT_ID/SECRET/
-    REFRESH_TOKENの読み込みロジックを二重管理しない。"""
-    credentials = youtube_upload._load_credentials(scopes=ANALYTICS_SCOPES)
+    REFRESH_TOKENの読み込みロジックを二重管理しない。
+
+    scopes=Noneを渡し、トークンリフレッシュ時にスコープを絞り込まない
+    (youtube_upload.get_youtube_client()はUPLOAD_SCOPESに絞り込むが、こちら
+    は絞り込み用のscope文字列がリフレッシュトークンの実際の付与範囲と厳密に
+    一致しないとGoogle側でinvalid_scopeエラーになるため、それを避ける)。
+    リフレッシュトークンにyt-analytics.readonlyが実際に付与されていれば、
+    絞り込まなくてもAnalytics APIの呼び出しは問題なく成功する。"""
+    credentials = youtube_upload._load_credentials(scopes=None)
     return build("youtubeAnalytics", "v2", credentials=credentials)
 
 
