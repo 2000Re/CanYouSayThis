@@ -149,14 +149,21 @@ def _check_token_age():
         _token_age_warned = True
 
 
-def _load_credentials():
+def _load_credentials(scopes=None):
+    """環境変数からOAuth認証情報を組み立てる。
+
+    scopesを省略するとUPLOAD_SCOPES(アップロード/チャンネル確認用)になる。
+    youtube_analytics.pyはyt-analytics.readonlyスコープで呼ぶため、ここを
+    共通化している(YOUTUBE_CLIENT_ID/SECRET/REFRESH_TOKENの読み込みロジック
+    はどちらも同じ)。実際に付与されるスコープは、リフレッシュトークン発行時
+    に同意した範囲が上限になる点に注意(get_youtube_refresh_token.py参照)。"""
     missing = [
         name for name in ("YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN")
         if not os.environ.get(name)
     ]
     if missing:
         raise RuntimeError(
-            "YouTubeアップロードに必要な環境変数が未設定です: " + ", ".join(missing)
+            "YouTube APIに必要な環境変数が未設定です: " + ", ".join(missing)
             + "(get_youtube_refresh_token.py の手順を参照)"
         )
     return Credentials(
@@ -165,7 +172,7 @@ def _load_credentials():
         token_uri=TOKEN_URI,
         client_id=os.environ["YOUTUBE_CLIENT_ID"],
         client_secret=os.environ["YOUTUBE_CLIENT_SECRET"],
-        scopes=UPLOAD_SCOPES,
+        scopes=scopes or UPLOAD_SCOPES,
     )
 
 
