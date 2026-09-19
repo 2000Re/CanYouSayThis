@@ -149,14 +149,29 @@ def _check_token_age():
         _token_age_warned = True
 
 
-def _load_credentials(scopes=None):
+# _load_credentials()のscopes引数で「未指定(デフォルトのUPLOAD_SCOPESを使う)」
+# と「明示的にNone(リフレッシュ時にscopeパラメータを付けない)」を区別するための
+# 目印。Noneをデフォルト値に使うと後者を表現できなくなるため。
+_SCOPES_UNSET = object()
+
+
+def _load_credentials(scopes=_SCOPES_UNSET):
     """環境変数からOAuth認証情報を組み立てる。
 
     scopesを省略するとUPLOAD_SCOPES(アップロード/チャンネル確認用)になる。
-    youtube_analytics.pyはyt-analytics.readonlyスコープで呼ぶため、ここを
-    共通化している(YOUTUBE_CLIENT_ID/SECRET/REFRESH_TOKENの読み込みロジック
-    はどちらも同じ)。実際に付与されるスコープは、リフレッシュトークン発行時
-    に同意した範囲が上限になる点に注意(get_youtube_refresh_token.py参照)。"""
+    youtube_analytics.pyから呼ぶ際はscopes=Noneを渡す想定で、ここを共通化して
+    いる(YOUTUBE_CLIENT_ID/SECRET/REFRESH_TOKENの読み込みロジックはどちらも
+    同じ)。
+
+    scopes=Noneの場合、Credentialsのrefresh()はトークンリフレッシュ要求に
+    scopeパラメータを含めなくなり、リフレッシュトークン発行時に実際に付与
+    された範囲そのままのアクセストークンが返る(スコープの絞り込みをしない)。
+    scopesにUPLOAD_SCOPES等の具体的なリストを渡すと、それがリフレッシュ
+    トークンの発行時に付与された範囲の部分集合である場合に限り、その範囲に
+    絞り込んだアクセストークンを要求する(部分集合でない場合はGoogle側で
+    invalid_scopeエラーになる)。"""
+    if scopes is _SCOPES_UNSET:
+        scopes = UPLOAD_SCOPES
     missing = [
         name for name in ("YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET", "YOUTUBE_REFRESH_TOKEN")
         if not os.environ.get(name)
@@ -172,7 +187,7 @@ def _load_credentials(scopes=None):
         token_uri=TOKEN_URI,
         client_id=os.environ["YOUTUBE_CLIENT_ID"],
         client_secret=os.environ["YOUTUBE_CLIENT_SECRET"],
-        scopes=scopes or UPLOAD_SCOPES,
+        scopes=scopes,
     )
 
 

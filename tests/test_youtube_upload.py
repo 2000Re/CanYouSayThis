@@ -127,3 +127,32 @@ def test_append_video_description_raises_when_video_not_found(monkeypatch):
 
     with pytest.raises(RuntimeError):
         youtube_upload.append_video_description("missing", "extra line")
+
+
+def _set_credential_env(monkeypatch):
+    monkeypatch.setenv("YOUTUBE_CLIENT_ID", "client-id")
+    monkeypatch.setenv("YOUTUBE_CLIENT_SECRET", "client-secret")
+    monkeypatch.setenv("YOUTUBE_REFRESH_TOKEN", "refresh-token")
+
+
+def test_load_credentials_defaults_to_upload_scopes(monkeypatch):
+    _set_credential_env(monkeypatch)
+    credentials = youtube_upload._load_credentials()
+    assert credentials.scopes == youtube_upload.UPLOAD_SCOPES
+
+
+def test_load_credentials_with_explicit_none_does_not_restrict_scopes(monkeypatch):
+    # youtube_analytics.get_analytics_client()はscopes=Noneを渡す。リフレッシュ
+    # トークンの実際の付与範囲と厳密に一致しない部分集合を指定するとGoogle側で
+    # invalid_scopeエラーになるため、絞り込まずに済ませられることの回帰防止。
+    _set_credential_env(monkeypatch)
+    credentials = youtube_upload._load_credentials(scopes=None)
+    assert credentials.scopes is None
+
+
+def test_load_credentials_raises_when_env_vars_missing(monkeypatch):
+    monkeypatch.delenv("YOUTUBE_CLIENT_ID", raising=False)
+    monkeypatch.delenv("YOUTUBE_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("YOUTUBE_REFRESH_TOKEN", raising=False)
+    with pytest.raises(RuntimeError):
+        youtube_upload._load_credentials()
