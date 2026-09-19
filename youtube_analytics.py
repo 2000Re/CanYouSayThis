@@ -92,7 +92,16 @@ def fetch_video_metrics(video_ids, start_date, end_date):
             dimensions="video",
             filters=f"video=={','.join(batch)}",
         ).execute()
-        for row in response.get("rows", []):
+        rows = response.get("rows", [])
+        # [デバッグ用] 初回運用時、想定通りの動画に想定通りの値が返ってきて
+        # いるかを目視確認できるよう、生のAPI応答の概要を毎回ログに出す。
+        # 動作が安定して確認が不要になったら削除して良い。
+        column_names = [h.get("name") for h in response.get("columnHeaders", [])]
+        print(f"    [debug] video=={','.join(batch)} -> {len(rows)}行"
+              f"(columnHeaders: {column_names})")
+        if not rows:
+            print(f"    [debug] 0行の生レスポンス全体: {response}")
+        for row in rows:
             video_id, views, avg_pct = row[0], row[1], row[2]
             metrics_by_id[video_id] = {"views": views, "average_view_percentage": avg_pct}
     return metrics_by_id
