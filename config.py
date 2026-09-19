@@ -256,6 +256,15 @@ DEFAULT_REPEAT = 2            # 「答え」を何回繰り返すか
 DEFAULT_REPEAT_GAP = 0.4      # 繰り返し間の無音の長さ(秒)
 DEFAULT_FADE = 0.4            # 末尾のフェードアウトの長さ(秒)
 
+# tts_extremeモードは espeak-ng の速度(60〜400)とffmpegのテンポ変更フィルタ
+# (音程を上げる歪みの副作用でテンポも速くなる)をランダムに組み合わせるため、
+# 短い単語×速い組み合わせが重なると、実測で最短0.1秒程度まで縮み「発音」で
+# はなく一瞬のノイズにしか聞こえなくなることがある(実機で200回試行し、
+# 43%が0.5秒未満、16.5%が0.3秒未満になることを確認済み)。この最低尺を下回
+# った場合、tts_synth.synthesize_tts_extreme()がatempoで再生速度を落として
+# この長さまで引き伸ばす。
+TTS_EXTREME_MIN_DURATION_SECONDS = 0.6
+
 # --- YouTubeアップロード履歴 -------------------------------------------------
 
 UPLOAD_HISTORY_PATH = "upload_history.json"  # generate.py --upload の成功履歴
