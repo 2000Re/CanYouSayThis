@@ -62,7 +62,10 @@ _MAX_RETRIES = 8
 
 # YouTube Data API v3の公式ドキュメントに基づく、1回あたりのクォータ消費コスト
 # (日次クォータの目安に対する概算を実行ログに表示するために使う)
-QUOTA_COST_PER_CALL = {"videos.insert": 100, "playlistItems.insert": 50, "channels.list": 1}
+QUOTA_COST_PER_CALL = {
+    "videos.insert": 100, "playlistItems.insert": 50, "channels.list": 1,
+    "videos.list": 1, "videos.update": 50,
+}
 _api_call_counts = {name: 0 for name in QUOTA_COST_PER_CALL}
 
 
@@ -268,6 +271,31 @@ def upload_video(video_path, title, description, tags=None, category_id="24",
             raise
 
     return f"https://youtu.be/{response['id']}"
+
+
+def append_video_description(video_id, extra_text):
+    """既存動画(video_id)の概要欄の末尾に extra_text を追記する。
+
+    videos.update の part=snippet はスニペット全体を丸ごと置き換える仕様
+    (パッチではない)なので、事前に videos.list で現在のスニペットを取得
+    してから description だけ書き換えて送り返す必要がある(取得せずに
+    description のみ送ると title 等の他フィールドが失われてしまう)。
+
+    compile_shorts.py が、結合動画の元になった各Shortsの概要欄に結合動画
+    へのリンクを追記し、回遊(リピート視聴)を誘導するために使う。"""
+    youtube = get_youtube_client()
+
+    _api_call_counts["videos.list"] += 1
+    resp = youtube.videos().list(part="snippet", id=video_id).execute()
+    items = resp.get("items", [])
+    if not items:
+        raise RuntimeError(f"動画 {video_id} が見つかりません(削除された可能性があります)")
+
+    snippet = items[0]["snippet"]
+    snippet["description"] = f"{snippet['description']}\n\n{extra_text}"
+
+    _api_call_counts["videos.update"] += 1
+    youtube.videos().update(part="snippet", body={"id": video_id, "snippet": snippet}).execute()
 
 
 def add_to_playlist(video_id, playlist_id):
