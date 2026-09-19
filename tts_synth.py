@@ -6,6 +6,9 @@ import os
 import random
 import subprocess
 
+import config
+from audio_utils import _probe_duration
+
 # espeak-ng標準搭載の「奇妙な声」バリエーション(espeak-ng-data/voices/!v)。
 # 実際にespeak-ngへ通してエラーなく合成できることを確認済みのもののみ採用。
 EXTREME_VOICE_VARIANTS = [
@@ -68,10 +71,62 @@ def _random_extreme_filter_chain():
     return candidates
 
 
+def _atempo_chain_for_factor(factor):
+    """任意の倍率をffmpegの`atempo`フィルタ文字列(カンマ区切りでチェーン
+    可能)に変換する。`atempo`は1回あたり0.5〜2.0倍の範囲しか指定できない
+    仕様のため、範囲外の倍率はその上限/下限を複数回チェーンして表現する。"""
+    parts = []
+    remaining = factor
+    while remaining < 0.5:
+        parts.append("atempo=0.5")
+        remaining /= 0.5
+    while remaining > 2.0:
+        parts.append("atempo=2.0")
+        remaining /= 2.0
+    parts.append(f"atempo={round(remaining, 3)}")
+    return ",".join(parts)
+
+
+def _stretch_to_min_duration(src_path, dst_path, min_duration, max_passes=3):
+    """src_pathの長さがmin_duration未満であれば、atempoで再生速度を落として
+    引き伸ばす。1回のatempo適用だけだと(特に0.2秒未満のような極端に短い
+    音声で)狙った長さにきっちり収まらないことが実機で確認できたため、
+    再生成後の長さを都度測り直して収束するまで(最大max_passes回)繰り返す。
+    元々min_duration以上あれば何もせずそのままdst_pathにコピーする。"""
+    current = src_path
+    for pass_index in range(max_passes):
+        duration = _probe_duration(current)
+        if duration >= min_duration:
+            break
+        factor = duration / min_duration
+        # ffmpegはinput/outputに同じファイルを指定できないため、パスごとに
+        # 別名にする(同名を使い回すと直前の出力を読みながら同時に上書き
+        # しようとして壊れる)。
+        next_path = f"{dst_path}.stretch_tmp{pass_index}.wav"
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", current, "-af", _atempo_chain_for_factor(factor), next_path],
+            check=True,
+            capture_output=True,
+        )
+        if current != src_path:
+            os.remove(current)
+        current = next_path
+    if current == src_path:
+        subprocess.run(["ffmpeg", "-y", "-i", current, dst_path], check=True, capture_output=True)
+    else:
+        os.replace(current, dst_path)
+
+
 def synthesize_tts_extreme(word, wav_path, voice="en"):
     """espeak-ngの奇妙な声バリエーション+極端なピッチ・速度で単語を読ませた
     うえで、さらにffmpegでピッチシフト・ビットクラッシュ等をランダムに
-    かけて歪ませる。synthesize_tts()と違い、毎回声質そのものが変わる。"""
+    かけて歪ませる。synthesize_tts()と違い、毎回声質そのものが変わる。
+
+    短い単語×速い読み上げ×テンポを上げる歪みフィルタが重なると、実機の
+    検証で最短0.1秒程度まで縮み「発音」ではなく一瞬のノイズにしか聞こえな
+    くなることを確認したため、最終的な長さが
+    config.TTS_EXTREME_MIN_DURATION_SECONDS を下回った場合は
+    _stretch_to_min_duration() で引き伸ばす。"""
     variant = random.choice(EXTREME_VOICE_VARIANTS)
     pitch = random.randint(0, 99)  # espeak-ngの-p範囲(デフォルト50)
     speed = random.randint(60, 400)  # espeak-ngの-s(デフォルト175)を大きく振る
@@ -89,9 +144,14 @@ def synthesize_tts_extreme(word, wav_path, voice="en"):
     os.remove(txt_path)
 
     filter_str = ",".join(_random_extreme_filter_chain())
+    filtered_wav = wav_path + ".filtered.wav"
     subprocess.run(
-        ["ffmpeg", "-y", "-i", raw_wav, "-af", filter_str, wav_path],
+        ["ffmpeg", "-y", "-i", raw_wav, "-af", filter_str, filtered_wav],
         check=True,
         capture_output=True,
     )
     os.remove(raw_wav)
+
+    _stretch_to_min_duration(filtered_wav, wav_path, config.TTS_EXTREME_MIN_DURATION_SECONDS)
+    if os.path.exists(filtered_wav):
+        os.remove(filtered_wav)
