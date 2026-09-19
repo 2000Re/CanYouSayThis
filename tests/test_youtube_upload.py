@@ -1,12 +1,17 @@
-"""youtube_upload.py の純粋関数(_token_age_warning, _quota_summary_lines)に
-対するユニットテスト。Google APIの実呼び出しは行わない。"""
+"""youtube_upload.py の純粋関数(_token_age_warning, _quota_summary_lines)や
+append_video_description()に対するユニットテスト。Google APIの実呼び出しは
+行わず、get_youtube_client()をモックに差し替える。"""
 
 import datetime
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import youtube_upload
 from youtube_upload import QUOTA_COST_PER_CALL, _quota_summary_lines, _token_age_warning
 
 
@@ -78,3 +83,47 @@ def test_quota_summary_lines_clamps_remaining_at_zero():
     lines = _quota_summary_lines(counts, costs, daily_quota_units=10000, daily_upload_limit=100)
     text = "\n".join(lines)
     assert "残り目安: 0本" in text
+
+
+def test_quota_cost_per_call_includes_videos_list_and_update():
+    # append_video_description()が使うvideos.list(読み取り1 unit)/
+    # videos.update(書き込み50 unit、公式ドキュメントの一般的なコスト)。
+    assert QUOTA_COST_PER_CALL["videos.list"] == 1
+    assert QUOTA_COST_PER_CALL["videos.update"] == 50
+
+
+def _mock_youtube_client(existing_description):
+    youtube = MagicMock()
+    youtube.videos.return_value.list.return_value.execute.return_value = {
+        "items": [{"snippet": {"title": "t", "description": existing_description}}]
+    }
+    return youtube
+
+
+def test_append_video_description_appends_to_existing_snippet(monkeypatch):
+    youtube = _mock_youtube_client("original description")
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    youtube_upload.append_video_description("abc123", "extra line")
+
+    _, kwargs = youtube.videos.return_value.update.call_args
+    assert kwargs["body"]["id"] == "abc123"
+    snippet = kwargs["body"]["snippet"]
+    # titleなど他のフィールドは失わずそのまま送り返す(丸ごと置き換え仕様のため)
+    assert snippet["title"] == "t"
+    assert snippet["description"] == "original description\n\nextra line"
+    assert youtube_upload._api_call_counts["videos.list"] == 1
+    assert youtube_upload._api_call_counts["videos.update"] == 1
+
+
+def test_append_video_description_raises_when_video_not_found(monkeypatch):
+    youtube = MagicMock()
+    youtube.videos.return_value.list.return_value.execute.return_value = {"items": []}
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    with pytest.raises(RuntimeError):
+        youtube_upload.append_video_description("missing", "extra line")

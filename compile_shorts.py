@@ -30,6 +30,11 @@ upload_history.jsonへ記録する各エントリのrun_id(GITHUB_RUN_ID)で特�
 run_idが記録されていない旧いエントリ(この方式導入前にアップロードされた
 もの)は、そもそもどのrunのアーティファクトか特定できないため結合対象外にする。
 
+[設計] 結合動画のアップロード後、結合元になった各Shortsの概要欄にも結合動画への
+リンクを追記する(youtube_upload.append_video_description())。ランダムに1本
+だけ視聴して離脱する視聴者に「他の単語もまとめて見られる」導線を提示し、
+リピート視聴・チャンネル登録につなげる狙い。
+
 YouTube Data API(結合動画のアップロード用)の認証方式・環境変数は
 youtube_upload.py と同じ(YOUTUBE_CLIENT_ID / YOUTUBE_CLIENT_SECRET /
 YOUTUBE_REFRESH_TOKEN、任意で YOUTUBE_CHANNEL_ID)。GitHub Actions APIの
@@ -322,6 +327,22 @@ def main():
                 add_to_playlist(video_id, compilation_playlist_id)
             except Exception as e:
                 print(f"::warning::結合動画の再生リストへの追加に失敗しました: {e}")
+
+        # 結合元になった各Shortsの概要欄末尾に、この結合動画へのリンクを
+        # 追記する。ランダムな単語を1本だけ見て離脱する視聴者に「他にも
+        # まとめて見られる」導線を持たせ、回遊(リピート視聴)を狙う施策
+        # (README「改善ポイント」の議論参照)。1本失敗しても他のShortsや
+        # 結合動画自体には影響しないため、警告に留めて処理は止めない。
+        compilation_url = f"https://youtu.be/{video_id}"
+        for b in batch:
+            try:
+                youtube_upload.append_video_description(
+                    b["video_id"],
+                    f"\U0001F3AC Watch more like this in the compilation: {compilation_url}",
+                )
+            except Exception as e:
+                print(f"::warning::{b['label']} ({b['video_id']}) の概要欄への"
+                      f"結合動画リンク追記に失敗しました: {e}")
 
         _log_api_usage_summary()
 
