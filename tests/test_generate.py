@@ -217,6 +217,38 @@ def test_youtube_metadata_omits_native_hashtag_for_languages_without_one():
         assert description.count("#") == 8
 
 
+def test_youtube_metadata_title_includes_language_name_when_lang_code_given():
+    # 「french pronunciation」のような言語名込みの検索クエリにタイトル
+    # レベルでマッチしやすくするための施策(README参照)。
+    title, _description, _tags = _youtube_metadata(
+        "v́oOn", "voOn", "tts", voice_label="French (Female)", lang_code="fr"
+    )
+    assert "in French?" in title
+
+
+def test_youtube_metadata_title_omits_language_name_when_lang_code_not_given():
+    title, _description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert " in " not in title
+
+
+def test_youtube_metadata_title_omits_language_name_for_english():
+    # 英語はこのチャンネルの既定言語のため、"in English?"は冗長なので付けない
+    title, _description, _tags = _youtube_metadata("v́oOn", "voOn", "tts", lang_code="en")
+    assert " in " not in title
+
+
+def test_youtube_metadata_tags_include_english_language_pronunciation_tag():
+    _title, _description, tags = _youtube_metadata(
+        "v́oOn", "voOn", "tts", voice_label="French (Female)", lang_code="fr"
+    )
+    assert "french pronunciation" in tags
+
+
+def test_youtube_metadata_tags_omit_language_pronunciation_tag_when_not_given():
+    _title, _description, tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert not any(t.endswith(" pronunciation") for t in tags)
+
+
 def test_lang_code_for_voice_returns_none_for_unknown_code():
     assert _lang_code_for_voice("en-us") is None
 

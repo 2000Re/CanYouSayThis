@@ -102,14 +102,29 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     旨を説明文に明記する。Zalgo単語(ラテン文字+結合文字)は見た目からして
     実在の単語でないことが明らかなので対象外。
 
-    lang_code を渡すと(config.VOICE_LANGUAGESのキー、例: "ar")、その言語で
-    「発音」を意味するハッシュタグ(config.VOICE_LANGUAGESの"hashtag_word")
-    を英語ハッシュタグに追加する。英語圏の視聴者向けの#Pronunciation等と
-    違い、その言語の話者が母語のまま検索した際に見つけてもらいやすくする
-    ための施策。該当する語が用意されていない言語(英語自身、チェロキー語)
-    では何も追加しない。"""
+    lang_code を渡すと(config.VOICE_LANGUAGESのキー、例: "ar")、
+      - タイトルに言語名を追加する(例: `in French?`)。「french
+        pronunciation」のような、言語名込みの検索クエリにタイトルレベルで
+        マッチしやすくする狙い。英語(lang_code="en")はこのチャンネルの
+        既定言語という扱いのため追加しない。
+      - タグにも `<言語名> pronunciation`(小文字)を追加する。英語話者が
+        言語名で検索した際に見つけてもらいやすくする狙い(下記の現地語
+        ハッシュタグと違い、こちらは英語で検索する側を想定)。
+      - その言語で「発音」を意味するハッシュタグ(config.VOICE_LANGUAGESの
+        "hashtag_word")を英語ハッシュタグに追加する。英語圏の視聴者向けの
+        #Pronunciation等と違い、その言語の話者が母語のまま検索した際に
+        見つけてもらいやすくするための施策。該当する語が用意されていない
+        言語(英語自身、チェロキー語)では何も追加しない。"""
+    lang_entry = config.VOICE_LANGUAGES.get(lang_code)
+    # 英語はこのチャンネルの既定言語なので、タイトル・タグへの言語名追加は
+    # 対象外にする("in English?"は冗長なため)。
+    lang_label = lang_entry["label"] if lang_entry and lang_code != "en" else None
+
     mode_label = config.MODE_LABELS.get(mode, mode)
-    title = f'How to Pronounce "{label}" #Shorts'
+    title = f'How to Pronounce "{label}"'
+    if lang_label:
+        title += f" in {lang_label}?"
+    title += " #Shorts"
     description = (
         "Can you pronounce this? \U0001F440\n\n"
         f"Word: {word}\n"
@@ -131,7 +146,7 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
             f"https://www.youtube.com/playlist?list={playlist_id}\n\n"
         )
     description += "\U0001F514 Subscribe for a new unpronounceable word every day!\n\n"
-    native_hashtag_word = (config.VOICE_LANGUAGES.get(lang_code) or {}).get("hashtag_word")
+    native_hashtag_word = lang_entry.get("hashtag_word") if lang_entry else None
     description += "#Shorts #Pronunciation #Unpronounceable #Zalgo #GlitchText #TextToSpeech #TTS #Challenge"
     if native_hashtag_word:
         description += f" #{native_hashtag_word}"
@@ -139,6 +154,8 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
         "shorts", "pronunciation", "unpronounceable", "how to pronounce", mode,
         "zalgo", "glitch text", "text to speech", "pronunciation challenge",
     ]
+    if lang_label:
+        tags.append(f"{lang_label.lower()} pronunciation")
     if native_hashtag_word:
         tags.append(native_hashtag_word)
     return title, description, tags
