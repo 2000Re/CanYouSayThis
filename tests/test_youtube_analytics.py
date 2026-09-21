@@ -1,7 +1,7 @@
 """youtube_analytics.py の純粋関数(_chunk, _entries_in_range, _days_available,
-summarize_by_mode)およびfetch_video_metrics()のリクエスト組み立てに対する
-ユニットテスト。Google APIの実呼び出しは行わず、get_analytics_client()を
-モックに差し替える。"""
+_week_start, summarize_by_mode, summarize_by_week)およびfetch_video_metrics()
+のリクエスト組み立てに対するユニットテスト。Google APIの実呼び出しは行わず、
+get_analytics_client()をモックに差し替える。"""
 
 import sys
 from pathlib import Path
@@ -16,8 +16,10 @@ from youtube_analytics import (
     _chunk,
     _days_available,
     _entries_in_range,
+    _week_start,
     fetch_video_metrics,
     summarize_by_mode,
+    summarize_by_week,
 )
 
 
@@ -164,3 +166,40 @@ def test_summarize_by_mode_skips_entries_missing_required_fields():
     ]
     summary = summarize_by_mode({}, entries, "2026-09-19")
     assert summary["tts"]["videos"] == 1
+
+
+def test_week_start_returns_preceding_monday():
+    # 2026-09-19は土曜日 -> その週の月曜は2026-09-14
+    assert _week_start("2026-09-19T12:00:00+00:00") == "2026-09-14"
+
+
+def test_week_start_returns_same_date_for_monday():
+    # 2026-09-14自体は月曜日
+    assert _week_start("2026-09-14T00:00:00+00:00") == "2026-09-14"
+
+
+def test_summarize_by_week_groups_by_monday_start(sample_entries):
+    # t1(09-10 木), t2(09-15 火)は別の週(月曜=09-07 と 09-14)、
+    # g1(09-19 土)はt2と同じ週(月曜=09-14)
+    metrics_by_id = {
+        "t1": {"views": 100, "average_view_percentage": 40.0},
+        "t2": {"views": 50, "average_view_percentage": 60.0},
+        "g1": {"views": 10, "average_view_percentage": 20.0},
+    }
+    summary = summarize_by_week(metrics_by_id, sample_entries, "2026-09-19")
+
+    assert summary["2026-09-07"]["videos"] == 1
+    assert summary["2026-09-07"]["total_views"] == 100
+    assert summary["2026-09-14"]["videos"] == 2
+    assert summary["2026-09-14"]["total_views"] == 60
+
+
+def test_summarize_by_week_skips_entries_missing_required_fields():
+    entries = [
+        {"video_id": "a", "mode": "tts", "uploaded_at": "2026-09-19T00:00:00+00:00"},
+        {"video_id": None, "mode": "tts", "uploaded_at": "2026-09-19T00:00:00+00:00"},
+        {"video_id": "c", "mode": "tts", "uploaded_at": None},
+    ]
+    summary = summarize_by_week({}, entries, "2026-09-19")
+    assert summary == {"2026-09-14": summary["2026-09-14"]}
+    assert summary["2026-09-14"]["videos"] == 1

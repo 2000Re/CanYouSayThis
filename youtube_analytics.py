@@ -16,13 +16,9 @@ glitch)と突き合わせて集計する。
 主指標として扱う(summarize_by_mode()参照)。
 
 [注意] 本モジュールのYouTube Analytics API呼び出し部分(get_analytics_client
-() / fetch_video_metrics()の実際のAPI通信)は、このリポジトリの他の実機検証
-済み機能(espeak-ng・MBROLA等)とは違い、本物のGoogle認証情報を用いた実際の
-API応答での動作確認がまだ取れていない(このリポジトリの開発環境からは呼び
-出せないため)。公式ドキュメント
-(https://developers.google.com/youtube/analytics/reference/reports/query)
-に基づいて実装しているが、初回実行時は出力結果をYouTube Studioの表示と
-突き合わせて確認すること。
+() / fetch_video_metrics()の実際のAPI通信)は、GitHub Actions
+(analytics.yml)経由で本物のGoogle認証情報を用いて複数回実行し、動作確認
+済み(2026-09-19〜)。
 
 必要な環境変数はyoutube_upload.pyと同じ(YOUTUBE_CLIENT_ID/
 YOUTUBE_CLIENT_SECRET/YOUTUBE_REFRESH_TOKEN)。ただしYOUTUBE_REFRESH_TOKEN
@@ -34,6 +30,7 @@ YOUTUBE_CLIENT_SECRET/YOUTUBE_REFRESH_TOKEN)。ただしYOUTUBE_REFRESH_TOKEN
     python3 youtube_analytics.py                       # 過去28日間を集計
     python3 youtube_analytics.py --days 14              # 過去14日間を集計
     python3 youtube_analytics.py --start-date 2026-09-01 --end-date 2026-09-19
+    python3 youtube_analytics.py --days 90 --by-week    # 週別の推移も出力(「飽き」傾向の確認用)
 """
 import argparse
 import datetime
@@ -141,11 +138,13 @@ def _days_available(uploaded_at, end_date):
     return max((end - uploaded_date).days + 1, 1)
 
 
-def summarize_by_mode(metrics_by_id, entries, end_date):
+def _summarize_by_key(metrics_by_id, entries, end_date, key_fn):
     """entries(_entries_in_range()で絞り込んだupload_history.jsonのエント
     リ)とmetrics_by_id(fetch_video_metrics()の結果)をvideo_idで突き合わせ、
-    mode別に集計したdict(mode -> {"videos", "total_views", "avg_views",
-    "avg_view_percentage", "avg_views_per_day"})を返す。
+    key_fn(entry)の返り値でグルーピングして集計したdict(key ->
+    {"videos", "total_views", "avg_views", "avg_view_percentage",
+    "avg_views_per_day"})を返す。summarize_by_mode()とsummarize_by_week()
+    の共通ロジック。
 
     - avg_views: 単純な平均再生数(参考値。投稿からの経過日数の影響を受ける)。
     - avg_view_percentage: 再生数で重み付けした視聴維持率の平均。
@@ -153,33 +152,36 @@ def summarize_by_mode(metrics_by_id, entries, end_date):
       動画ごとの値を単純平均したもの。投稿タイミングの影響を受けにくい主指標。
 
     metrics_by_idに無い(=期間内の再生数データが無い/未反映の)video_idは
-    views=0、average_view_percentage=0.0として扱う。"""
+    views=0、average_view_percentage=0.0として扱う。video_id/uploaded_atが
+    欠けているエントリ、key_fn()がNone/空文字を返すエントリは対象外にする。"""
     totals = defaultdict(lambda: {
         "videos": 0, "total_views": 0, "weighted_pct_sum": 0.0, "views_per_day_sum": 0.0,
     })
     for entry in entries:
         video_id = entry.get("video_id")
-        mode = entry.get("mode")
         uploaded_at = entry.get("uploaded_at")
-        if not video_id or not mode or not uploaded_at:
+        if not video_id or not uploaded_at:
+            continue
+        key = key_fn(entry)
+        if not key:
             continue
         metrics = metrics_by_id.get(video_id, {"views": 0, "average_view_percentage": 0.0})
         views = metrics["views"]
         pct = metrics["average_view_percentage"]
         days_available = _days_available(uploaded_at, end_date)
 
-        data = totals[mode]
+        data = totals[key]
         data["videos"] += 1
         data["total_views"] += views
         data["weighted_pct_sum"] += views * pct
         data["views_per_day_sum"] += views / days_available
 
     summary = {}
-    for mode, data in totals.items():
+    for key, data in totals.items():
         avg_views = data["total_views"] / data["videos"] if data["videos"] else 0.0
         avg_pct = (data["weighted_pct_sum"] / data["total_views"]) if data["total_views"] else 0.0
         avg_views_per_day = data["views_per_day_sum"] / data["videos"] if data["videos"] else 0.0
-        summary[mode] = {
+        summary[key] = {
             "videos": data["videos"],
             "total_views": data["total_views"],
             "avg_views": avg_views,
@@ -187,6 +189,30 @@ def summarize_by_mode(metrics_by_id, entries, end_date):
             "avg_views_per_day": avg_views_per_day,
         }
     return summary
+
+
+def summarize_by_mode(metrics_by_id, entries, end_date):
+    """mode(tts/tts_extreme/glitch)別の集計。_summarize_by_key()参照。"""
+    return _summarize_by_key(metrics_by_id, entries, end_date, key_fn=lambda e: e.get("mode"))
+
+
+def _week_start(uploaded_at):
+    """uploaded_at(ISO 8601)が属する週の月曜日をYYYY-MM-DD形式で返す
+    (ISO週、月曜始まり)。"""
+    date = datetime.datetime.fromisoformat(uploaded_at).date()
+    return (date - datetime.timedelta(days=date.weekday())).isoformat()
+
+
+def summarize_by_week(metrics_by_id, entries, end_date):
+    """uploaded_atが属する週(月曜始まり)別の集計。_summarize_by_key()参照。
+
+    [目的] avg_views_per_dayは_days_available()で経過日数を正規化済みの
+    ため、公開が新しい週と古い週を並べても「まだ新しいから再生数が少ない」
+    というノイズの影響を受けにくい。週ごとの主指標の推移を見ることで、
+    この手のネタ系コンテンツにありがちな「視聴者が数本見るとパターンが
+    分かってしまい、物珍しさが薄れて反応が落ちる」という長期的な低下傾向
+    (いわゆる「飽き」)の有無を確認するのが目的。"""
+    return _summarize_by_key(metrics_by_id, entries, end_date, key_fn=lambda e: _week_start(e["uploaded_at"]))
 
 
 def main():
@@ -201,6 +227,10 @@ def main():
     ap.add_argument("--days", type=int, default=config.ANALYTICS_DEFAULT_LOOKBACK_DAYS,
                      help=f"--start-date省略時に使う集計対象の日数"
                           f"(デフォルト{config.ANALYTICS_DEFAULT_LOOKBACK_DAYS}日)")
+    ap.add_argument("--by-week", action="store_true",
+                     help="モード別集計に加えて、投稿週(月曜始まり)別の1日あたり"
+                          "再生数の推移も出力する(長期的な「飽き」傾向の確認用。"
+                          "傾向を見るには--daysを長め(90等)にするのが望ましい)")
     args = ap.parse_args()
 
     end_date = args.end_date or datetime.date.today().isoformat()
@@ -226,6 +256,16 @@ def main():
             f"  {mode}: {data['videos']}本 / 1日あたり平均{data['avg_views_per_day']:.2f}回"
             f"(単純平均{data['avg_views']:.1f}回, 視聴維持率{data['avg_view_percentage']:.1f}%)"
         )
+
+    if args.by_week:
+        week_summary = summarize_by_week(metrics_by_id, target_entries, end_date)
+        print(f"\n=== 週別(月曜始まり) 1日あたり再生数の推移({start_date} 〜 {end_date}) ===")
+        for week in sorted(week_summary):
+            data = week_summary[week]
+            print(
+                f"  {week}〜: {data['videos']}本 / 1日あたり平均{data['avg_views_per_day']:.2f}回"
+                f"(単純平均{data['avg_views']:.1f}回, 視聴維持率{data['avg_view_percentage']:.1f}%)"
+            )
 
 
 if __name__ == "__main__":

@@ -15,6 +15,11 @@ on:
         description: "集計終了日(YYYY-MM-DD。空欄なら今日)"
         required: false
         default: ""
+      by_week:
+        description: "trueなら投稿週(月曜始まり)別の1日あたり再生数の推移も出力する(「飽き」傾向の確認用)"
+        required: false
+        default: "false"
+        type: boolean
 
 jobs:
   analytics:
@@ -49,5 +54,8 @@ jobs:
           fi
           if [ -z "${{ inputs.start_date }}" ]; then
             args+=(--days "${{ inputs.days }}")
+          fi
+          if [ "${{ inputs.by_week }}" = "true" ]; then
+            args+=(--by-week)
           fi
           python3 youtube_analytics.py "${args[@]}"
