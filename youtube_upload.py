@@ -77,6 +77,7 @@ _MAX_RETRIES = 8
 QUOTA_COST_PER_CALL = {
     "videos.insert": 100, "playlistItems.insert": 50, "channels.list": 1,
     "videos.list": 1, "videos.update": 50, "captions.insert": 400,
+    "commentThreads.insert": 50,
 }
 _api_call_counts = {name: 0 for name in QUOTA_COST_PER_CALL}
 
@@ -272,20 +273,36 @@ def get_youtube_client(scopes=_SCOPES_UNSET):
 
 
 def upload_video(video_path, title, description, tags=None, category_id=config.YOUTUBE_CATEGORY_ID,
-                  privacy_status="public"):
+                  privacy_status="public", default_language=config.DEFAULT_LANGUAGE,
+                  default_audio_language=None):
     """video_path をYouTubeにアップロードし、公開URL(https://youtu.be/<id>)を返す。
 
     category_id のデフォルトはconfig.YOUTUBE_CATEGORY_ID(Howto & Style)。
-    """
+
+    default_language: タイトル・説明文(メタデータ)の言語。常に英語で書くため
+    デフォルトはconfig.DEFAULT_LANGUAGE("en")。
+
+    default_audio_language: 音声トラックの言語(espeak-ngの読み上げ言語、
+    config.VOICE_LANGUAGESのキー、例: "fr")。タイトル・タグへの言語名追加
+    (README参照)とは別軸で、YouTube側の言語ベースのマッチングに効かせる狙い。
+    glitchモード(単語を読み上げない合成音のみ)等、該当する音声言語が無い
+    回はNoneのままにして、YouTube側の自動判定に任せる。videos.insertの
+    snippetに含めるだけなので、追加のAPI呼び出し・クォータ消費は無い。"""
     youtube = get_youtube_client()
 
+    snippet = {
+        "title": title,
+        "description": description,
+        "tags": tags or [],
+        "categoryId": category_id,
+    }
+    if default_language:
+        snippet["defaultLanguage"] = default_language
+    if default_audio_language:
+        snippet["defaultAudioLanguage"] = default_audio_language
+
     body = {
-        "snippet": {
-            "title": title,
-            "description": description,
-            "tags": tags or [],
-            "categoryId": category_id,
-        },
+        "snippet": snippet,
         "status": {
             "privacyStatus": privacy_status,
             "selfDeclaredMadeForKids": False,
@@ -400,3 +417,69 @@ def upload_caption(video_id, duration_seconds, text, language=config.CAPTION_LAN
     }
     _api_call_counts["captions.insert"] += 1
     youtube.captions().insert(part="snippet", body=body, media_body=media).execute()
+
+
+def post_comment(video_id, text):
+    """video_idの動画に、チャンネル運営者自身のコメントとしてtextを投稿する。
+
+    [背景] 実在文字体系(ロシア語等)の動画で、視聴者から「実在の単語だが
+    発音が違う」という誤解のコメントが付いたことを受け、動画フレームへ注記を
+    焼き込む対応をした(README「ハマった罠」22番)。それに加えて、運営者
+    自身のコメントとしても同じ趣旨のテキストを投稿し、視聴者の目に留まり
+    やすくする(運営者のコメントは通常のコメントより目立つ表示になる)
+    とともに、コメント数(エンゲージメント指標)を稼ぐ狙い。
+
+    [注意] YouTube Data APIにはコメントを「固定表示(ピン留め)」する専用
+    エンドポイントが無いため、本関数は投稿するところまでが範囲。ピン留め
+    したい場合はYouTube Studioから手動で行う必要がある。
+
+    commentThreads.insertはyoutube.force-ssl スコープが必要。upload_caption()
+    と同じくget_youtube_client(scopes=None)を使う(UPLOAD_SCOPESの罠コメント
+    参照)。captions.insertと同じスコープを使うため、同様に断続的な403
+    forbiddenが起きる可能性がある(「ハマった罠」21番参照)。動画本体の
+    アップロードとは別のAPI呼び出しなので、呼び出し側はこの関数の例外を
+    警告に留め、処理全体は止めない想定(upload_caption()と同じ方針、
+    generate.py参照)。"""
+    youtube = get_youtube_client(scopes=None)
+    body = {
+        "snippet": {
+            "videoId": video_id,
+            "topLevelComment": {
+                "snippet": {"textOriginal": text},
+            },
+        }
+    }
+    _api_call_counts["commentThreads.insert"] += 1
+    youtube.commentThreads().insert(part="snippet", body=body).execute()
+
+
+def fetch_video_stats(video_ids):
+    """video_ids(リスト)の公開統計情報(views/likes/comments、いずれも
+    int)をvideo_id -> {"views", "likes", "comments"} のdictで返す。
+
+    [背景] youtube_analytics.py(YouTube Analytics API)は集計対象期間の
+    確定に通常1〜2日程度のラグがある(fetch_video_metrics()参照)。一方、
+    videos.list(part=statistics)が返す値はYouTube Studio/視聴ページに
+    表示されているのと同じ「今この瞬間の公開値」で、反映が速い。投稿直後
+    〜数時間の初動確認など、Analytics APIのラグが問題になる用途向けの
+    軽量な代替手段として使う(youtube_quick_stats.py参照)。
+
+    videos.listは1回のリクエストにつき1 unit(IDを何件まとめて渡しても
+    同じ)なので、config.ANALYTICS_VIDEO_BATCH_SIZE件ずつバッチ分割する
+    (fetch_video_metrics()と同じ安全マージンの考え方を流用)。統計情報が
+    非公開(コメント欄オフ等)の項目はレスポンスに含まれないことがあるため、
+    値が無いキーは0として扱う。"""
+    youtube = get_youtube_client()
+    stats_by_id = {}
+    for i in range(0, len(video_ids), config.ANALYTICS_VIDEO_BATCH_SIZE):
+        batch = video_ids[i:i + config.ANALYTICS_VIDEO_BATCH_SIZE]
+        _api_call_counts["videos.list"] += 1
+        response = youtube.videos().list(part="statistics", id=",".join(batch)).execute()
+        for item in response.get("items", []):
+            stats = item.get("statistics", {})
+            stats_by_id[item["id"]] = {
+                "views": int(stats.get("viewCount", 0)),
+                "likes": int(stats.get("likeCount", 0)),
+                "comments": int(stats.get("commentCount", 0)),
+            }
+    return stats_by_id
