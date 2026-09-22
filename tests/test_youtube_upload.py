@@ -164,10 +164,14 @@ def test_upload_video_defaults_category_id_to_config_value():
     assert default == youtube_upload.config.YOUTUBE_CATEGORY_ID
 
 
-def test_upload_scopes_include_force_ssl_for_captions():
-    # captions.insert(upload_caption())はyoutube単体では権限不足になり、
-    # youtube.force-sslスコープが別途必要(README参照)。
-    assert "https://www.googleapis.com/auth/youtube.force-ssl" in youtube_upload.UPLOAD_SCOPES
+def test_upload_scopes_omit_force_ssl_to_avoid_breaking_token_refresh():
+    # 回帰防止(実際にこれで本番のアップロードが全て止まった): UPLOAD_SCOPES
+    # に、リフレッシュトークンがまだ持っていないスコープ(youtube.force-ssl)
+    # を混ぜると、get_youtube_client()を経由する全API呼び出しのトークン
+    # リフレッシュ自体がinvalid_scopeで失敗する。captions.insert専用の
+    # スコープはget_youtube_client(scopes=None)側で個別に扱う(UPLOAD_SCOPES
+    # の罠コメント、upload_captionのテスト参照)。
+    assert "https://www.googleapis.com/auth/youtube.force-ssl" not in youtube_upload.UPLOAD_SCOPES
 
 
 def test_quota_cost_per_call_includes_captions_insert():
@@ -189,7 +193,11 @@ def test_build_srt_wraps_text_in_single_cue_spanning_full_duration():
 
 def test_upload_caption_sends_expected_snippet(monkeypatch):
     youtube = MagicMock()
-    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda: youtube)
+    get_client_calls = []
+    monkeypatch.setattr(
+        youtube_upload, "get_youtube_client",
+        lambda **kwargs: get_client_calls.append(kwargs) or youtube,
+    )
     monkeypatch.setattr(youtube_upload, "_api_call_counts",
                          {name: 0 for name in QUOTA_COST_PER_CALL})
 
@@ -201,3 +209,21 @@ def test_upload_caption_sends_expected_snippet(monkeypatch):
         "name": "", "isDraft": False,
     }
     assert youtube_upload._api_call_counts["captions.insert"] == 1
+
+
+def test_upload_caption_requests_unrestricted_scopes(monkeypatch):
+    # 回帰防止: UPLOAD_SCOPESに絞り込むと、force-sslをまだ持っていない
+    # リフレッシュトークンではトークンリフレッシュ自体がinvalid_scopeに
+    # なる。scopes=Noneで呼び、絞り込みをしないことで回避する。
+    youtube = MagicMock()
+    get_client_calls = []
+    monkeypatch.setattr(
+        youtube_upload, "get_youtube_client",
+        lambda **kwargs: get_client_calls.append(kwargs) or youtube,
+    )
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    youtube_upload.upload_caption("abc123", 5.0, "How to pronounce this?")
+
+    assert get_client_calls == [{"scopes": None}]
