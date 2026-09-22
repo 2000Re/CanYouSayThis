@@ -50,15 +50,20 @@ import config
 # (OAuth同意画面に登録済みのスコープに合わせて youtube.upload 単体ではなく
 # youtube フルアクセスを使っている)
 #
-# youtube.force-ssl は captions.insert(字幕アップロード、upload_caption()
-# 参照)専用のスコープで、youtube単体では権限不足になる。yt-analytics.readonly
-# と同じく、既存のリフレッシュトークンには後から追加できない(スコープは
-# 発行時に焼き付けられる仕様)ため、追加した場合はget_youtube_refresh_token.py
-# を再実行してYOUTUBE_REFRESH_TOKENを取得し直す必要がある。
+# [罠] youtube.force-sslはcaptions.insert(upload_caption()参照)専用の
+# スコープだが、あえてここには加えていない。get_youtube_client()はデフォルト
+# でこのUPLOAD_SCOPESを丸ごとリクエストしてトークンをリフレッシュするため
+# (_load_credentials()参照)、既存のリフレッシュトークンがまだ持っていない
+# スコープを1つでも混ぜると、captions.insert呼び出しだけでなく
+# get_youtube_client()を経由する全APIコール(upload_video/add_to_playlist等)
+# のトークンリフレッシュ自体がinvalid_scopeで失敗する(実際にこれで本番の
+# アップロードパイプライン全体が止まった)。upload_caption()は
+# get_youtube_client(scopes=None)を使い、要求スコープを絞り込まずに済ませる
+# ことでこの問題を避けている(youtube_analytics.get_analytics_client()と
+# 同じ回避策)。
 UPLOAD_SCOPES = [
     "https://www.googleapis.com/auth/youtube",
     "https://www.googleapis.com/auth/youtube.readonly",
-    "https://www.googleapis.com/auth/youtube.force-ssl",
 ]
 TOKEN_URI = "https://oauth2.googleapis.com/token"
 
@@ -250,11 +255,16 @@ def _verify_channel(youtube):
     _channel_verified = True
 
 
-def get_youtube_client():
+def get_youtube_client(scopes=_SCOPES_UNSET):
     """認証済みのYouTube Data APIクライアントを返す(チャンネル確認込み)。
 
-    upload_video() と compile_shorts.py の両方から使う共通処理。"""
-    credentials = _load_credentials()
+    upload_video() と compile_shorts.py の両方から使う共通処理。
+
+    scopesを省略するとUPLOAD_SCOPESに絞り込んでリクエストする。
+    upload_caption()はscopes=Noneを渡し、youtube.force-sslがまだ付与されて
+    いないリフレッシュトークンでもトークンリフレッシュ自体は失敗しないように
+    している(UPLOAD_SCOPESの罠コメント参照)。"""
+    credentials = _load_credentials(scopes)
     youtube = build("youtube", "v3", credentials=credentials)
     _verify_channel(youtube)
     _check_token_age()
@@ -370,11 +380,14 @@ def upload_caption(video_id, duration_seconds, text, language=config.CAPTION_LAN
     と同じ趣旨のキーワード付き固定テキストを手動字幕として入れることで、
     アクセシビリティと検索キーワードの両方を稼ぐ狙い。
 
-    captions.insertはyoutube.force-ssl スコープが必要(UPLOAD_SCOPES参照)。
+    captions.insertはyoutube.force-ssl スコープが必要。get_youtube_client()
+    にはscopes=Noneを渡し、UPLOAD_SCOPESへの絞り込みをしない(リフレッシュ
+    トークンがまだこのスコープを持っていない場合でも、トークンリフレッシュ
+    自体をinvalid_scopeで失敗させないため。UPLOAD_SCOPESの罠コメント参照)。
     動画本体のアップロードとは別のAPI呼び出しなので、呼び出し側はこの関数の
     例外を警告に留め、処理全体は止めない想定(add_to_playlist()と同じ方針、
     generate.py参照)。"""
-    youtube = get_youtube_client()
+    youtube = get_youtube_client(scopes=None)
     srt_body = _build_srt(text, duration_seconds)
     media = MediaInMemoryUpload(srt_body.encode("utf-8"), mimetype="text/plain")
     body = {

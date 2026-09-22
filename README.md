@@ -436,9 +436,17 @@ A tongue twister and pronunciation challenge — try saying it out loud!`)
 > フルアクセススコープでカバーできますが、字幕のアップロードだけは別途
 > `youtube.force-ssl`が必要です。既存のリフレッシュトークンにこのスコー
 > プが無い場合、字幕アップロードだけが失敗します(動画本体のアップロード
-> 自体は成功する)。`get_youtube_refresh_token.py`は既にこのスコープを
-> 含む`SCOPES`に更新済みなので、再実行してリフレッシュトークンを取得し
-> 直し、`YOUTUBE_REFRESH_TOKEN`を更新してください(手順2・3と同じ手順)。
+> 自体は成功する。この分離のためにupload_caption()は意図的に
+> `get_youtube_client(scopes=None)`を使っています。「ハマった罠」の19番
+> 参照)。反映するには以下の両方が必要です。
+>
+> 1. Google Cloud Console→「OAuth同意画面」→「データアクセス」→
+>    「スコープを追加または削除」で`.../auth/youtube.force-ssl`を追加
+>    登録する(手順1と同じ画面。登録していないスコープはリクエストしても
+>    正しく付与されないことがある)
+> 2. `get_youtube_refresh_token.py`を再実行してリフレッシュトークンを
+>    取得し直し、`YOUTUBE_REFRESH_TOKEN`を更新する(手順2・3と同じ手順。
+>    `SCOPES`は既にこのスコープを含む形に更新済み)
 
 > **⚠️ クォータコストが大きい**: `captions.insert`は1回あたり**400
 > units**と、`videos.insert`(100 units)の4倍のコストです。1日あたりの
@@ -991,6 +999,43 @@ YouTube Studioの投稿一覧で「直近数日分の再生数が少ない動画
 「飽き」を疑う材料になり、横ばい〜ばらつきの範囲なら投稿頻度の問題ではなく
 個々の動画のばらつき(単語・言語・モードの組み合わせによる)である可能性が
 高い、という切り分けに使う。
+
+### 19. `UPLOAD_SCOPES`に未付与のスコープを1つ混ぜただけで、アップロード全体が止まった
+
+字幕アップロード(`upload_caption()`)用に`youtube.force-ssl`スコープを
+追加した際、最初は他のAPI呼び出しと同じ`UPLOAD_SCOPES`にそのまま加えた。
+その結果、字幕アップロードだけでなく`generate.yml`の全アップロードが
+`invalid_scope: Bad Request`で失敗する事故になった(本番の自動投稿が
+1回丸ごと失敗した)。
+
+原因は`get_youtube_client()`の作り。この関数はデフォルトで`UPLOAD_SCOPES`
+を丸ごとリクエストしてトークンをリフレッシュし(`_load_credentials()`
+参照)、`upload_video()`・`add_to_playlist()`・`append_video_description()`・
+`upload_caption()`の**全て**がこの関数を経由する。`UPLOAD_SCOPES`に、
+リフレッシュトークンがまだ持っていないスコープ(`youtube.force-ssl`。
+発行時に焼き付けられる仕様のため、コード側に追加しただけでは既存トークンに
+は付与されない)を1つでも混ぜると、Google側はスコープの絞り込みリクエスト
+自体を`invalid_scope`で拒否する。これは特定のAPI呼び出し(`captions.insert`)
+だけの権限不足ではなく、**トークンリフレッシュという入り口の時点**で失敗
+するため、その関数を経由する他の全ての呼び出しに波及する。
+
+`youtube_analytics.get_analytics_client()`が`scopes=None`(絞り込みをしない
+=リフレッシュトークンの実際の付与範囲そのままを使う)を使っている設計は、
+まさにこの問題を避けるためのものだったが、字幕機能を実装した際にその教訓を
+生かせず、`UPLOAD_SCOPES`に直接追加してしまった。
+
+修正: `youtube.force-ssl`は`UPLOAD_SCOPES`(=デフォルトの絞り込み対象)
+からは外し、`get_youtube_client()`に`scopes`引数を追加。`upload_caption()`
+だけが`get_youtube_client(scopes=None)`を呼ぶことで、そのリフレッシュ
+トークンが実際に持っている範囲のままトークンを取得する(絞り込まない)。
+これなら`youtube.force-ssl`がまだ付与されていなくてもトークンリフレッシュ
+自体は成功し、`captions.insert`のAPI呼び出しだけが権限不足で個別に失敗する
+(動画本体のアップロード等、他の呼び出しは影響を受けない)。
+
+教訓: **新しいスコープを追加する際は、それを使う関数だけがそのスコープを
+要求するようにする**(共有のデフォルトスコープリストに混ぜない)。共有
+リストに混ぜると、そのスコープがまだリフレッシュトークンに付与されていない
+間(=再発行するまでの間)、無関係な呼び出しまで巻き添えで全滅する。
 
 ## プロジェクト構成
 
