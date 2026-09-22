@@ -341,7 +341,8 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     os.remove(rep_wav)
 
     wav_to_mp3(fin_wav, mp3_path)
-    build_frame(label, frame_path, mode=actual_mode, display_word=frame_word)
+    build_frame(label, frame_path, mode=actual_mode, display_word=frame_word,
+                is_native_script=used_native_script)
     build_video(frame_path, mp3_path, video_path)
 
     os.remove(fin_wav)
