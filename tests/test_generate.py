@@ -46,8 +46,8 @@ def test_resolve_mode_random_can_pick_all_modes():
 def test_resolve_mode_random_weighting_matches_mode_weights():
     # 統計的な検証: 十分な試行回数で、各モードが選ばれる比率が
     # config.MODE_WEIGHTSの相対的な重みに近いことを確認する
-    # (glitchは「発音してみて」という説得力が弱いという判断で意図的に
-    # 比率を下げているため、その回帰防止)。
+    # (MODE_WEIGHTSの値自体が変わっても壊れないよう、動的に読み取って
+    # 比較している)。
     random.seed(0)
     trials = 6000
     counts = {mode: 0 for mode in config.MODE_LABELS}
