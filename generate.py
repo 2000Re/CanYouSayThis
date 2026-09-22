@@ -107,6 +107,15 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     入れる(自然な文として、他の施策と競合しない形で追加する検索流入策)。
     タグにも"tongue twister"を追加する。
 
+    説明文には、config.AUDIENCE_REGION_PHRASESで設定した非英語圏向けの
+    検索キーワードフレーズ(視聴者属性で継続的に上位に入っているフィリピン・
+    インドネシア・マレーシア向け)も、動画のボイス言語とは無関係に常に含める。
+
+    戻り値のcaption_text(YouTubeの手動字幕用)は、意味不明な音声を自動
+    文字起こし(ASR)に任せると検索インデックス対象のテキスト枠が無駄になる
+    ため、説明文と同じ趣旨のキーワード付き固定テキストとして別途組み立てる
+    (youtube_upload.upload_caption()参照)。
+
     lang_code を渡すと(config.VOICE_LANGUAGESのキー、例: "ar")、
       - タイトルに言語名を追加する(例: `in French?`)。「french
         pronunciation」のような、言語名込みの検索クエリにタイトルレベルで
@@ -147,6 +156,9 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
         "The ultimate tongue twister for language learners, TTS fans, and "
         "anyone up for a pronunciation challenge!\n\n"
     )
+    if config.AUDIENCE_REGION_PHRASES:
+        phrases = " · ".join(f"{phrase} ({lang})" for lang, phrase in config.AUDIENCE_REGION_PHRASES)
+        description += f"(How do you say it? {phrases})\n\n"
     if playlist_id:
         description += (
             f"▶ Watch more pronunciation challenges: "
@@ -166,7 +178,13 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
         tags.append(f"{lang_label.lower()} pronunciation")
     if native_hashtag_word:
         tags.append(native_hashtag_word)
-    return title, description, tags
+
+    caption_text = f'How to pronounce "{label}"'
+    if lang_label:
+        caption_text += f" in {lang_label}"
+    caption_text += ". A tongue twister and pronunciation challenge — try saying it out loud!"
+
+    return title, description, tags, caption_text
 
 
 def _resolve_mode(mode):
@@ -344,7 +362,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # する処理はアップロード成功後(video_id確定後)に別途行う。
         shorts_playlist_id = os.environ.get("YOUTUBE_SHORTS_PLAYLIST_ID")
 
-        title, description, tags = _youtube_metadata(
+        title, description, tags, caption_text = _youtube_metadata(
             word, label, actual_mode, playlist_id=shorts_playlist_id, voice_label=voice_label,
             is_native_script=used_native_script, lang_code=_lang_code_for_voice(actual_voice),
         )
@@ -355,6 +373,20 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         result["youtube_url"] = youtube_url
 
         video_id = youtube_url.rsplit("/", 1)[-1]
+
+        # 手動字幕(ASRに任せるとでたらめな音声が意味不明な文字起こしになり、
+        # 検索インデックス対象のテキストが無駄になるため、代わりにキーワード
+        # 付きの固定テキストを入れる)。captions.insertはyoutube.force-ssl
+        # スコープが必要(README参照)で無い場合は失敗するが、動画自体は既に
+        # 公開済みなので警告に留めて処理は止めない(add_to_playlistと同じ方針)。
+        from audio_utils import _probe_duration
+        from youtube_upload import upload_caption
+
+        try:
+            duration_seconds = _probe_duration(video_path)
+            upload_caption(video_id, duration_seconds, caption_text)
+        except Exception as e:
+            print(f"[Warning] {word}: 字幕のアップロードに失敗しました: {e}")
 
         # compile_shorts.pyが後で(この回も含めて)GitHub Actions API経由で
         # このrunのアーティファクトから動画本体を取り出せるよう、video_idを

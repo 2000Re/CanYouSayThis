@@ -60,15 +60,18 @@ from googleapiclient.discovery import build
 # 一致させている。
 #
 # yt-analytics.readonly は youtube_analytics.py(モード別の再生数・視聴維持率
-# 集計)が使う読み取り専用スコープ。OAuthのリフレッシュトークンはスコープが
-# 発行時に焼き付けられる仕様のため、既存のリフレッシュトークンにこのスコープ
-# を後から追加することはできず、このスクリプトを再実行して新しいリフレッシュ
-# トークンを取得し直す必要がある(YOUTUBE_CLIENT_ID/YOUTUBE_CLIENT_SECRET自体
-# は変更不要)。
+# 集計)が使う読み取り専用スコープ。youtube.force-ssl は youtube_upload.
+# upload_caption()(手動字幕のアップロード)が使うスコープで、youtube単体
+# では権限不足になる。OAuthのリフレッシュトークンはスコープが発行時に焼き
+# 付けられる仕様のため、既存のリフレッシュトークンにこれらのスコープを後から
+# 追加することはできず、このスクリプトを再実行して新しいリフレッシュトークン
+# を取得し直す必要がある(YOUTUBE_CLIENT_ID/YOUTUBE_CLIENT_SECRET自体は変更
+# 不要)。
 SCOPES = [
     "https://www.googleapis.com/auth/youtube",
     "https://www.googleapis.com/auth/youtube.readonly",
     "https://www.googleapis.com/auth/yt-analytics.readonly",
+    "https://www.googleapis.com/auth/youtube.force-ssl",
 ]
 
 

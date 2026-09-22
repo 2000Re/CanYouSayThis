@@ -234,6 +234,17 @@ twister`(早口言葉)・`language learners` という語を含む一文を、�
 `tongue twister` を追加します。他の施策と競合しない、追加コストの小さい
 検索流入策です。
 
+### 視聴者属性ベースの現地語キーワード(`config.AUDIENCE_REGION_PHRASES`)
+
+上記の現地語ハッシュタグ・言語名追加はいずれも「その動画自体のボイス言語」
+に連動する施策でしたが、こちらはYouTube Studioの視聴者属性(アナリティ
+クス)で継続的に上位に入っているフィリピン・インドネシア・マレーシア向け
+に、動画のボイス言語とは無関係に**全動画で共通して**「どう発音する?」に
+相当する現地語フレーズ(`paano bigkasin` / `cara mengucapkan` / `cara
+sebut`)を説明文へ追加するものです。フィリピン語(タガログ語)はespeak-ng
+非対応のためボイス自体は生成できません(「ハマった罠」の14番)が、これは
+音声合成とは無関係な説明文のテキスト追加のため影響を受けません。
+
 ### 実際の文字体系を使う言語
 
 上記16言語は「土台の文字(ラテン文字・Zalgo)自体は変えず、読み上げ言語だ
@@ -402,6 +413,38 @@ OAuth同意画面の公開ステータスを「テスト」のままにしてい
 「🔔 Subscribe for a new unpronounceable word every day!」という登録を
 促す一文を自動で入れています(`_youtube_metadata()`。`YOUTUBE_SHORTS_
 PLAYLIST_ID`の設定有無に関わらず入ります)。
+
+### 9. 手動字幕(`upload_caption()`)とカテゴリ変更(SEO)
+
+**カテゴリ**: `videos.insert`の`categoryId`は、従来固定していた
+`24`(Entertainment)から`26`(Howto & Style)に変更しました
+(`config.YOUTUBE_CATEGORY_ID`)。「How to Pronounce」系は検索意図として
+ハウツー寄りとも言えるための実験的な変更で、効果自体は未検証です。
+
+**手動字幕**: espeak-ngが読み上げる単語はでたらめな文字列のため、字幕を
+付けずにYouTubeの自動文字起こし(ASR)に任せると意味不明な字幕が生成され、
+検索インデックス対象になり得るテキスト枠が無駄になります。そこで、動画
+アップロード成功後に`youtube_upload.upload_caption()`で、説明文と同じ
+趣旨のキーワード付き固定テキスト(例: `How to pronounce "voOn" in French.
+A tongue twister and pronunciation challenge — try saying it out loud!`)
+を1キューだけのSRT字幕として手動アップロードします。字幕アップロードが
+失敗しても動画自体は既に公開済みなので、警告に留めて処理は止めません
+(`generate.py`)。
+
+> **⚠️ `captions.insert`は`youtube.force-ssl`スコープが必要**: 他の
+> API呼び出し(`videos.insert`/`playlistItems.insert`等)は`youtube`
+> フルアクセススコープでカバーできますが、字幕のアップロードだけは別途
+> `youtube.force-ssl`が必要です。既存のリフレッシュトークンにこのスコー
+> プが無い場合、字幕アップロードだけが失敗します(動画本体のアップロード
+> 自体は成功する)。`get_youtube_refresh_token.py`は既にこのスコープを
+> 含む`SCOPES`に更新済みなので、再実行してリフレッシュトークンを取得し
+> 直し、`YOUTUBE_REFRESH_TOKEN`を更新してください(手順2・3と同じ手順)。
+
+> **⚠️ クォータコストが大きい**: `captions.insert`は1回あたり**400
+> units**と、`videos.insert`(100 units)の4倍のコストです。1日あたりの
+> 投稿数を増やす場合は、日次クォータ上限(`config.DAILY_QUOTA_UNITS`、
+> デフォルト10,000 units)により早く近づく点に注意してください(実行ログ
+> の「APIクォータ使用量のログ」で都度確認できます)。
 
 ## Shorts結合動画
 
