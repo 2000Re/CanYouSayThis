@@ -433,6 +433,11 @@ A tongue twister and pronunciation challenge — try saying it out loud!`)
 失敗しても動画自体は既に公開済みなので、警告に留めて処理は止めません
 (`generate.py`)。
 
+> **⚠️ `config.CAPTIONS_ENABLED = False`で現在は無効化中**: 実機で
+> 断続的な403 forbidden(下記参照)を確認したため一時的にオフにして
+> います。有効化するには`config.CAPTIONS_ENABLED`を`True`に戻してください
+> (「ハマった罠」の21番参照)。
+
 > **⚠️ `captions.insert`は`youtube.force-ssl`スコープが必要**: 他の
 > API呼び出し(`videos.insert`/`playlistItems.insert`等)は`youtube`
 > フルアクセススコープでカバーできますが、字幕のアップロードだけは別途
@@ -1059,6 +1064,38 @@ YouTube Studioの投稿一覧で「直近数日分の再生数が少ない動画
 「まず主観的な下方修正を撤回する」以上に踏み込むには材料が足りないと
 判断したため。今後さらにサンプルが増え、同じ傾向が続くようであれば、
 再度`MODE_WEIGHTS`を見直す可能性がある。
+
+### 21. 手動字幕(`captions.insert`)が断続的に403 forbiddenになり、一時無効化した
+
+19番の修正後、リフレッシュトークンを`youtube.force-ssl`込みで再発行し、
+実際に3回分の投稿で字幕アップロードの結果を観察した。1回目は成功したが、
+2回目・3回目は同じコード・同じ認証情報にもかかわらず
+
+```
+HttpError 403 ... "The permissions associated with the request are not
+sufficient to upload the caption track. The request might not be properly
+authorized." (reason: forbidden, domain: youtube.caption)
+```
+
+で失敗した(3回中2回失敗)。
+
+`youtube.force-ssl`は「制限付きスコープ」で、このプロジェクトのOAuth同意
+画面は未検証(「テスト」ステータス)のまま運用している。制限付きスコープを
+未検証アプリでリクエストした場合にリクエストが断続的に拒否される、という
+報告が一般に見られ、成功・失敗のタイミングのばらつきとも矛盾しない。ただし
+これは確度の高い推測であり、実機で確定した原因ではない(Google側の内部
+挙動のため、こちらから完全に検証する手段が無い)。
+
+恒久的に安定させるにはGoogleのOAuthアプリ検証(審査)を通す必要があるが、
+個人のホビープロジェクトには重い手続き(デモ動画の提出等、数日〜数週間)
+のため、費用対効果を鑑みていったん見送った。失敗しても動画本体の投稿は
+止まらない設計だが、失敗時も`captions.insert`のクォータ(400 units)を
+無駄に消費し続けるだけになるため、`config.CAPTIONS_ENABLED = False`で
+機能自体を一時的に無効化した(コードは残したまま、`True`に戻せば復活する)。
+
+教訓: **Google API の「制限付きスコープ」は、コードが正しくてもOAuthアプリ
+の検証状態によって挙動が変わりうる**。実機で1回成功しただけでは「直った」
+と判断せず、複数回試行して安定して成功するかまで確認する必要がある。
 
 ## プロジェクト構成
 

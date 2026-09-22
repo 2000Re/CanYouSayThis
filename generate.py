@@ -379,14 +379,18 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # 付きの固定テキストを入れる)。captions.insertはyoutube.force-ssl
         # スコープが必要(README参照)で無い場合は失敗するが、動画自体は既に
         # 公開済みなので警告に留めて処理は止めない(add_to_playlistと同じ方針)。
-        from audio_utils import _probe_duration
-        from youtube_upload import upload_caption
+        #
+        # config.CAPTIONS_ENABLEDがFalseの間はスキップする(実機で断続的な
+        # 403 forbiddenを確認したため一時無効化中。README「ハマった罠」参照)。
+        if config.CAPTIONS_ENABLED:
+            from audio_utils import _probe_duration
+            from youtube_upload import upload_caption
 
-        try:
-            duration_seconds = _probe_duration(video_path)
-            upload_caption(video_id, duration_seconds, caption_text)
-        except Exception as e:
-            print(f"[Warning] {word}: 字幕のアップロードに失敗しました: {e}")
+            try:
+                duration_seconds = _probe_duration(video_path)
+                upload_caption(video_id, duration_seconds, caption_text)
+            except Exception as e:
+                print(f"[Warning] {word}: 字幕のアップロードに失敗しました: {e}")
 
         # compile_shorts.pyが後で(この回も含めて)GitHub Actions API経由で
         # このrunのアーティファクトから動画本体を取り出せるよう、video_idを
