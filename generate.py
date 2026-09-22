@@ -362,14 +362,20 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # 載せて視聴者の回遊(連続視聴)を促す。実際に動画を再生リストへ追加
         # する処理はアップロード成功後(video_id確定後)に別途行う。
         shorts_playlist_id = os.environ.get("YOUTUBE_SHORTS_PLAYLIST_ID")
+        lang_code = _lang_code_for_voice(actual_voice)
 
         title, description, tags, caption_text = _youtube_metadata(
             word, label, actual_mode, playlist_id=shorts_playlist_id, voice_label=voice_label,
-            is_native_script=used_native_script, lang_code=_lang_code_for_voice(actual_voice),
+            is_native_script=used_native_script, lang_code=lang_code,
         )
+        # glitchモードは単語を読み上げない合成音のみで、対応する音声言語が
+        # 無いためdefault_audio_languageは設定しない(YouTube側の自動判定に
+        # 任せる)。tts/tts_extremeのみ、実際に読み上げた言語をメタデータに
+        # 反映する(タイトル・タグへの言語名追加とは別軸のSEO施策、README参照)。
+        default_audio_language = lang_code if actual_mode in ("tts", "tts_extreme") else None
         youtube_url = upload_video(
             video_path, title=title, description=description, tags=tags,
-            privacy_status=privacy_status,
+            privacy_status=privacy_status, default_audio_language=default_audio_language,
         )
         result["youtube_url"] = youtube_url
 
@@ -392,6 +398,19 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
                 upload_caption(video_id, duration_seconds, caption_text)
             except Exception as e:
                 print(f"[Warning] {word}: 字幕のアップロードに失敗しました: {e}")
+
+        # 運営者コメントの自動投稿(caption_textをそのまま流用。字幕用に
+        # 組み立てたキーワード付きテキストがコメントとしてもそのまま使える
+        # ため)。captions.insertと同じyoutube.force-sslスコープを使うため、
+        # 同様に断続的な403 forbiddenが起きうる(README「ハマった罠」21番)。
+        # 失敗しても動画自体は既に公開済みなので警告に留めて処理は止めない。
+        if config.COMMENT_ON_UPLOAD_ENABLED:
+            from youtube_upload import post_comment
+
+            try:
+                post_comment(video_id, caption_text)
+            except Exception as e:
+                print(f"[Warning] {word}: コメントの投稿に失敗しました: {e}")
 
         # compile_shorts.pyが後で(この回も含めて)GitHub Actions API経由で
         # このrunのアーティファクトから動画本体を取り出せるよう、video_idを

@@ -277,6 +277,11 @@ TTS_EXTREME_MIN_DURATION_SECONDS = 0.6
 # 見る(効果は未検証の実験的な変更、README「ハマった罠」参照)。
 YOUTUBE_CATEGORY_ID = "26"  # Howto & Style
 
+# タイトル・説明文(メタデータ)の言語(videos.insertのsnippet.defaultLanguage)。
+# 常に英語で書くため"en"固定。字幕(CAPTION_LANGUAGE)と同じく、espeak-ngの
+# 読み上げ言語とは無関係。
+DEFAULT_LANGUAGE = "en"
+
 # 字幕(captions.insert)につける言語コード。espeak-ngの読み上げ言語ではなく、
 # 字幕テキスト自体の言語(常に英語で書くため"en"固定)。
 CAPTION_LANGUAGE = "en"
@@ -291,6 +296,13 @@ CAPTION_LANGUAGE = "en"
 # している。再度Trueに戻せば動画本体側のコード変更なしで復活する
 # (generate.py参照)。
 CAPTIONS_ENABLED = False
+
+# 運営者コメント自動投稿機能自体のON/OFF(youtube_upload.post_comment()
+# 参照)。captions.insertと同じyoutube.force-sslスコープを使うため、同様の
+# 断続的な403 forbiddenに遭遇する可能性がある(README「ハマった罠」21番)。
+# 失敗しても動画本体の投稿は止まらない設計。実運用で信頼性を見ながら、
+# 問題があればCAPTIONS_ENABLEDと同じくFalseにする。
+COMMENT_ON_UPLOAD_ENABLED = True
 
 # YouTube Studioの視聴者属性(アナリティクス)で継続的に上位に入っている
 # 非英語圏(フィリピン・インドネシア・マレーシア)向けに、説明文へ常時追加

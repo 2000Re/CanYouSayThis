@@ -227,3 +227,146 @@ def test_upload_caption_requests_unrestricted_scopes(monkeypatch):
     youtube_upload.upload_caption("abc123", 5.0, "How to pronounce this?")
 
     assert get_client_calls == [{"scopes": None}]
+
+
+def test_quota_cost_per_call_includes_comment_threads_insert():
+    assert QUOTA_COST_PER_CALL["commentThreads.insert"] == 50
+
+
+def test_post_comment_sends_expected_snippet(monkeypatch):
+    youtube = MagicMock()
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    youtube_upload.post_comment("abc123", "How to pronounce this?")
+
+    _, kwargs = youtube.commentThreads.return_value.insert.call_args
+    assert kwargs["body"]["snippet"] == {
+        "videoId": "abc123",
+        "topLevelComment": {"snippet": {"textOriginal": "How to pronounce this?"}},
+    }
+    assert youtube_upload._api_call_counts["commentThreads.insert"] == 1
+
+
+def test_post_comment_requests_unrestricted_scopes(monkeypatch):
+    # upload_captionと同じ回帰防止: commentThreads.insertもyoutube.force-ssl
+    # スコープが必要なため、UPLOAD_SCOPESに絞り込まずscopes=Noneで呼ぶ。
+    youtube = MagicMock()
+    get_client_calls = []
+    monkeypatch.setattr(
+        youtube_upload, "get_youtube_client",
+        lambda **kwargs: get_client_calls.append(kwargs) or youtube,
+    )
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    youtube_upload.post_comment("abc123", "How to pronounce this?")
+
+    assert get_client_calls == [{"scopes": None}]
+
+
+def test_fetch_video_stats_parses_statistics(monkeypatch):
+    youtube = MagicMock()
+    youtube.videos.return_value.list.return_value.execute.return_value = {
+        "items": [
+            {"id": "v1", "statistics": {"viewCount": "100", "likeCount": "5", "commentCount": "2"}},
+            {"id": "v2", "statistics": {"viewCount": "50"}},
+        ]
+    }
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    result = youtube_upload.fetch_video_stats(["v1", "v2"])
+
+    assert result == {
+        "v1": {"views": 100, "likes": 5, "comments": 2},
+        "v2": {"views": 50, "likes": 0, "comments": 0},
+    }
+    assert youtube_upload._api_call_counts["videos.list"] == 1
+
+
+def test_fetch_video_stats_queries_in_batches(monkeypatch):
+    monkeypatch.setattr(youtube_upload.config, "ANALYTICS_VIDEO_BATCH_SIZE", 1)
+    youtube = MagicMock()
+    responses = iter([
+        {"items": [{"id": "v1", "statistics": {"viewCount": "1"}}]},
+        {"items": [{"id": "v2", "statistics": {"viewCount": "2"}}]},
+    ])
+    youtube.videos.return_value.list.return_value.execute.side_effect = lambda: next(responses)
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    result = youtube_upload.fetch_video_stats(["v1", "v2"])
+
+    assert result == {"v1": {"views": 1, "likes": 0, "comments": 0},
+                       "v2": {"views": 2, "likes": 0, "comments": 0}}
+    assert youtube.videos.return_value.list.call_count == 2
+    assert youtube_upload._api_call_counts["videos.list"] == 2
+
+
+def test_fetch_video_stats_omits_videos_with_no_data(monkeypatch):
+    youtube = MagicMock()
+    youtube.videos.return_value.list.return_value.execute.return_value = {"items": []}
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    result = youtube_upload.fetch_video_stats(["v1"])
+
+    assert result == {}
+
+
+def test_upload_video_defaults_default_language_to_config_value():
+    import inspect
+    default = inspect.signature(youtube_upload.upload_video).parameters["default_language"].default
+    assert default == youtube_upload.config.DEFAULT_LANGUAGE
+
+
+def test_upload_video_defaults_default_audio_language_to_none():
+    import inspect
+    default = inspect.signature(youtube_upload.upload_video).parameters["default_audio_language"].default
+    assert default is None
+
+
+def test_upload_video_includes_default_language_fields_in_snippet(monkeypatch, tmp_path):
+    video_path = tmp_path / "video.mp4"
+    video_path.write_bytes(b"fake video bytes")
+
+    youtube = MagicMock()
+    youtube.videos.return_value.insert.return_value.next_chunk.return_value = (
+        None, {"id": "abc123"},
+    )
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    url = youtube_upload.upload_video(
+        str(video_path), title="t", description="d",
+        default_language="en", default_audio_language="fr",
+    )
+
+    assert url == "https://youtu.be/abc123"
+    _, kwargs = youtube.videos.return_value.insert.call_args
+    assert kwargs["body"]["snippet"]["defaultLanguage"] == "en"
+    assert kwargs["body"]["snippet"]["defaultAudioLanguage"] == "fr"
+
+
+def test_upload_video_omits_default_audio_language_when_not_given(monkeypatch, tmp_path):
+    video_path = tmp_path / "video.mp4"
+    video_path.write_bytes(b"fake video bytes")
+
+    youtube = MagicMock()
+    youtube.videos.return_value.insert.return_value.next_chunk.return_value = (
+        None, {"id": "abc123"},
+    )
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    youtube_upload.upload_video(str(video_path), title="t", description="d")
+
+    _, kwargs = youtube.videos.return_value.insert.call_args
+    assert "defaultAudioLanguage" not in kwargs["body"]["snippet"]

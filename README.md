@@ -469,6 +469,35 @@ A tongue twister and pronunciation challenge — try saying it out loud!`)
 > デフォルト10,000 units)により早く近づく点に注意してください(実行ログ
 > の「APIクォータ使用量のログ」で都度確認できます)。
 
+### 10. 運営者コメントの自動投稿と音声言語メタデータ(SEO)
+
+**運営者コメント**: 動画アップロード成功後、`youtube_upload.post_comment()`
+で字幕と同じキーワード付きテキストを運営者自身のコメントとして自動投稿し
+ます(`config.COMMENT_ON_UPLOAD_ENABLED`でON/OFF可能、デフォルトTrue)。
+運営者のコメントは通常のコメントより目立つ表示になるため、視聴者の目に
+留まりやすくする狙いです。コメント投稿が失敗しても動画自体は既に公開済み
+なので、警告に留めて処理は止めません(`generate.py`)。
+
+> **⚠️ `commentThreads.insert`も`youtube.force-ssl`スコープが必要**:
+> `captions.insert`と同じスコープのため、既にスコープ登録・トークン再発行
+> 済みであれば追加作業は不要です。ただし同じスコープで`captions.insert`が
+> 断続的に403 forbiddenになった実績があるため(「ハマった罠」21番)、
+> コメント投稿も同様に不安定になる可能性があります。問題が続く場合は
+> `config.COMMENT_ON_UPLOAD_ENABLED`を`False`にしてください。
+>
+> なお、YouTube Data APIにはコメントを「固定表示(ピン留め)」する専用
+> エンドポイントが無いため、`post_comment()`は投稿するところまでが範囲
+> です。ピン留めしたい場合はYouTube Studioから手動で行ってください。
+
+**音声言語メタデータ**: `videos.insert`の`snippet.defaultAudioLanguage`に、
+espeak-ngで実際に読み上げた言語(`config.VOICE_LANGUAGES`のキー、例:
+`"fr"`)を設定します(`generate.py`。glitchモードは単語を読み上げないため
+設定しません)。タイトル・タグへの言語名追加(前述)とは別軸で、YouTube
+側の言語ベースのマッチングに効かせる狙いです。あわせて`snippet.
+defaultLanguage`にも常に`"en"`(`config.DEFAULT_LANGUAGE`)を設定し、
+タイトル・説明文自体の言語を明示します。既存の`videos.insert`呼び出しに
+フィールドを追加するだけなので、追加のAPI呼び出し・クォータ消費はありません。
+
 ## Shorts結合動画
 
 アップロードしたShorts動画の履歴(`upload_history.json`)が10本たまるごと
@@ -609,6 +638,36 @@ Secretsをそのまま使うため、追加のSecrets登録は不要です(上�
 (2026-09-19〜)。ただしYouTube Analytics APIのデータには通常1〜2日程度の
 ラグがあり、リフレッシュトークン再発行直後は特に反映が遅れて見えることが
 あるため、直近の投稿ほど過小評価されやすい点に注意してください。
+
+## 即時統計の確認(`youtube_quick_stats.py`)
+
+`youtube_analytics.py`(YouTube Analytics API)の1〜2日ラグを避けて、
+投稿直後の初動を素早く確認したい場合に使います。[YouTube Data API]
+(https://developers.google.com/youtube/v3)の`videos.list(part=statistics)`
+は、視聴ページ/YouTube Studioの「コンテンツ」タブに表示されているのと同じ
+即時反映の公開再生数・高評価数・コメント数を返します
+(`youtube_upload.fetch_video_stats()`)。
+
+```bash
+python3 youtube_quick_stats.py                # 過去24時間にアップロードした動画
+python3 youtube_quick_stats.py --hours 6       # 過去6時間
+```
+
+出力例:
+
+```
+=== 直近24時間の投稿(8本)の即時統計 ===
+  abc123 [tts] )oav҈lrE: 再生142回 / 高評価3 / コメント1
+  def456 [glitch] voOn: 再生58回 / 高評価0 / コメント0
+  ...
+```
+
+`youtube_analytics.py`と違い、投稿からの経過日数による正規化
+(`avg_views_per_day`のような主指標)は行いません。あくまで「今の生の値」を
+素早く見るための軽量ツールで、モード間の公平な比較には引き続き
+`youtube_analytics.py`を使ってください。必要な環境変数・GitHub Actions
+(`.github/workflows/quick_stats.yml`、`hours`入力で実行)は`youtube_analytics.py`
+と同じで、追加のSecrets登録・スコープは不要です。
 
 ## YouTubeチャンネル用アセット(アイコン・バナー)
 
@@ -1140,6 +1199,7 @@ upload_history.py             アップロード成功履歴(upload_history.json
 compilation_state.py          Shorts結合動画の状態(compilation_state.json)管理
 compile_shorts.py             Shortsが10本たまるごとに結合動画を作りアップロード
 youtube_analytics.py          YouTube Analytics APIでモード別の再生数・視聴維持率を集計
+youtube_quick_stats.py         videos.listで直近投稿の即時再生数・高評価数・コメント数を取得
 get_youtube_refresh_token.py  YouTubeアップロード用リフレッシュトークンの取得(ローカルで一度だけ実行)
 generate.py                   CLIエントリポイント
 generate_channel_art.py       YouTubeチャンネル用アイコン・バナーの生成
