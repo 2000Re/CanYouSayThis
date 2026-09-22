@@ -265,6 +265,29 @@ DEFAULT_FADE = 0.4            # 末尾のフェードアウトの長さ(秒)
 # この長さまで引き伸ばす。
 TTS_EXTREME_MIN_DURATION_SECONDS = 0.6
 
+# --- YouTube SEO(カテゴリ・字幕・説明文キーワード) ----------------------------
+#
+# YouTubeの動画カテゴリID一覧(公式にリストAPIはあるが固定値として広く知られて
+# いる)。24=Entertainmentが従来のデフォルトだったが、「How to Pronounce」系は
+# 検索意図としてはハウツー寄りとも言えるため、26=Howto & Styleに変更して様子を
+# 見る(効果は未検証の実験的な変更、README「ハマった罠」参照)。
+YOUTUBE_CATEGORY_ID = "26"  # Howto & Style
+
+# 字幕(captions.insert)につける言語コード。espeak-ngの読み上げ言語ではなく、
+# 字幕テキスト自体の言語(常に英語で書くため"en"固定)。
+CAPTION_LANGUAGE = "en"
+
+# YouTube Studioの視聴者属性(アナリティクス)で継続的に上位に入っている
+# 非英語圏(フィリピン・インドネシア・マレーシア)向けに、説明文へ常時追加
+# する現地語の検索キーワードフレーズ(「どう発音する?」に相当)。動画自体の
+# ボイス言語(lang_code)とは独立に全動画で共通して追加する点が、動画の言語に
+# 連動する現地語ハッシュタグ(README「現地語ハッシュタグ」参照)と異なる。
+AUDIENCE_REGION_PHRASES = [
+    ("Filipino", "paano bigkasin"),      # 「どう発音する?」
+    ("Indonesian", "cara mengucapkan"),  # 「発音する方法」
+    ("Malay", "cara sebut"),             # 「発音する方法」
+]
+
 # --- YouTubeアップロード履歴 -------------------------------------------------
 
 UPLOAD_HISTORY_PATH = "upload_history.json"  # generate.py --upload の成功履歴

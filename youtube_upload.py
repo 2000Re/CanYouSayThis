@@ -42,16 +42,23 @@ import time
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaInMemoryUpload
 
 import config
 
 # get_youtube_refresh_token.py が要求するスコープと一致させている
 # (OAuth同意画面に登録済みのスコープに合わせて youtube.upload 単体ではなく
 # youtube フルアクセスを使っている)
+#
+# youtube.force-ssl は captions.insert(字幕アップロード、upload_caption()
+# 参照)専用のスコープで、youtube単体では権限不足になる。yt-analytics.readonly
+# と同じく、既存のリフレッシュトークンには後から追加できない(スコープは
+# 発行時に焼き付けられる仕様)ため、追加した場合はget_youtube_refresh_token.py
+# を再実行してYOUTUBE_REFRESH_TOKENを取得し直す必要がある。
 UPLOAD_SCOPES = [
     "https://www.googleapis.com/auth/youtube",
     "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/youtube.force-ssl",
 ]
 TOKEN_URI = "https://oauth2.googleapis.com/token"
 
@@ -64,7 +71,7 @@ _MAX_RETRIES = 8
 # (日次クォータの目安に対する概算を実行ログに表示するために使う)
 QUOTA_COST_PER_CALL = {
     "videos.insert": 100, "playlistItems.insert": 50, "channels.list": 1,
-    "videos.list": 1, "videos.update": 50,
+    "videos.list": 1, "videos.update": 50, "captions.insert": 400,
 }
 _api_call_counts = {name: 0 for name in QUOTA_COST_PER_CALL}
 
@@ -254,11 +261,11 @@ def get_youtube_client():
     return youtube
 
 
-def upload_video(video_path, title, description, tags=None, category_id="24",
+def upload_video(video_path, title, description, tags=None, category_id=config.YOUTUBE_CATEGORY_ID,
                   privacy_status="public"):
     """video_path をYouTubeにアップロードし、公開URL(https://youtu.be/<id>)を返す。
 
-    category_id のデフォルト "24" は Entertainment。
+    category_id のデフォルトはconfig.YOUTUBE_CATEGORY_ID(Howto & Style)。
     """
     youtube = get_youtube_client()
 
@@ -335,3 +342,48 @@ def add_to_playlist(video_id, playlist_id):
     }
     _api_call_counts["playlistItems.insert"] += 1
     youtube.playlistItems().insert(part="snippet", body=body).execute()
+
+
+def _srt_timestamp(seconds):
+    """SRTのタイムスタンプ形式(HH:MM:SS,mmm)に変換する。"""
+    total_ms = max(round(seconds * 1000), 0)
+    hours, rem = divmod(total_ms, 3_600_000)
+    minutes, rem = divmod(rem, 60_000)
+    secs, ms = divmod(rem, 1000)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d},{ms:03d}"
+
+
+def _build_srt(text, duration_seconds):
+    """text を動画全体(0秒〜duration_seconds)にかかる1キューだけのSRT文字列
+    にする。発話内容とタイミングを同期させる必要が無い固定テキストのため、
+    複数キューに分割する意味が無い。"""
+    return f"1\n00:00:00,000 --> {_srt_timestamp(duration_seconds)}\n{text}\n"
+
+
+def upload_caption(video_id, duration_seconds, text, language=config.CAPTION_LANGUAGE):
+    """video_idの動画に、text全体を1キューのSRT字幕として手動でアップロード
+    する。
+
+    [背景] espeak-ngが読み上げる単語はでたらめな文字列のため、字幕を付けずに
+    YouTubeの自動文字起こし(ASR)に任せると、意味不明な字幕が生成され、検索
+    インデックス対象になり得るテキスト枠が無駄になる。代わりに動画の説明文
+    と同じ趣旨のキーワード付き固定テキストを手動字幕として入れることで、
+    アクセシビリティと検索キーワードの両方を稼ぐ狙い。
+
+    captions.insertはyoutube.force-ssl スコープが必要(UPLOAD_SCOPES参照)。
+    動画本体のアップロードとは別のAPI呼び出しなので、呼び出し側はこの関数の
+    例外を警告に留め、処理全体は止めない想定(add_to_playlist()と同じ方針、
+    generate.py参照)。"""
+    youtube = get_youtube_client()
+    srt_body = _build_srt(text, duration_seconds)
+    media = MediaInMemoryUpload(srt_body.encode("utf-8"), mimetype="text/plain")
+    body = {
+        "snippet": {
+            "videoId": video_id,
+            "language": language,
+            "name": "",
+            "isDraft": False,
+        }
+    }
+    _api_call_counts["captions.insert"] += 1
+    youtube.captions().insert(part="snippet", body=body, media_body=media).execute()

@@ -119,25 +119,25 @@ def test_native_script_for_voice_returns_generator_for_abugida_languages():
 
 
 def test_youtube_metadata_title_contains_label_and_shorts_hashtag():
-    title, _description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    title, _description, _tags, _caption = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "voOn" in title
     assert "#Shorts" in title
 
 
 def test_youtube_metadata_description_contains_cta():
-    _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "comment" in description.lower()
 
 
 def test_youtube_metadata_description_contains_hashtags():
-    _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption = _youtube_metadata("v́oOn", "voOn", "tts")
     for hashtag in ("#Shorts", "#Pronunciation", "#Unpronounceable",
                      "#Zalgo", "#GlitchText", "#TextToSpeech", "#TTS", "#Challenge"):
         assert hashtag in description
 
 
 def test_youtube_metadata_tags_include_mode_and_topic_keywords():
-    _title, _description, tags = _youtube_metadata("v́oOn", "voOn", "glitch")
+    _title, _description, tags, _caption = _youtube_metadata("v́oOn", "voOn", "glitch")
     assert "glitch" in tags
     assert "zalgo" in tags
     assert "text to speech" in tags
@@ -147,7 +147,7 @@ def test_youtube_metadata_description_contains_alternate_search_keywords():
     # タイトル・タグの言語名追加(A/B)とは違う切り口の検索キーワード
     # ("tongue twister"/"language learners")を、言語が判明していない回でも
     # 常に含めることの回帰防止。
-    _title, description, tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, tags, _caption = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "tongue twister" in description.lower()
     assert "language learners" in description.lower()
     assert "tongue twister" in tags
@@ -156,50 +156,50 @@ def test_youtube_metadata_description_contains_alternate_search_keywords():
 def test_youtube_metadata_description_contains_subscribe_cta():
     # 新規視聴者がほとんど(コア視聴者0.1%未満)というアナリティクスの偏りを
     # 踏まえ、playlist_idの有無に関わらず常に登録CTAを含める回帰テスト。
-    _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "Subscribe" in description
 
 
 def test_youtube_metadata_omits_playlist_link_when_not_given():
-    _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "playlist?list=" not in description
 
 
 def test_youtube_metadata_includes_playlist_link_when_given():
-    _title, description, _tags = _youtube_metadata(
+    _title, description, _tags, _caption = _youtube_metadata(
         "v́oOn", "voOn", "tts", playlist_id="PLexample123"
     )
     assert "https://www.youtube.com/playlist?list=PLexample123" in description
 
 
 def test_youtube_metadata_omits_voice_line_when_not_given():
-    _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "Voice:" not in description
 
 
 def test_youtube_metadata_includes_voice_line_when_given():
-    _title, description, _tags = _youtube_metadata(
+    _title, description, _tags, _caption = _youtube_metadata(
         "v́oOn", "voOn", "tts", voice_label="French (Female)"
     )
     assert "Voice: French (Female)" in description
 
 
 def test_youtube_metadata_omits_native_script_note_by_default():
-    _title, description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "not a real word" not in description
 
 
 def test_youtube_metadata_includes_native_script_note_when_flagged():
     # 実在の文字体系(アラビア文字等)で生成した回は、実在の単語ではなく
     # ランダムな造語である旨を説明文に明記する
-    _title, description, _tags = _youtube_metadata(
+    _title, description, _tags, _caption = _youtube_metadata(
         "صغاافك", "صغاافك", "tts", voice_label="Arabic (Male)", is_native_script=True
     )
     assert "not a real word" in description
 
 
 def test_youtube_metadata_omits_native_hashtag_when_lang_code_not_given():
-    _title, description, tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, tags, _caption = _youtube_metadata("v́oOn", "voOn", "tts")
     assert description.count("#") == 8
     assert config.VOICE_LANGUAGES["ar"]["hashtag_word"] not in tags
 
@@ -209,7 +209,7 @@ def test_youtube_metadata_includes_native_hashtag_when_lang_code_given():
     # 現地語ハッシュタグを説明文とtagsの両方に追加する(config.VOICE_LANGUAGES
     # の"hashtag_word"参照)。
     hashtag_word = config.VOICE_LANGUAGES["ar"]["hashtag_word"]
-    _title, description, tags = _youtube_metadata(
+    _title, description, tags, _caption = _youtube_metadata(
         "صغاافك", "صغاافك", "tts", voice_label="Arabic (Male)", lang_code="ar"
     )
     assert f"#{hashtag_word}" in description
@@ -221,7 +221,7 @@ def test_youtube_metadata_omits_native_hashtag_for_languages_without_one():
     # ハッシュタグのみになる)
     for lang_code in ("en",):
         assert config.VOICE_LANGUAGES[lang_code]["hashtag_word"] is None
-        _title, description, _tags = _youtube_metadata(
+        _title, description, _tags, _caption = _youtube_metadata(
             "word", "word", "tts", lang_code=lang_code
         )
         assert description.count("#") == 8
@@ -230,33 +230,59 @@ def test_youtube_metadata_omits_native_hashtag_for_languages_without_one():
 def test_youtube_metadata_title_includes_language_name_when_lang_code_given():
     # 「french pronunciation」のような言語名込みの検索クエリにタイトル
     # レベルでマッチしやすくするための施策(README参照)。
-    title, _description, _tags = _youtube_metadata(
+    title, _description, _tags, _caption = _youtube_metadata(
         "v́oOn", "voOn", "tts", voice_label="French (Female)", lang_code="fr"
     )
     assert "in French?" in title
 
 
 def test_youtube_metadata_title_omits_language_name_when_lang_code_not_given():
-    title, _description, _tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    title, _description, _tags, _caption = _youtube_metadata("v́oOn", "voOn", "tts")
     assert " in " not in title
 
 
 def test_youtube_metadata_title_omits_language_name_for_english():
     # 英語はこのチャンネルの既定言語のため、"in English?"は冗長なので付けない
-    title, _description, _tags = _youtube_metadata("v́oOn", "voOn", "tts", lang_code="en")
+    title, _description, _tags, _caption = _youtube_metadata("v́oOn", "voOn", "tts", lang_code="en")
     assert " in " not in title
 
 
 def test_youtube_metadata_tags_include_english_language_pronunciation_tag():
-    _title, _description, tags = _youtube_metadata(
+    _title, _description, tags, _caption = _youtube_metadata(
         "v́oOn", "voOn", "tts", voice_label="French (Female)", lang_code="fr"
     )
     assert "french pronunciation" in tags
 
 
 def test_youtube_metadata_tags_omit_language_pronunciation_tag_when_not_given():
-    _title, _description, tags = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, _description, tags, _caption = _youtube_metadata("v́oOn", "voOn", "tts")
     assert not any(t.endswith(" pronunciation") for t in tags)
+
+
+def test_youtube_metadata_description_contains_audience_region_phrases():
+    # 視聴者属性で継続的に上位に入っている非英語圏(フィリピン・インドネシア・
+    # マレーシア)向けの検索キーワードフレーズを、動画の言語に関わらず常に
+    # 含める回帰テスト(config.AUDIENCE_REGION_PHRASES参照)。
+    _title, description, _tags, _caption = _youtube_metadata("v́oOn", "voOn", "tts")
+    for _lang, phrase in config.AUDIENCE_REGION_PHRASES:
+        assert phrase in description
+
+
+def test_youtube_metadata_caption_contains_label():
+    _title, _description, _tags, caption = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "voOn" in caption
+
+
+def test_youtube_metadata_caption_includes_language_name_when_lang_code_given():
+    _title, _description, _tags, caption = _youtube_metadata(
+        "v́oOn", "voOn", "tts", voice_label="French (Female)", lang_code="fr"
+    )
+    assert "in French" in caption
+
+
+def test_youtube_metadata_caption_omits_language_name_when_lang_code_not_given():
+    _title, _description, _tags, caption = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert " in " not in caption
 
 
 def test_lang_code_for_voice_returns_none_for_unknown_code():

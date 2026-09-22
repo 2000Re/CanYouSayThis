@@ -156,3 +156,48 @@ def test_load_credentials_raises_when_env_vars_missing(monkeypatch):
     monkeypatch.delenv("YOUTUBE_REFRESH_TOKEN", raising=False)
     with pytest.raises(RuntimeError):
         youtube_upload._load_credentials()
+
+
+def test_upload_video_defaults_category_id_to_config_value():
+    import inspect
+    default = inspect.signature(youtube_upload.upload_video).parameters["category_id"].default
+    assert default == youtube_upload.config.YOUTUBE_CATEGORY_ID
+
+
+def test_upload_scopes_include_force_ssl_for_captions():
+    # captions.insert(upload_caption())はyoutube単体では権限不足になり、
+    # youtube.force-sslスコープが別途必要(README参照)。
+    assert "https://www.googleapis.com/auth/youtube.force-ssl" in youtube_upload.UPLOAD_SCOPES
+
+
+def test_quota_cost_per_call_includes_captions_insert():
+    assert QUOTA_COST_PER_CALL["captions.insert"] == 400
+
+
+def test_srt_timestamp_formats_hours_minutes_seconds_millis():
+    assert youtube_upload._srt_timestamp(3725.5) == "01:02:05,500"
+
+
+def test_srt_timestamp_clamps_negative_to_zero():
+    assert youtube_upload._srt_timestamp(-1) == "00:00:00,000"
+
+
+def test_build_srt_wraps_text_in_single_cue_spanning_full_duration():
+    srt = youtube_upload._build_srt("How to pronounce this?", 5.0)
+    assert srt == "1\n00:00:00,000 --> 00:00:05,000\nHow to pronounce this?\n"
+
+
+def test_upload_caption_sends_expected_snippet(monkeypatch):
+    youtube = MagicMock()
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    youtube_upload.upload_caption("abc123", 5.0, "How to pronounce this?")
+
+    _, kwargs = youtube.captions.return_value.insert.call_args
+    assert kwargs["body"]["snippet"] == {
+        "videoId": "abc123", "language": youtube_upload.config.CAPTION_LANGUAGE,
+        "name": "", "isDraft": False,
+    }
+    assert youtube_upload._api_call_counts["captions.insert"] == 1
