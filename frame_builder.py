@@ -35,7 +35,7 @@ FRAME_HTML_TEMPLATE = """
 <body>
 <p class="kicker">How to Pronounce</p>
 <h1 class="word">{word}</h1>
-<p class="sub">[{mode_label} / Unpronounceable word]</p>
+<p class="sub">{sub_label}</p>
 <svg class="icon" width="{icon_size}" height="{icon_size}" viewBox="0 0 140 140">
   <polygon points="10,50 50,50 90,10 90,130 50,90 10,90" fill="black"/>
   <path d="M100,70 A30,30 0 0 0 100,30" stroke="black" stroke-width="6" fill="none"/>
@@ -55,6 +55,23 @@ _BASELINE_MAX_WIDTH_MARGIN = 80  # フレーム幅からこの分を引いたも
 # 詰めすぎるとキッカー("How to Pronounce")と衝突する。それを避けるための
 # 単語上の余白(結合文字を含まない旧デザインの頃は margin-top:0 だった)。
 _BASELINE_WORD_MARGIN_TOP = 130
+
+
+def _sub_label(mode, is_native_script):
+    """フレーム下部の小さいサブテキスト([Mode / ...])を組み立てる。
+
+    is_native_script=True(ロシア語・タイ語・アラビア語・ヘブライ語のように
+    実在の文字体系からランダムに文字を組み合わせて生成した回)の場合、
+    「実在の単語ではない」旨を"Not a real word!"としてここに表示する。
+
+    説明欄にも同じ趣旨の注記があるが(generate.py _youtube_metadata()の
+    is_native_script分岐)、Shorts視聴者の多くは説明欄を開かないため、
+    実際にその言語の話者から「発音が間違っている」という誤解のコメントが
+    付いた(README「ハマった罠」参照)。動画フレーム自体は視聴時に必ず
+    目に入るため、確実に伝わる側にも同じ注記を焼き込む。"""
+    label = MODE_LABELS.get(mode, mode)
+    note = "Not a real word!" if is_native_script else "Unpronounceable word"
+    return f"[{label} / {note}]"
 
 
 def _word_font_size(word_label, width):
@@ -104,7 +121,8 @@ def close_browser():
         _playwright_ctx["pw"] = None
 
 
-def build_frame(word_label, frame_path, mode="tts", size=FRAME_SIZE, display_word=None):
+def build_frame(word_label, frame_path, mode="tts", size=FRAME_SIZE, display_word=None,
+                 is_native_script=False):
     """word_label: フォントサイズ算出の基準にする、結合文字を含まないラベル
     (word_generator.readable_label()の出力)。文字数がそのまま見た目の
     サイズに対応するので、サイジングは常にこちらの長さで行う。
@@ -112,14 +130,17 @@ def build_frame(word_label, frame_path, mode="tts", size=FRAME_SIZE, display_wor
     display_word: 実際に画面へ描画する文字列。結合文字(Zalgoの見た目)を
     保持した word_generator.zalgo_display_word() の出力を渡すことで、
     フレームに実際のZalgo感を出す。省略時は word_label をそのまま描画する
-    (後方互換用)。"""
+    (後方互換用)。
+
+    is_native_script: Trueの場合、フレーム下部のサブテキストに「実在の
+    単語ではない」旨を表示する(_sub_label()参照)。"""
     display_word = word_label if display_word is None else display_word
     width, height = size
     scale = width / _BASELINE_WIDTH
     html_content = FRAME_HTML_TEMPLATE.format(
         font_stack=FRAME_CSS_FONT_STACK,
         word=html.escape(display_word),
-        mode_label=MODE_LABELS.get(mode, mode),
+        sub_label=html.escape(_sub_label(mode, is_native_script)),
         word_font_size=_word_font_size(word_label, width),
         width=width,
         height=height,

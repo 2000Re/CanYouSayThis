@@ -1,6 +1,6 @@
-"""frame_builder.py の_get_browser()に対するユニットテスト。実際の
-Chromium/Playwrightは起動せず、sync_playwrightをモックして
-起動失敗時の後片付けだけを検証する(軽いテストのみ)。"""
+"""frame_builder.py の_get_browser()・_sub_label()に対するユニットテスト。
+実際のChromium/Playwrightは起動せず、_get_browser()はsync_playwrightを
+モックして起動失敗時の後片付けだけを検証する(軽いテストのみ)。"""
 
 import sys
 from pathlib import Path
@@ -49,3 +49,22 @@ def test_get_browser_returns_cached_browser_without_relaunching(monkeypatch):
     assert first is mock_browser
     assert second is mock_browser
     mock_pw.chromium.launch.assert_called_once()
+
+
+def test_sub_label_default_says_unpronounceable():
+    assert frame_builder._sub_label("tts", is_native_script=False) == \
+        "[Text-to-Speech / Unpronounceable word]"
+
+
+def test_sub_label_native_script_says_not_a_real_word():
+    # 実在の文字体系(ロシア語・タイ語・アラビア語・ヘブライ語)でランダム
+    # 生成した回は、視聴者がその言語の話者だった場合に「実在の単語だが
+    # 発音が違う」と誤解するコメントが付いたため、動画フレーム自体にも
+    # 注記を焼き込む回帰防止(README「ハマった罠」参照)。
+    assert frame_builder._sub_label("tts", is_native_script=True) == \
+        "[Text-to-Speech / Not a real word!]"
+
+
+def test_sub_label_unknown_mode_falls_back_to_raw_mode_name():
+    assert frame_builder._sub_label("mystery", is_native_script=False) == \
+        "[mystery / Unpronounceable word]"
