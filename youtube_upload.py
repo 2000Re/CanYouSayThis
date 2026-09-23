@@ -274,7 +274,7 @@ def get_youtube_client(scopes=_SCOPES_UNSET):
 
 def upload_video(video_path, title, description, tags=None, category_id=config.YOUTUBE_CATEGORY_ID,
                   privacy_status="public", default_language=config.DEFAULT_LANGUAGE,
-                  default_audio_language=None):
+                  default_audio_language=None, localizations=None):
     """video_path をYouTubeにアップロードし、公開URL(https://youtu.be/<id>)を返す。
 
     category_id のデフォルトはconfig.YOUTUBE_CATEGORY_ID(Howto & Style)。
@@ -287,7 +287,15 @@ def upload_video(video_path, title, description, tags=None, category_id=config.Y
     (README参照)とは別軸で、YouTube側の言語ベースのマッチングに効かせる狙い。
     glitchモード(単語を読み上げない合成音のみ)等、該当する音声言語が無い
     回はNoneのままにして、YouTube側の自動判定に任せる。videos.insertの
-    snippetに含めるだけなので、追加のAPI呼び出し・クォータ消費は無い。"""
+    snippetに含めるだけなので、追加のAPI呼び出し・クォータ消費は無い。
+
+    localizations: {言語コード: {"title": ..., "description": ...}} の
+    dict(例: {"ja": {"title": "...", "description": "..."}})。YouTube側で
+    視聴者の言語設定がこのキーと一致する場合、snippetのtitle/descriptionの
+    代わりにこちらが表示される(動画本体・音声は変わらない)。localizations
+    もdefault_audio_language同様、videos.insertのpartに含めるだけなので、
+    追加のAPI呼び出し・クォータ消費・追加スコープは無い(captions.insert/
+    commentThreads.insertと違いyoutube.force-sslは不要、README参照)。"""
     youtube = get_youtube_client()
 
     snippet = {
@@ -308,8 +316,13 @@ def upload_video(video_path, title, description, tags=None, category_id=config.Y
             "selfDeclaredMadeForKids": False,
         },
     }
+    part = "snippet,status"
+    if localizations:
+        body["localizations"] = localizations
+        part += ",localizations"
+
     media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
-    request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
+    request = youtube.videos().insert(part=part, body=body, media_body=media)
 
     # 一時的なサーバーエラーでリトライが発生しても、実際に消費されるクォータは
     # 動画1本ぶんだけなので、リトライのたびに加算せずここで1回だけ数える。

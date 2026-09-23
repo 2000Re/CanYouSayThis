@@ -469,7 +469,7 @@ A tongue twister and pronunciation challenge — try saying it out loud!`)
 > デフォルト10,000 units)により早く近づく点に注意してください(実行ログ
 > の「APIクォータ使用量のログ」で都度確認できます)。
 
-### 10. 運営者コメントの自動投稿と音声言語メタデータ(SEO)
+### 10. 運営者コメントの自動投稿・音声言語メタデータ・タイトルの日本語ローカライズ(SEO)
 
 **運営者コメント**: 動画アップロード成功後、`youtube_upload.post_comment()`
 で字幕と同じキーワード付きテキストを運営者自身のコメントとして自動投稿し
@@ -497,6 +497,18 @@ espeak-ngで実際に読み上げた言語(`config.VOICE_LANGUAGES`のキー、�
 defaultLanguage`にも常に`"en"`(`config.DEFAULT_LANGUAGE`)を設定し、
 タイトル・説明文自体の言語を明示します。既存の`videos.insert`呼び出しに
 フィールドを追加するだけなので、追加のAPI呼び出し・クォータ消費はありません。
+
+**タイトルの日本語ローカライズ**: `videos.insert`の`localizations`
+フィールドに、視聴者のYouTube表示言語が日本語の場合だけ表示される
+日本語タイトル(例: `「voOn」の発音は?(フランス語) #Shorts`)を設定します
+(`config.LANGUAGE_LABELS_JA`、`config.JAPANESE_TITLE_LOCALIZATION_ENABLED`
+でON/OFF可能、デフォルトTrue)。動画本体・音声・説明文・英語タイトル自体は
+変わらず、YouTube側が視聴者の表示言語設定に応じてタイトルだけを出し分ける
+仕組みです。「海外向けのノリ」という動画コンテンツ自体の方針とは別軸で、
+あくまで表示言語をYouTube側の視聴者設定に合わせるだけの施策のため、
+コンテンツ方針とは衝突しません。`captions.insert`/`commentThreads.insert`
+と異なり`youtube.force-ssl`は不要で(`videos.insert`と同じ`youtube`/
+`youtube.upload`スコープで完結)、追加のAPI呼び出し・クォータ消費もありません。
 
 ## Shorts結合動画
 

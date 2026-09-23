@@ -370,3 +370,44 @@ def test_upload_video_omits_default_audio_language_when_not_given(monkeypatch, t
 
     _, kwargs = youtube.videos.return_value.insert.call_args
     assert "defaultAudioLanguage" not in kwargs["body"]["snippet"]
+
+
+def test_upload_video_includes_localizations_and_part_when_given(monkeypatch, tmp_path):
+    video_path = tmp_path / "video.mp4"
+    video_path.write_bytes(b"fake video bytes")
+
+    youtube = MagicMock()
+    youtube.videos.return_value.insert.return_value.next_chunk.return_value = (
+        None, {"id": "abc123"},
+    )
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    localizations = {"ja": {"title": "「voOn」の発音は? #Shorts", "description": "d"}}
+    youtube_upload.upload_video(
+        str(video_path), title="t", description="d", localizations=localizations,
+    )
+
+    _, kwargs = youtube.videos.return_value.insert.call_args
+    assert kwargs["body"]["localizations"] == localizations
+    assert "localizations" in kwargs["part"]
+
+
+def test_upload_video_omits_localizations_when_not_given(monkeypatch, tmp_path):
+    video_path = tmp_path / "video.mp4"
+    video_path.write_bytes(b"fake video bytes")
+
+    youtube = MagicMock()
+    youtube.videos.return_value.insert.return_value.next_chunk.return_value = (
+        None, {"id": "abc123"},
+    )
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    youtube_upload.upload_video(str(video_path), title="t", description="d")
+
+    _, kwargs = youtube.videos.return_value.insert.call_args
+    assert "localizations" not in kwargs["body"]
+    assert "localizations" not in kwargs["part"]
