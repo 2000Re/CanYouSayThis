@@ -711,6 +711,26 @@ python3 youtube_traffic_source.py --video-id mFGTwTBPy7Q --days 7   # 過去7日
 (`.github/workflows/traffic_source.yml`、`video_id`/`days`入力で実行)は
 `youtube_analytics.py`と同じで、追加のSecrets登録・スコープは不要です。
 
+## 日本語ローカライズが崩れて表示された動画の手動修正(`youtube_fix_localization.py`)
+
+「ハマった罠」24番のbidi(双方向文字)修正は新規アップロード分にしか
+効かないため、修正前に公開した動画(ヘブライ語・アラビア語の回)の日本語
+ローカライズタイトルは崩れたままです。`videos.update`(`part=localizations`)
+で個別に直すためのバックフィルツールです。
+
+```bash
+python3 youtube_fix_localization.py --video-ids ABC123,DEF456
+```
+
+現在のタイトルから`「」`で囲まれた部分(label)を正規表現で取り出し、その
+部分だけをbidi isolate文字(U+2068〜U+2069)で囲み直して`videos.update`
+します。既に修正済み(囲み済み)の動画や`localizations.ja`が無い動画は
+スキップします。`videos.insert`と同じ`youtube`/`youtube.upload`スコープ
+(`get_youtube_client()`のデフォルト)で完結するため、`youtube.force-ssl`
+や`yt-analytics.readonly`の追加登録は不要です。必要な環境変数・GitHub
+Actions(`.github/workflows/fix_localization.yml`、`video_ids`入力で実行)
+は他のワークフローと共通です。
+
 ## YouTubeチャンネル用アセット(アイコン・バナー)
 
 チャンネルアイコンとバナー画像も同じ仕組み(Chromium描画)で生成できます。
@@ -1276,6 +1296,10 @@ isolateで囲むこと自体はLTRの`label`に対しても無害なため、言
 の文字列自体をbidi isolateで囲む**。埋め込まれる文字列がLTR/RTLどちらに
 なるか(あるいは将来どの言語が増えるか)を個別に判定・分岐する必要が無く、
 最も汎用的で壊れにくい。
+
+なお、この修正は新規アップロード分にしか効かないため、修正前に公開済みの
+動画のタイトルは直っていない。個別に直すための`youtube_fix_localization.py`
+を追加した(「日本語ローカライズが崩れて表示された動画の手動修正」節参照)。
 
 ## プロジェクト構成
 
