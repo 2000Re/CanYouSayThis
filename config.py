@@ -143,6 +143,20 @@ VOICE_LANGUAGES = {
     "he":  {"label": "Hebrew",     "male": "he",    "female": "he+f3", "script": "cluster", "chars": HEBREW_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "הגייה"},
 }
 
+# タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド、
+# generate.py _youtube_metadata()参照)で、VOICE_LANGUAGESの"label"に対応する
+# 日本語の言語名。YouTubeの視聴環境が日本語の視聴者にはこちらのタイトルが
+# 表示され、それ以外の視聴者には従来通り英語タイトルが表示される(動画本体
+# の言語・内容自体は変わらない)。英語はタイトルに言語名を追加しない既存の
+# 扱い(lang_label省略)と合わせ、ここにも含めていない。
+LANGUAGE_LABELS_JA = {
+    "fr": "フランス語", "de": "ドイツ語", "hu": "ハンガリー語", "sv": "スウェーデン語",
+    "zh": "中国語", "yue": "広東語", "fi": "フィンランド語", "is": "アイスランド語",
+    "vi": "ベトナム語", "id": "インドネシア語", "ms": "マレー語", "tr": "トルコ語",
+    "pt-br": "ポルトガル語(ブラジル)", "pt": "ポルトガル語(ポルトガル)",
+    "ro": "ルーマニア語", "ru": "ロシア語", "th": "タイ語", "ar": "アラビア語", "he": "ヘブライ語",
+}
+
 # --voice random で女性ボイスが選ばれた場合に使うespeak-ngのピッチ(-p、
 # 0〜99、デフォルト50)。MBROLA由来の女性ボイス(femaleコードが"mb-"で
 # 始まる5言語)は素のままだとやや低めに聞こえたため、この値で底上げする。
@@ -285,6 +299,14 @@ DEFAULT_LANGUAGE = "en"
 # 字幕(captions.insert)につける言語コード。espeak-ngの読み上げ言語ではなく、
 # 字幕テキスト自体の言語(常に英語で書くため"en"固定)。
 CAPTION_LANGUAGE = "en"
+
+# タイトルの日本語ローカライズ(LANGUAGE_LABELS_JA参照)自体のON/OFF。
+# videos.insertのlocalizationsフィールドはyoutube.upload/youtubeスコープで
+# 完結し(captions.insert/commentThreads.insertのようなyoutube.force-ssl
+# スコープの問題は無い)、追加のAPI呼び出し・クォータ消費も無いが、万一
+# 想定外の挙動があった場合にすぐ切り戻せるよう、他の機能と同じくトグルに
+# しておく。
+JAPANESE_TITLE_LOCALIZATION_ENABLED = True
 
 # 字幕アップロード機能自体のON/OFF。captions.insertが必要とするyoutube.
 # force-sslスコープは「制限付きスコープ」で、このプロジェクトのOAuth同意

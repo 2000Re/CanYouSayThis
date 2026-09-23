@@ -116,6 +116,11 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     ため、説明文と同じ趣旨のキーワード付き固定テキストとして別途組み立てる
     (youtube_upload.upload_caption()参照)。
 
+    戻り値のlocalizations(config.JAPANESE_TITLE_LOCALIZATION_ENABLEDが
+    Trueの場合のみ、それ以外はNone)は、YouTube側の視聴環境が日本語の視聴者
+    にだけ表示される日本語タイトルを含む(youtube_upload.upload_video()の
+    localizations引数、config.LANGUAGE_LABELS_JA参照)。
+
     lang_code を渡すと(config.VOICE_LANGUAGESのキー、例: "ar")、
       - タイトルに言語名を追加する(例: `in French?`)。「french
         pronunciation」のような、言語名込みの検索クエリにタイトルレベルで
@@ -184,7 +189,21 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
         caption_text += f" in {lang_label}"
     caption_text += ". A tongue twister and pronunciation challenge — try saying it out loud!"
 
-    return title, description, tags, caption_text
+    # タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド)。
+    # YouTube側の視聴環境が日本語の視聴者には、通常のtitle/descriptionの
+    # 代わりにこちらが表示される(動画本体・音声・description自体は変えない。
+    # 「海外向け」という動画コンテンツ自体の方針とは別軸で、あくまで表示
+    # 言語をYouTube側の視聴者設定に合わせるだけの施策)。
+    localizations = None
+    if config.JAPANESE_TITLE_LOCALIZATION_ENABLED:
+        lang_label_ja = config.LANGUAGE_LABELS_JA.get(lang_code)
+        title_ja = f"「{label}」の発音は?"
+        if lang_label_ja:
+            title_ja += f"({lang_label_ja})"
+        title_ja += " #Shorts"
+        localizations = {"ja": {"title": title_ja, "description": description}}
+
+    return title, description, tags, caption_text, localizations
 
 
 def _resolve_mode(mode):
@@ -364,7 +383,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         shorts_playlist_id = os.environ.get("YOUTUBE_SHORTS_PLAYLIST_ID")
         lang_code = _lang_code_for_voice(actual_voice)
 
-        title, description, tags, caption_text = _youtube_metadata(
+        title, description, tags, caption_text, localizations = _youtube_metadata(
             word, label, actual_mode, playlist_id=shorts_playlist_id, voice_label=voice_label,
             is_native_script=used_native_script, lang_code=lang_code,
         )
@@ -376,6 +395,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         youtube_url = upload_video(
             video_path, title=title, description=description, tags=tags,
             privacy_status=privacy_status, default_audio_language=default_audio_language,
+            localizations=localizations,
         )
         result["youtube_url"] = youtube_url
 
