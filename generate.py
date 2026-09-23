@@ -197,7 +197,15 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     localizations = None
     if config.JAPANESE_TITLE_LOCALIZATION_ENABLED:
         lang_label_ja = config.LANGUAGE_LABELS_JA.get(lang_code)
-        title_ja = f"「{label}」の発音は?"
+        # labelがヘブライ語・アラビア語のようなRTL文字体系の場合、「」の直後に
+        # 来る最初の「強い方向性を持つ文字」がlabel自身になり、Unicode双方向
+        # アルゴリズム(UAX #9)によりタイトル全体の基準方向がRTLと判定されて
+        # しまう(実際にYouTube上で「#Shortsの発音は?(ヘブライ語)「...」」の
+        # ように語順が丸ごと入れ替わって表示される不具合として発覚)。
+        # First Strong Isolate(U+2068)〜Pop Directional Isolate(U+2069)で
+        # labelを囲み、周囲の日本語テキストの基準方向にlabelの向きが影響しない
+        # よう分離する(labelがLTRの場合も無害なので、言語ごとに分岐しない)。
+        title_ja = f"「⁨{label}⁩」の発音は?"
         if lang_label_ja:
             title_ja += f"({lang_label_ja})"
         title_ja += " #Shorts"

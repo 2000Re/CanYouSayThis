@@ -309,6 +309,27 @@ def test_youtube_metadata_localizations_omits_language_name_when_lang_code_not_g
     assert "(" not in localizations["ja"]["title"]
 
 
+def test_youtube_metadata_localizations_wraps_label_in_bidi_isolate():
+    # ヘブライ語・アラビア語等のRTL文字がlabelに含まれると、「」直後の
+    # 最初の強い方向性を持つ文字になり、タイトル全体の基準方向がRTLと
+    # 判定されて語順が入れ替わって見える不具合があった(実際にYouTube上で
+    # 確認済み)。First Strong Isolate(U+2068)/Pop Directional Isolate
+    # (U+2069)でlabelを囲んで分離していることを回帰確認する。
+    hebrew_label = "קקעמדחפ"
+    _title, _description, _tags, _caption, localizations = _youtube_metadata(
+        hebrew_label, hebrew_label, "tts", lang_code="he",
+    )
+    title_ja = localizations["ja"]["title"]
+    assert f"⁨{hebrew_label}⁩" in title_ja
+
+
+def test_youtube_metadata_localizations_bidi_isolate_wraps_any_label():
+    # RTL文字かどうかで分岐していない(常にlabelを囲む)ことの確認。
+    _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    title_ja = localizations["ja"]["title"]
+    assert "⁨voOn⁩" in title_ja
+
+
 def test_youtube_metadata_localizations_none_when_disabled(monkeypatch):
     monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", False)
     _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
