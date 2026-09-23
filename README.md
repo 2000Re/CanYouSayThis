@@ -681,6 +681,36 @@ python3 youtube_quick_stats.py --hours 6       # 過去6時間
 (`.github/workflows/quick_stats.yml`、`hours`入力で実行)は`youtube_analytics.py`
 と同じで、追加のSecrets登録・スコープは不要です。
 
+## 流入元の確認(`youtube_traffic_source.py`)
+
+`youtube_quick_stats.py`等で「他の動画より明らかに伸びている」動画を見つけた
+際、それが関連動画のおすすめに乗ったのか・ホーム/Shortsフィードでの露出が
+増えたのか・検索/外部(SNS等)からの流入かを切り分けるための診断ツールです。
+[YouTube Analytics API](https://developers.google.com/youtube/analytics)の
+`insightTrafficSourceType`ディメンションで、動画1本の流入元別再生数を
+取得します。
+
+```bash
+python3 youtube_traffic_source.py --video-id mFGTwTBPy7Q            # 過去28日間
+python3 youtube_traffic_source.py --video-id mFGTwTBPy7Q --days 7   # 過去7日間
+```
+
+出力例:
+
+```
+=== 動画 mFGTwTBPy7Q の流入元別再生数(2026-08-26 〜 2026-09-23、合計1070回) ===
+  関連動画のおすすめ(RELATED_VIDEO): 700回 (65.4%)
+  YouTube内検索(YT_SEARCH): 200回 (18.7%)
+  外部サイト/SNSのリンク(EXT_URL): 170回 (15.9%)
+```
+
+`youtube_analytics.py`と同じAnalytics APIを使うため、投稿から1〜2日程度の
+反映ラグがある点に注意してください(「ハマった罠」18番参照。投稿直後の
+動画では初動チェックに`youtube_quick_stats.py`を使い、流入元の内訳は数日
+おいてからこちらで確認するのが向いています)。必要な環境変数・GitHub Actions
+(`.github/workflows/traffic_source.yml`、`video_id`/`days`入力で実行)は
+`youtube_analytics.py`と同じで、追加のSecrets登録・スコープは不要です。
+
 ## YouTubeチャンネル用アセット(アイコン・バナー)
 
 チャンネルアイコンとバナー画像も同じ仕組み(Chromium描画)で生成できます。
