@@ -478,6 +478,11 @@ A tongue twister and pronunciation challenge — try saying it out loud!`)
 留まりやすくする狙いです。コメント投稿が失敗しても動画自体は既に公開済み
 なので、警告に留めて処理は止めません(`generate.py`)。
 
+このテキスト(`caption_text`)には「実在の単語ではない、ジョークだ」という
+注記を全モード共通で含めています。説明欄やフレームの注記は読まれていなくて
+も、実際にコメント欄でコメントを付けてくる視聴者はいる(=コメント欄は
+読まれている)ことが分かったため、一番伝わる場所としてここに入れました。
+
 > **⚠️ `commentThreads.insert`も`youtube.force-ssl`スコープが必要**:
 > `captions.insert`と同じスコープのため、既にスコープ登録・トークン再発行
 > 済みであれば追加作業は不要です。ただし同じスコープで`captions.insert`が
