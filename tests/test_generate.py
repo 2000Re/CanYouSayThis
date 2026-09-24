@@ -285,6 +285,21 @@ def test_youtube_metadata_caption_omits_language_name_when_lang_code_not_given()
     assert " in " not in caption
 
 
+def test_youtube_metadata_caption_notes_not_a_real_word():
+    # コメント欄は説明欄/フレームより実際に読まれている(視聴者がコメントを
+    # 付けてくる)ことが分かったため、caption_text(運営者コメントに流用)に
+    # 「実在の単語ではない/ジョーク」の注記を必ず入れる回帰確認。
+    _title, _description, _tags, caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "not a real word" in caption.lower()
+    assert "joke" in caption.lower()
+
+
+def test_youtube_metadata_caption_notes_not_a_real_word_regardless_of_mode():
+    for mode in ("tts", "tts_extreme", "glitch"):
+        _title, _description, _tags, caption, _localizations = _youtube_metadata("v́oOn", "voOn", mode)
+        assert "not a real word" in caption.lower()
+
+
 def test_youtube_metadata_localizations_includes_japanese_title():
     _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert localizations is not None

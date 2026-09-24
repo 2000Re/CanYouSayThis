@@ -111,10 +111,13 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     検索キーワードフレーズ(視聴者属性で継続的に上位に入っているフィリピン・
     インドネシア・マレーシア向け)も、動画のボイス言語とは無関係に常に含める。
 
-    戻り値のcaption_text(YouTubeの手動字幕用)は、意味不明な音声を自動
-    文字起こし(ASR)に任せると検索インデックス対象のテキスト枠が無駄になる
+    戻り値のcaption_text(YouTubeの手動字幕用。運営者コメントの自動投稿にも
+    そのまま流用している、generate.py参照)は、意味不明な音声を自動文字
+    起こし(ASR)に任せると検索インデックス対象のテキスト枠が無駄になる
     ため、説明文と同じ趣旨のキーワード付き固定テキストとして別途組み立てる
-    (youtube_upload.upload_caption()参照)。
+    (youtube_upload.upload_caption()参照)。「実在の単語ではない/ジョーク」
+    という注記も常に含める(説明欄・フレームの注記は見ていなくても、
+    コメント欄で実際にコメントを付けてくる視聴者はいることが分かったため)。
 
     戻り値のlocalizations(config.JAPANESE_TITLE_LOCALIZATION_ENABLED /
     config.EXTRA_TITLE_LOCALIZATION_ENABLEDがいずれもFalseならNone)は、
@@ -192,6 +195,13 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     if lang_label:
         caption_text += f" in {lang_label}"
     caption_text += ". A tongue twister and pronunciation challenge — try saying it out loud!"
+    # 視聴者はshortsの説明欄やフレームの注記は見ていなくても、この文面が
+    # 投稿されるコメント欄は見ている(実際にコメントを付けてくる)ことが
+    # 分かったため、「実在の単語ではない/ジョークだ」という注記はここに
+    # 入れるのが一番伝わる(is_native_scriptに関わらず全モード共通で入れる。
+    # 実在文字体系でない場合も、言語名を付けたことで「本物のその言語の単語」
+    # だと誤解されるケースがあったため)。
+    caption_text += " (Not a real word, just a fun joke — don't take it too seriously!)"
 
     # タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド)。
     # YouTube側の視聴環境が日本語の視聴者には、通常のtitle/descriptionの
