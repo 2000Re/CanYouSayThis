@@ -337,6 +337,23 @@ AUDIENCE_REGION_PHRASES = [
     ("Malay", "cara sebut"),             # 「発音する方法」
 ]
 
+# タイトルの追加言語ローカライズ(日本語とは別枠)自体のON/OFF。
+# JAPANESE_TITLE_LOCALIZATION_ENABLEDと同じ仕組み(videos.insertの
+# localizationsフィールド、追加スコープ・クォータ消費無し)だが、対象言語が
+# 増えるだけの別機能のため独立したトグルにしている(片方だけ切り戻せるように)。
+EXTRA_TITLE_LOCALIZATION_ENABLED = True
+
+# 上記で有効にするローカライズ言語(BCP-47相当のコード -> タイトルの
+# テンプレート文字列、{label}に単語が入る)。誤訳のリスクを避けるため、
+# 日本語版のような「(言語名)」の注記は付けず、既にAUDIENCE_REGION_PHRASESで
+# 説明文に使っている(視聴者属性で継続的に上位に入っている)フレーズを
+# そのまま流用している(新規翻訳を増やさない)。
+EXTRA_TITLE_LOCALIZATIONS = {
+    "fil": 'Paano bigkasin ang "{label}"? #Shorts',
+    "id": 'Bagaimana cara mengucapkan "{label}"? #Shorts',
+    "ms": 'Bagaimana cara sebut "{label}"? #Shorts',
+}
+
 # --- YouTubeアップロード履歴 -------------------------------------------------
 
 UPLOAD_HISTORY_PATH = "upload_history.json"  # generate.py --upload の成功履歴

@@ -215,6 +215,18 @@ def summarize_by_week(metrics_by_id, entries, end_date):
     return _summarize_by_key(metrics_by_id, entries, end_date, key_fn=lambda e: _week_start(e["uploaded_at"]))
 
 
+def summarize_by_voice(metrics_by_id, entries, end_date):
+    """lang_code(--voice randomで実際に読み上げに使った言語、
+    config.VOICE_LANGUAGESのキー)別の集計。_summarize_by_key()参照。
+
+    lang_codeはupload_history.jsonにこの項目を追加した後にアップロードされた
+    tts/tts_extremeの動画にしか記録されていない(glitchは意味を持たないため
+    Noneのまま、それ以前のエントリはキー自体が無い)。いずれも
+    key_fn(entry)がNone/空文字を返すため_summarize_by_key()側で自動的に
+    対象外になる。"""
+    return _summarize_by_key(metrics_by_id, entries, end_date, key_fn=lambda e: e.get("lang_code"))
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="mode(tts/tts_extreme/glitch)別に再生数・視聴維持率を集計する"
@@ -231,6 +243,12 @@ def main():
                      help="モード別集計に加えて、投稿週(月曜始まり)別の1日あたり"
                           "再生数の推移も出力する(長期的な「飽き」傾向の確認用。"
                           "傾向を見るには--daysを長め(90等)にするのが望ましい)")
+    ap.add_argument("--by-voice", action="store_true",
+                     help="モード別集計に加えて、--voice randomで実際に読み上げに"
+                          "使った言語(lang_code)別の1日あたり再生数も出力する"
+                          "(--voice randomの抽選比率調整の参考用。lang_codeは"
+                          "この項目の追加以降にアップロードされたtts/tts_extreme"
+                          "の動画にしか記録されていない)")
     args = ap.parse_args()
 
     end_date = args.end_date or datetime.date.today().isoformat()
@@ -266,6 +284,23 @@ def main():
                 f"  {week}〜: {data['videos']}本 / 1日あたり平均{data['avg_views_per_day']:.2f}回"
                 f"(単純平均{data['avg_views']:.1f}回, 視聴維持率{data['avg_view_percentage']:.1f}%)"
             )
+
+    if args.by_voice:
+        voice_summary = summarize_by_voice(metrics_by_id, target_entries, end_date)
+        if not voice_summary:
+            print(f"\n=== 言語別 再生数・視聴維持率集計({start_date} 〜 {end_date}) ===")
+            print("  lang_codeが記録されたエントリがありません"
+                  "(この項目を追加した以降にアップロードされたtts/tts_extremeの動画にのみ記録されます)。")
+        else:
+            print(f"\n=== 言語別(--voice random) 再生数・視聴維持率集計({start_date} 〜 {end_date}) ===")
+            for lang_code in sorted(voice_summary, key=lambda lc: -voice_summary[lc]["avg_views_per_day"]):
+                data = voice_summary[lang_code]
+                lang_label = config.VOICE_LANGUAGES.get(lang_code, {}).get("label", lang_code)
+                print(
+                    f"  {lang_label} ({lang_code}): {data['videos']}本 / "
+                    f"1日あたり平均{data['avg_views_per_day']:.2f}回"
+                    f"(単純平均{data['avg_views']:.1f}回, 視聴維持率{data['avg_view_percentage']:.1f}%)"
+                )
 
 
 if __name__ == "__main__":

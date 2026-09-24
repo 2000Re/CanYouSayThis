@@ -116,10 +116,14 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     ため、説明文と同じ趣旨のキーワード付き固定テキストとして別途組み立てる
     (youtube_upload.upload_caption()参照)。
 
-    戻り値のlocalizations(config.JAPANESE_TITLE_LOCALIZATION_ENABLEDが
-    Trueの場合のみ、それ以外はNone)は、YouTube側の視聴環境が日本語の視聴者
-    にだけ表示される日本語タイトルを含む(youtube_upload.upload_video()の
-    localizations引数、config.LANGUAGE_LABELS_JA参照)。
+    戻り値のlocalizations(config.JAPANESE_TITLE_LOCALIZATION_ENABLED /
+    config.EXTRA_TITLE_LOCALIZATION_ENABLEDがいずれもFalseならNone)は、
+    YouTube側の視聴環境が該当言語の視聴者にだけ表示されるローカライズ
+    タイトルを言語コードごとに含む(youtube_upload.upload_video()の
+    localizations引数)。日本語はconfig.LANGUAGE_LABELS_JAで言語名の注記
+    付き、それ以外(フィリピン語/インドネシア語/マレー語)は
+    config.EXTRA_TITLE_LOCALIZATIONSのテンプレートをそのまま使う
+    (誤訳のリスクを避けるため言語名の注記は無し)。
 
     lang_code を渡すと(config.VOICE_LANGUAGESのキー、例: "ar")、
       - タイトルに言語名を追加する(例: `in French?`)。「french
@@ -194,24 +198,36 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     # 代わりにこちらが表示される(動画本体・音声・description自体は変えない。
     # 「海外向け」という動画コンテンツ自体の方針とは別軸で、あくまで表示
     # 言語をYouTube側の視聴者設定に合わせるだけの施策)。
-    localizations = None
+    localizations = {}
+    # labelがヘブライ語・アラビア語のようなRTL文字体系の場合、引用符の直後に
+    # 来る最初の「強い方向性を持つ文字」がlabel自身になり、Unicode双方向
+    # アルゴリズム(UAX #9)によりタイトル全体の基準方向がRTLと判定されて
+    # しまう(実際にYouTube上で「#Shortsの発音は?(ヘブライ語)「...」」の
+    # ように語順が丸ごと入れ替わって表示される不具合として発覚)。
+    # First Strong Isolate(U+2068)〜Pop Directional Isolate(U+2069)で
+    # labelを囲み、周囲のテキストの基準方向にlabelの向きが影響しないよう
+    # 分離する(labelがLTRの場合も無害なので、言語ごとに分岐しない)。全ての
+    # ローカライズ言語で共通して使うため、ここで一度だけ組み立てる。
+    isolated_label = f"⁨{label}⁩"
+
     if config.JAPANESE_TITLE_LOCALIZATION_ENABLED:
         lang_label_ja = config.LANGUAGE_LABELS_JA.get(lang_code)
-        # labelがヘブライ語・アラビア語のようなRTL文字体系の場合、「」の直後に
-        # 来る最初の「強い方向性を持つ文字」がlabel自身になり、Unicode双方向
-        # アルゴリズム(UAX #9)によりタイトル全体の基準方向がRTLと判定されて
-        # しまう(実際にYouTube上で「#Shortsの発音は?(ヘブライ語)「...」」の
-        # ように語順が丸ごと入れ替わって表示される不具合として発覚)。
-        # First Strong Isolate(U+2068)〜Pop Directional Isolate(U+2069)で
-        # labelを囲み、周囲の日本語テキストの基準方向にlabelの向きが影響しない
-        # よう分離する(labelがLTRの場合も無害なので、言語ごとに分岐しない)。
-        title_ja = f"「⁨{label}⁩」の発音は?"
+        title_ja = f"「{isolated_label}」の発音は?"
         if lang_label_ja:
             title_ja += f"({lang_label_ja})"
         title_ja += " #Shorts"
-        localizations = {"ja": {"title": title_ja, "description": description}}
+        localizations["ja"] = {"title": title_ja, "description": description}
 
-    return title, description, tags, caption_text, localizations
+    # 日本語以外の追加言語ローカライズ(config.EXTRA_TITLE_LOCALIZATIONS参照)。
+    # 「(言語名)」の注記は誤訳のリスクを避けるため付けていない。
+    if config.EXTRA_TITLE_LOCALIZATION_ENABLED:
+        for extra_lang_code, template in config.EXTRA_TITLE_LOCALIZATIONS.items():
+            localizations[extra_lang_code] = {
+                "title": template.format(label=isolated_label),
+                "description": description,
+            }
+
+    return title, description, tags, caption_text, localizations or None
 
 
 def _resolve_mode(mode):
@@ -452,9 +468,13 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # 存在しない動画IDが compile_shorts.py の結合対象に紛れ込むため)
         from upload_history import append_upload
 
+        # glitchモードは単語を読み上げないため、voice_label/lang_codeを
+        # 記録しても意味を持たない(default_audio_languageと同じ扱い)。
         append_upload(
             word=word, label=label, video_id=video_id, mode=actual_mode,
             run_id=os.environ.get("GITHUB_RUN_ID"),
+            voice_label=voice_label if actual_mode in ("tts", "tts_extreme") else None,
+            lang_code=lang_code if actual_mode in ("tts", "tts_extreme") else None,
         )
 
         # 任意。設定されていれば、アップロードした動画をShorts用の再生リストに
