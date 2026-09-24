@@ -498,17 +498,31 @@ defaultLanguage`にも常に`"en"`(`config.DEFAULT_LANGUAGE`)を設定し、
 タイトル・説明文自体の言語を明示します。既存の`videos.insert`呼び出しに
 フィールドを追加するだけなので、追加のAPI呼び出し・クォータ消費はありません。
 
-**タイトルの日本語ローカライズ**: `videos.insert`の`localizations`
-フィールドに、視聴者のYouTube表示言語が日本語の場合だけ表示される
-日本語タイトル(例: `「voOn」の発音は?(フランス語) #Shorts`)を設定します
-(`config.LANGUAGE_LABELS_JA`、`config.JAPANESE_TITLE_LOCALIZATION_ENABLED`
-でON/OFF可能、デフォルトTrue)。動画本体・音声・説明文・英語タイトル自体は
-変わらず、YouTube側が視聴者の表示言語設定に応じてタイトルだけを出し分ける
-仕組みです。「海外向けのノリ」という動画コンテンツ自体の方針とは別軸で、
-あくまで表示言語をYouTube側の視聴者設定に合わせるだけの施策のため、
-コンテンツ方針とは衝突しません。`captions.insert`/`commentThreads.insert`
-と異なり`youtube.force-ssl`は不要で(`videos.insert`と同じ`youtube`/
-`youtube.upload`スコープで完結)、追加のAPI呼び出し・クォータ消費もありません。
+**タイトルのローカライズ**: `videos.insert`の`localizations`フィールドに、
+視聴者のYouTube表示言語ごとに出し分けるタイトルを設定します。動画本体・
+音声・説明文・英語タイトル自体は変わらず、YouTube側が視聴者の表示言語
+設定に応じてタイトルだけを出し分ける仕組みです。「海外向けのノリ」という
+動画コンテンツ自体の方針とは別軸で、あくまで表示言語をYouTube側の視聴者
+設定に合わせるだけの施策のため、コンテンツ方針とは衝突しません。
+`captions.insert`/`commentThreads.insert`と異なり`youtube.force-ssl`は
+不要で(`videos.insert`と同じ`youtube`/`youtube.upload`スコープで完結)、
+追加のAPI呼び出し・クォータ消費もありません。
+
+- **日本語**(例: `「voOn」の発音は?(フランス語) #Shorts`): `config.
+  LANGUAGE_LABELS_JA`で言語名の注記付き。`config.
+  JAPANESE_TITLE_LOCALIZATION_ENABLED`でON/OFF可能(デフォルトTrue)。
+- **フィリピン語(`fil`)・インドネシア語(`id`)・マレー語(`ms`)**
+  (例: `Bagaimana cara mengucapkan "voOn"? #Shorts`): `config.
+  AUDIENCE_REGION_PHRASES`(説明文で既に使っている、視聴者属性で継続的に
+  上位に入っている3言語)と同じフレーズをそのまま流用しています。誤訳の
+  リスクを避けるため、日本語版のような「(言語名)」の注記は付けていません。
+  `config.EXTRA_TITLE_LOCALIZATIONS`にテンプレートを追加すれば言語を
+  増やせます。`config.EXTRA_TITLE_LOCALIZATION_ENABLED`でON/OFF可能
+  (デフォルトTrue、日本語版とは独立したトグル)。
+
+いずれも、埋め込む単語(label)がヘブライ語・アラビア語のようなRTL文字
+体系の場合に表示順が入れ替わる不具合(「ハマった罠」24番)への対策として、
+labelをbidi isolate文字(U+2068〜U+2069)で囲んでいます。
 
 ## Shorts結合動画
 
@@ -612,6 +626,21 @@ python3 youtube_analytics.py --days 90 --by-week  # 週別の推移も出力(下
   ...
 ```
 
+**読み上げ言語別の集計(`--by-voice`)**: `--voice random`で実際に読み上げに
+使った言語(`lang_code`)別の1日あたり再生数・視聴維持率を見たい場合は
+`--by-voice`を付けます。`--voice random`の抽選比率調整(どの言語を優遇/
+除外するか)の判断材料にする用途です。`lang_code`は`upload_history.json`に
+この項目を追加した以降にアップロードされた`tts`/`tts_extreme`の動画にしか
+記録されていない(`glitch`は単語を読み上げないため対象外)ため、当面は
+サンプルが少ない状態から始まります。
+
+```
+=== 言語別(--voice random) 再生数・視聴維持率集計(2026-08-22 〜 2026-09-19) ===
+  French (fr): 12本 / 1日あたり平均14.30回(単純平均180.2回, 視聴維持率39.5%)
+  Arabic (ar): 8本 / 1日あたり平均9.10回(単純平均102.4回, 視聴維持率44.0%)
+  ...
+```
+
 **必要な環境変数**: `--upload`/`compile_shorts.py`と同じ`YOUTUBE_CLIENT_ID`/
 `YOUTUBE_CLIENT_SECRET`/`YOUTUBE_REFRESH_TOKEN`を使いますが、
 `YOUTUBE_REFRESH_TOKEN`は`yt-analytics.readonly`スコープを含めて**発行し
@@ -704,12 +733,36 @@ python3 youtube_traffic_source.py --video-id mFGTwTBPy7Q --days 7   # 過去7日
   外部サイト/SNSのリンク(EXT_URL): 170回 (15.9%)
 ```
 
+**検索クエリの確認(`--search-queries`)**: `YT_SEARCH`経由の流入があった
+場合、実際にどんな検索語で見つかったかも見たい場合は`--search-queries`を
+付けます。`insightTrafficSourceDetail`ディメンションを`insightTrafficSourceType
+==YT_SEARCH`でフィルタして取得する仕様で(YouTube Analytics APIの仕様上、
+このdetailディメンションは`insightTrafficSourceType`を**フィルタとして
+固定した場合のみ**、その値に応じた詳細を返す)、`insightTrafficSourceType`
+と**同じAPI・同じ`yt-analytics.readonly`スコープ**で完結します。追加の
+スコープ登録・Secrets追加は不要です。
+
+```bash
+python3 youtube_traffic_source.py --video-id mFGTwTBPy7Q --search-queries
+```
+
+```
+=== 動画 mFGTwTBPy7Q のYT_SEARCH経由の検索クエリ別再生数 ===
+  「how do you pronounce zalgo words」: 200回
+  「unpronounceable word generator」: 170回
+```
+
+タイトル・タグ・ハッシュタグの施策(「タイトル・タグへの言語名追加」等)が
+実際にどんな検索語でのヒットにつながっているかを直接確認でき、次の
+SEO施策(タイトルの言い回しの調整等)の材料にできます。
+
 `youtube_analytics.py`と同じAnalytics APIを使うため、投稿から1〜2日程度の
 反映ラグがある点に注意してください(「ハマった罠」18番参照。投稿直後の
 動画では初動チェックに`youtube_quick_stats.py`を使い、流入元の内訳は数日
 おいてからこちらで確認するのが向いています)。必要な環境変数・GitHub Actions
-(`.github/workflows/traffic_source.yml`、`video_id`/`days`入力で実行)は
-`youtube_analytics.py`と同じで、追加のSecrets登録・スコープは不要です。
+(`.github/workflows/traffic_source.yml`、`video_id`/`days`/`search_queries`
+入力で実行)は`youtube_analytics.py`と同じで、追加のSecrets登録・スコープは
+不要です。
 
 ## 日本語ローカライズが崩れて表示された動画の手動修正(`youtube_fix_localization.py`)
 

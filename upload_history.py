@@ -18,14 +18,20 @@ def load_upload_history() -> list:
     """アップロード成功履歴を古い→新しい順で読み込む。
 
     各要素は {"word": str, "label": str, "video_id": str, "mode": str,
-    "run_id": str|None, "uploaded_at": str|None}。
+    "run_id": str|None, "uploaded_at": str|None, "voice_label": str|None,
+    "lang_code": str|None}。
     run_idはcompile_shorts.pyが、この動画が生成された回のGitHub Actions
     アーティファクトを取得し直すために使う(GITHUB_RUN_IDはGitHub Actions
     が各実行に自動設定する環境変数。ローカル実行等でrunがない場合はNone)。
     uploaded_atはappend_upload()呼び出し時点(=YouTubeへのアップロード
-    成功直後)のUTC時刻のISO 8601文字列。この項目を追加する前に記録された
-    古いエントリには含まれない("uploaded_at"キー自体が無い)ため、
-    参照する側は entry.get("uploaded_at") を使うこと。
+    成功直後)のUTC時刻のISO 8601文字列。
+    voice_label/lang_codeは--voice randomで実際に読み上げに使った言語
+    (config.VOICE_LANGUAGESのラベル/キー、例: "French (Female)"/"fr")。
+    generate.py側でmodeがtts/tts_extreme以外(glitch。単語を読み上げない
+    ため意味を持たない)の場合はNoneのまま記録する。
+    uploaded_at/voice_label/lang_codeはいずれもこの項目を追加する前に
+    記録された古いエントリには含まれない(キー自体が無い)ため、参照する
+    側は必ず entry.get(...) を使うこと。
 
     ここへの記録は generate.py が youtube_upload.upload_video() の成功を
     確認した後にのみ行う。TTS/動画生成/アップロードのいずれかで失敗した
@@ -53,7 +59,8 @@ def save_upload_history(history: list) -> None:
         json.dump(history, f, ensure_ascii=False, indent=2)
 
 
-def append_upload(word: str, label: str, video_id: str, mode: str, run_id: str | None = None) -> None:
+def append_upload(word: str, label: str, video_id: str, mode: str, run_id: str | None = None,
+                   voice_label: str | None = None, lang_code: str | None = None) -> None:
     """1件のアップロード成功を履歴に追記する。
 
     uploaded_atはこの呼び出し時点(YouTubeへのアップロード成功直後)の
@@ -62,5 +69,6 @@ def append_upload(word: str, label: str, video_id: str, mode: str, run_id: str |
     history.append({
         "word": word, "label": label, "video_id": video_id, "mode": mode, "run_id": run_id,
         "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        "voice_label": voice_label, "lang_code": lang_code,
     })
     save_upload_history(history)

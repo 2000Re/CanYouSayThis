@@ -20,6 +20,11 @@ on:
         required: false
         default: "false"
         type: boolean
+      by_voice:
+        description: "trueなら読み上げ言語別の1日あたり再生数・視聴維持率も出力する(--voice randomの比率調整の参考用)"
+        required: false
+        default: "false"
+        type: boolean
 
 jobs:
   analytics:
@@ -57,5 +62,8 @@ jobs:
           fi
           if [ "${{ inputs.by_week }}" = "true" ]; then
             args+=(--by-week)
+          fi
+          if [ "${{ inputs.by_voice }}" = "true" ]; then
+            args+=(--by-voice)
           fi
           python3 youtube_analytics.py "${args[@]}"

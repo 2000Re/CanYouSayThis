@@ -81,6 +81,31 @@ def _breakdown_with_labels(breakdown):
     return result
 
 
+def fetch_search_queries(video_id, start_date, end_date):
+    """YT_SEARCH経由の再生を、実際に使われた検索クエリ別(views降順)に
+    (クエリ文字列, 再生数)のタプルのリストで返す。
+
+    YouTube Analytics APIの仕様上、insightTrafficSourceDetailディメンション
+    は「insightTrafficSourceTypeをフィルタとして固定した場合のみ」その
+    フィルタ値に応じた詳細(検索なら検索語、関連動画なら参照元動画IDなど)を
+    返す(insightTrafficSourceTypeをディメンションとして併用はできない)。
+    ここではYT_SEARCH固定で検索クエリ自体を取得する用途に絞っている。
+
+    fetch_traffic_source_breakdown()と同じyt-analytics.readonlyスコープの
+    範囲内で完結するため、追加のスコープ登録は不要。"""
+    analytics = get_analytics_client()
+    response = analytics.reports().query(
+        ids="channel==MINE",
+        startDate=start_date,
+        endDate=end_date,
+        metrics="views",
+        dimensions="insightTrafficSourceDetail",
+        filters=f"video=={video_id};insightTrafficSourceType==YT_SEARCH",
+    ).execute()
+    rows = [(row[0], row[1]) for row in response.get("rows", [])]
+    return sorted(rows, key=lambda r: -r[1])
+
+
 def main():
     ap = argparse.ArgumentParser(
         description="動画1本の流入元(YouTube Analytics APIのinsightTrafficSourceType)別"
@@ -94,6 +119,9 @@ def main():
     ap.add_argument("--days", type=int, default=config.ANALYTICS_DEFAULT_LOOKBACK_DAYS,
                      help=f"--start-date省略時に使う集計対象の日数"
                           f"(デフォルト{config.ANALYTICS_DEFAULT_LOOKBACK_DAYS}日)")
+    ap.add_argument("--search-queries", action="store_true",
+                     help="YT_SEARCH経由の再生を実際の検索クエリ別にも表示する"
+                          "(insightTrafficSourceDetail、追加スコープ不要)")
     args = ap.parse_args()
 
     end_date = args.end_date or datetime.date.today().isoformat()
@@ -112,6 +140,15 @@ def main():
         return
     for label, source_type, views, pct in rows:
         print(f"  {label}({source_type}): {views}回 ({pct:.1f}%)")
+
+    if args.search_queries:
+        queries = fetch_search_queries(args.video_id, start_date, end_date)
+        print(f"\n=== 動画 {args.video_id} のYT_SEARCH経由の検索クエリ別再生数 ===")
+        if not queries:
+            print("  検索クエリのデータがありません"
+                  "(YT_SEARCH経由の再生が無い、または反映ラグでまだ載っていない可能性があります)")
+        for query, views in queries:
+            print(f"  「{query}」: {views}回")
 
 
 if __name__ == "__main__":

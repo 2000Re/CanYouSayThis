@@ -330,10 +330,52 @@ def test_youtube_metadata_localizations_bidi_isolate_wraps_any_label():
     assert "⁨voOn⁩" in title_ja
 
 
-def test_youtube_metadata_localizations_none_when_disabled(monkeypatch):
+def test_youtube_metadata_localizations_none_when_both_disabled(monkeypatch):
     monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", False)
+    monkeypatch.setattr(config, "EXTRA_TITLE_LOCALIZATION_ENABLED", False)
     _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert localizations is None
+
+
+def test_youtube_metadata_localizations_japanese_disabled_independently(monkeypatch):
+    # 日本語を無効化しても、追加言語ローカライズは独立して有効なまま。
+    monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", False)
+    _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "ja" not in localizations
+    assert "id" in localizations
+
+
+def test_youtube_metadata_localizations_extra_disabled_independently(monkeypatch):
+    # 追加言語ローカライズを無効化しても、日本語は独立して有効なまま。
+    monkeypatch.setattr(config, "EXTRA_TITLE_LOCALIZATION_ENABLED", False)
+    _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "ja" in localizations
+    assert "id" not in localizations
+    assert "fil" not in localizations
+    assert "ms" not in localizations
+
+
+def test_youtube_metadata_localizations_includes_extra_languages():
+    _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    for lang_code in config.EXTRA_TITLE_LOCALIZATIONS:
+        assert lang_code in localizations
+        assert "voOn" in localizations[lang_code]["title"]
+        assert "#Shorts" in localizations[lang_code]["title"]
+
+
+def test_youtube_metadata_localizations_extra_languages_reuse_description():
+    _title, description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    for lang_code in config.EXTRA_TITLE_LOCALIZATIONS:
+        assert localizations[lang_code]["description"] == description
+
+
+def test_youtube_metadata_localizations_extra_languages_wrap_label_in_bidi_isolate():
+    hebrew_label = "קקעמדחפ"
+    _title, _description, _tags, _caption, localizations = _youtube_metadata(
+        hebrew_label, hebrew_label, "tts", lang_code="he",
+    )
+    for lang_code in config.EXTRA_TITLE_LOCALIZATIONS:
+        assert f"⁨{hebrew_label}⁩" in localizations[lang_code]["title"]
 
 
 def test_lang_code_for_voice_returns_none_for_unknown_code():

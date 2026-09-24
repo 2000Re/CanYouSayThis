@@ -39,13 +39,18 @@ def test_append_upload_adds_entry_to_existing_history(tmp_path, monkeypatch):
     path = tmp_path / "upload_history.json"
     monkeypatch.setattr(upload_history, "UPLOAD_HISTORY_PATH", str(path))
     upload_history.append_upload(word="Á", label="A", video_id="v1", mode="tts")
-    upload_history.append_upload(word="B́", label="B", video_id="v2", mode="glitch", run_id="12345")
+    upload_history.append_upload(
+        word="B́", label="B", video_id="v2", mode="tts_extreme", run_id="12345",
+        voice_label="French (Female)", lang_code="fr",
+    )
     history = upload_history.load_upload_history()
     # uploaded_atは呼び出し時刻で毎回変わるため、それ以外のフィールドだけ
     # 厳密比較し、uploaded_atは別途フォーマットを検証する。
     assert [{k: v for k, v in entry.items() if k != "uploaded_at"} for entry in history] == [
-        {"word": "Á", "label": "A", "video_id": "v1", "mode": "tts", "run_id": None},
-        {"word": "B́", "label": "B", "video_id": "v2", "mode": "glitch", "run_id": "12345"},
+        {"word": "Á", "label": "A", "video_id": "v1", "mode": "tts", "run_id": None,
+         "voice_label": None, "lang_code": None},
+        {"word": "B́", "label": "B", "video_id": "v2", "mode": "tts_extreme", "run_id": "12345",
+         "voice_label": "French (Female)", "lang_code": "fr"},
     ]
     for entry in history:
         assert entry["uploaded_at"] is not None

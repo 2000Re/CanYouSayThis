@@ -19,6 +19,7 @@ from youtube_analytics import (
     _week_start,
     fetch_video_metrics,
     summarize_by_mode,
+    summarize_by_voice,
     summarize_by_week,
 )
 
@@ -203,3 +204,42 @@ def test_summarize_by_week_skips_entries_missing_required_fields():
     summary = summarize_by_week({}, entries, "2026-09-19")
     assert summary == {"2026-09-14": summary["2026-09-14"]}
     assert summary["2026-09-14"]["videos"] == 1
+
+
+@pytest.fixture
+def voice_entries():
+    return [
+        {"video_id": "f1", "mode": "tts", "uploaded_at": "2026-09-10T00:00:00+00:00", "lang_code": "fr"},
+        {"video_id": "f2", "mode": "tts_extreme", "uploaded_at": "2026-09-15T00:00:00+00:00", "lang_code": "fr"},
+        {"video_id": "a1", "mode": "tts", "uploaded_at": "2026-09-19T00:00:00+00:00", "lang_code": "ar"},
+        # glitchはlang_codeが記録されていても(あるいは記録自体が無くても)集計対象外にはならない
+        # -- が、実際の運用ではglitchのlang_codeは常にNoneで記録されるため、通常はこのケースは
+        # 発生しない。ここではlang_code欠落エントリのスキップ挙動だけを別途検証する。
+        {"video_id": "g1", "mode": "glitch", "uploaded_at": "2026-09-19T00:00:00+00:00", "lang_code": None},
+    ]
+
+
+def test_summarize_by_voice_groups_by_lang_code(voice_entries):
+    metrics_by_id = {
+        "f1": {"views": 100, "average_view_percentage": 40.0},   # 10日視聴可能 -> 10/day
+        "f2": {"views": 50, "average_view_percentage": 60.0},    # 5日視聴可能 -> 10/day
+        "a1": {"views": 10, "average_view_percentage": 20.0},    # 1日視聴可能 -> 10/day
+    }
+    summary = summarize_by_voice(metrics_by_id, voice_entries, "2026-09-19")
+
+    assert summary["fr"]["videos"] == 2
+    assert summary["fr"]["total_views"] == 150
+    assert summary["fr"]["avg_views_per_day"] == pytest.approx(10.0)
+    assert summary["ar"]["videos"] == 1
+    assert summary["ar"]["total_views"] == 10
+    assert "None" not in summary
+    assert None not in summary
+
+
+def test_summarize_by_voice_skips_entries_without_lang_code():
+    entries = [
+        {"video_id": "g1", "mode": "glitch", "uploaded_at": "2026-09-19T00:00:00+00:00", "lang_code": None},
+        {"video_id": "g2", "mode": "glitch", "uploaded_at": "2026-09-19T00:00:00+00:00"},  # キー自体が無い(古いエントリ)
+    ]
+    summary = summarize_by_voice({}, entries, "2026-09-19")
+    assert summary == {}
