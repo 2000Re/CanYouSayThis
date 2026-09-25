@@ -38,7 +38,13 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: |
-          args=(--video-id "${{ inputs.video_id }}" --days "${{ inputs.days }}")
+          # 動画IDは "-" で始まることがあり(YouTubeの動画ID自体が
+          # [A-Za-z0-9_-]を使う仕様)、"--video-id VALUE"(空白区切り)だと
+          # argparseがVALUEを新しいオプションだと誤認して
+          # "expected one argument" エラーになる(実機で確認)。
+          # "--video-id=VALUE" の形にすることで、先頭が "-" の値でも
+          # 確実にこのオプションの値として渡せる。
+          args=(--video-id="${{ inputs.video_id }}" --days="${{ inputs.days }}")
           if [ "${{ inputs.search_queries }}" = "true" ]; then
             args+=(--search-queries)
           fi

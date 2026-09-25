@@ -29,4 +29,8 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
         run: |
-          python3 youtube_fix_localization.py --video-ids "${{ inputs.video_ids }}"
+          # 動画IDは "-" で始まることがあり、先頭のIDがそうだと
+          # "--video-ids VALUE"(空白区切り)ではargparseがVALUEを新しい
+          # オプションだと誤認してエラーになる(youtube_traffic_source.py
+          # の実機での事例と同じ。"--video-ids=VALUE"の形で回避する)。
+          python3 youtube_fix_localization.py --video-ids="${{ inputs.video_ids }}"
