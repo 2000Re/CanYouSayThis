@@ -1666,5 +1666,15 @@
     "uploaded_at": "2026-09-25T05:24:10.207168+00:00",
     "voice_label": "Mandarin (Male)",
     "lang_code": "zh"
+  },
+  {
+    "word": "-AAaaaaṿ̡̧̙̕͘n֑֨֩( ✥ ✾ ✮",
+    "label": "-AAaaaavn( ✥...",
+    "video_id": "_zDN1RnFbf8",
+    "mode": "tts_extreme",
+    "run_id": "36107356129",
+    "uploaded_at": "2026-09-25T07:24:13.308072+00:00",
+    "voice_label": "Vietnamese (Female)",
+    "lang_code": "vi"
   }
 ]
