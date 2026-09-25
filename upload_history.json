@@ -1706,5 +1706,15 @@
     "uploaded_at": "2026-09-25T11:24:14.675274+00:00",
     "voice_label": "Romanian (Male)",
     "lang_code": "ro"
+  },
+  {
+    "word": ")UUUUUUiiii: ✶ ✼ ◊",
+    "label": ")UUUUUUiiii:...",
+    "video_id": "XPYB0tfjd1w",
+    "mode": "tts",
+    "run_id": "36134612883",
+    "uploaded_at": "2026-09-25T12:24:11.530570+00:00",
+    "voice_label": "Hungarian (Female)",
+    "lang_code": "hu"
   }
 ]
