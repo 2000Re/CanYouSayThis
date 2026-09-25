@@ -1656,5 +1656,15 @@
     "uploaded_at": "2026-09-25T03:24:26.987396+00:00",
     "voice_label": "Hebrew (Female)",
     "lang_code": "he"
+  },
+  {
+    "word": ":uuuuuu( ⊀",
+    "label": ":uuuuuu( ⊀",
+    "video_id": "X3EJcrj3R2E",
+    "mode": "tts_extreme",
+    "run_id": "36098335513",
+    "uploaded_at": "2026-09-25T05:24:10.207168+00:00",
+    "voice_label": "Mandarin (Male)",
+    "lang_code": "zh"
   }
 ]
