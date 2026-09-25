@@ -738,36 +738,17 @@ python3 youtube_traffic_source.py --video-id mFGTwTBPy7Q --days 7   # 過去7日
   外部サイト/SNSのリンク(EXT_URL): 170回 (15.9%)
 ```
 
-**検索クエリの確認(`--search-queries`)**: `YT_SEARCH`経由の流入があった
-場合、実際にどんな検索語で見つかったかも見たい場合は`--search-queries`を
-付けます。`insightTrafficSourceDetail`ディメンションを`insightTrafficSourceType
-==YT_SEARCH`でフィルタして取得する仕様で(YouTube Analytics APIの仕様上、
-このdetailディメンションは`insightTrafficSourceType`を**フィルタとして
-固定した場合のみ**、その値に応じた詳細を返す)、`insightTrafficSourceType`
-と**同じAPI・同じ`yt-analytics.readonly`スコープ**で完結します。追加の
-スコープ登録・Secrets追加は不要です。
-
-```bash
-python3 youtube_traffic_source.py --video-id mFGTwTBPy7Q --search-queries
-```
-
-```
-=== 動画 mFGTwTBPy7Q のYT_SEARCH経由の検索クエリ別再生数 ===
-  「how do you pronounce zalgo words」: 200回
-  「unpronounceable word generator」: 170回
-```
-
-タイトル・タグ・ハッシュタグの施策(「タイトル・タグへの言語名追加」等)が
-実際にどんな検索語でのヒットにつながっているかを直接確認でき、次の
-SEO施策(タイトルの言い回しの調整等)の材料にできます。
-
 `youtube_analytics.py`と同じAnalytics APIを使うため、投稿から1〜2日程度の
 反映ラグがある点に注意してください(「ハマった罠」18番参照。投稿直後の
 動画では初動チェックに`youtube_quick_stats.py`を使い、流入元の内訳は数日
 おいてからこちらで確認するのが向いています)。必要な環境変数・GitHub Actions
-(`.github/workflows/traffic_source.yml`、`video_id`/`days`/`search_queries`
-入力で実行)は`youtube_analytics.py`と同じで、追加のSecrets登録・スコープは
-不要です。
+(`.github/workflows/traffic_source.yml`、`video_id`/`days`入力で実行)は
+`youtube_analytics.py`と同じで、追加のSecrets登録・スコープは不要です。
+
+> **⚠️ 実際の検索クエリはAPIで取得できない**: 当初`insightTrafficSourceDetail`
+> ディメンションを`insightTrafficSourceType==YT_SEARCH`でフィルタして
+> 実際の検索語を取得する`--search-queries`オプションを実装したが、実機で
+> `400 The query is not supported`エラーになり撤回した(「ハマった罠」25番)。
 
 ## 日本語ローカライズが崩れて表示された動画の手動修正(`youtube_fix_localization.py`)
 
@@ -1358,6 +1339,37 @@ isolateで囲むこと自体はLTRの`label`に対しても無害なため、言
 なお、この修正は新規アップロード分にしか効かないため、修正前に公開済みの
 動画のタイトルは直っていない。個別に直すための`youtube_fix_localization.py`
 を追加した(「日本語ローカライズが崩れて表示された動画の手動修正」節参照)。
+
+### 25. `insightTrafficSourceDetail`は`YT_SEARCH`では使えない(実際の検索クエリはAPIで取得不可)
+
+`youtube_traffic_source.py`に、`YT_SEARCH`経由の再生を実際の検索クエリ別に
+確認できる`--search-queries`オプションを追加した。`insightTrafficSourceType`
+(流入元の種類)と同じAnalytics API・同じ`yt-analytics.readonly`スコープで
+完結するはずだと考え、`insightTrafficSourceDetail`ディメンションを
+`insightTrafficSourceType==YT_SEARCH`でフィルタして取得する実装にした。
+
+実機のworkflow_dispatchで実行したところ、`insightTrafficSourceType`単体の
+集計(既存の`fetch_traffic_source_breakdown()`)は正常に動作した一方、
+`--search-queries`側は`400 Bad Request`(`"The query is not supported.
+Check the documentation at .../available_reports for a list of supported
+queries."`)で失敗した。`video==ID`フィルタ自体は前者で正常に使えている
+ため、原因は`insightTrafficSourceDetail`ディメンションと
+`insightTrafficSourceType==YT_SEARCH`という組み合わせ自体がサポート対象外
+であることだと判断した(`ADVERTISING`→広告種別、`EXT_URL`→参照元URL、
+`RELATED_VIDEO`→参照元動画IDのように、`insightTrafficSourceDetail`が意味を
+持つ流入元の種類は限られており、`YT_SEARCH`はその対象に含まれていない)。
+これは実際の検索クエリを個々の視聴者ごとに特定できてしまうことへの
+プライバシー上の制限だと考えられ、コード側の実装ミスでは直せない。
+
+`--search-queries`オプション・`fetch_search_queries()`は撤回した(このPRで
+追加し、同日中に撤回している)。
+
+教訓: **「同じAPI・同じスコープで完結する」ことは、そのディメンション/
+フィルタの組み合わせ自体がサポートされていることを意味しない**。特に
+プライバシーに関わりうるデータ(個々の検索語など)は、スコープ上アクセス
+可能に見えても意図的に提供されていないことがあるため、実装前に公式ドキュ
+メントの対応表(または実機での確認)で組み合わせの可否を確かめる必要が
+あった。
 
 ## プロジェクト構成
 
