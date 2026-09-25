@@ -1646,5 +1646,15 @@
     "uploaded_at": "2026-09-25T01:24:24.357238+00:00",
     "voice_label": "Cantonese (Male)",
     "lang_code": "yue"
+  },
+  {
+    "word": "זככעעצבבב",
+    "label": "זככעעצבבב",
+    "video_id": "hRZGV0WB2FM",
+    "mode": "tts_extreme",
+    "run_id": "36090139525",
+    "uploaded_at": "2026-09-25T03:24:26.987396+00:00",
+    "voice_label": "Hebrew (Female)",
+    "lang_code": "he"
   }
 ]
