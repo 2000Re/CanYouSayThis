@@ -191,17 +191,23 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     if native_hashtag_word:
         tags.append(native_hashtag_word)
 
-    caption_text = f'How to pronounce "{label}"'
-    if lang_label:
-        caption_text += f" in {lang_label}"
-    caption_text += ". A tongue twister and pronunciation challenge — try saying it out loud!"
     # 視聴者はshortsの説明欄やフレームの注記は見ていなくても、この文面が
     # 投稿されるコメント欄は見ている(実際にコメントを付けてくる)ことが
     # 分かったため、「実在の単語ではない/ジョークだ」という注記はここに
     # 入れるのが一番伝わる(is_native_scriptに関わらず全モード共通で入れる。
     # 実在文字体系でない場合も、言語名を付けたことで「本物のその言語の単語」
     # だと誤解されるケースがあったため)。
-    caption_text += " (Not a real word, just a fun joke — don't take it too seriously!)"
+    #
+    # 以前は"A tongue twister and pronunciation challenge — try saying it
+    # out loud!"という説明文と同趣旨の一文も足していたが、Shorts視聴画面の
+    # コメント欄プレビューは長い本文を数行で切り詰めて「詳細」タップが必要に
+    # なる仕様で、肝心の「実在の単語ではない」の注記まで見えなくなっていた
+    # (実機で確認)。tags/descriptionに既にtongue twister等のキーワードは
+    # あり重複するため削り、注記が確実に切り詰められずに見える短さにした。
+    caption_text = f'How to pronounce "{label}"'
+    if lang_label:
+        caption_text += f" in {lang_label}"
+    caption_text += "? Not a real word — just a joke, try saying it anyway! 😄"
 
     # タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド)。
     # YouTube側の視聴環境が日本語の視聴者には、通常のtitle/descriptionの
