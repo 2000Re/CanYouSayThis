@@ -10,11 +10,6 @@ on:
         description: "集計対象の日数(過去何日分)"
         required: false
         default: "28"
-      search_queries:
-        description: "trueならYT_SEARCH経由の再生を実際の検索クエリ別にも表示する"
-        required: false
-        default: "false"
-        type: boolean
 
 jobs:
   traffic-source:
@@ -44,8 +39,4 @@ jobs:
           # "expected one argument" エラーになる(実機で確認)。
           # "--video-id=VALUE" の形にすることで、先頭が "-" の値でも
           # 確実にこのオプションの値として渡せる。
-          args=(--video-id="${{ inputs.video_id }}" --days="${{ inputs.days }}")
-          if [ "${{ inputs.search_queries }}" = "true" ]; then
-            args+=(--search-queries)
-          fi
-          python3 youtube_traffic_source.py "${args[@]}"
+          python3 youtube_traffic_source.py --video-id="${{ inputs.video_id }}" --days="${{ inputs.days }}"
