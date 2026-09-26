@@ -1816,5 +1816,15 @@
     "uploaded_at": "2026-09-26T12:24:16.023553+00:00",
     "voice_label": null,
     "lang_code": null
+  },
+  {
+    "word": ":r֑֥֤֙֜VVVoooo: ❊ ✸ ❁",
+    "label": ":rVVVoooo: ❊...",
+    "video_id": "WRoifR2DCg4",
+    "mode": "tts_extreme",
+    "run_id": "36244982572",
+    "uploaded_at": "2026-09-26T13:24:10.931287+00:00",
+    "voice_label": "Finnish (Male)",
+    "lang_code": "fi"
   }
 ]
