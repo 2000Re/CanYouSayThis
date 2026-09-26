@@ -70,9 +70,11 @@ jobs:
           sudo apt-get install -y espeak-ng ffmpeg \
             fonts-noto-core fonts-noto-extra fonts-noto-ui-core fonts-noto-ui-extra \
             mbrola mbrola-us1 mbrola-fr4 mbrola-de1 mbrola-hu1 mbrola-sw2 \
-            mbrola-tr2 mbrola-br4 mbrola-pt1
+            mbrola-br4 mbrola-pt1
           # mbrola-*は--voice random(config.VOICE_LANGUAGES参照)の女性ボイス用
-          # (MBROLA音声データが確認できた8言語: en/fr/de/hu/sv/tr/pt-br/pt)。
+          # (MBROLA音声データが確認できた7言語: en/fr/de/hu/sv/pt-br/pt。
+          # トルコ語はREADME「ハマった罠」26番の理由で言語プール自体から
+          # 撤去したため、mbrola-tr2は不要)。
           # それ以外の言語は、espeak-ng本体に内蔵の"+f3"フォルマントバリアント
           # で女性ボイスを代替しているため追加パッケージ不要(config.py
           # VOICE_LANGUAGESのコメント参照)。
