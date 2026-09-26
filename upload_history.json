@@ -1756,5 +1756,15 @@
     "uploaded_at": "2026-09-26T03:24:44.865266+00:00",
     "voice_label": "German (Female)",
     "lang_code": "de"
+  },
+  {
+    "word": "l֛֮֠O҆҈҈҉҉҇r֖֤֢֮֬֠rrrrre֦֨֯֬֯ii ✬",
+    "label": "lO҈҈҉҉rrrrrr...",
+    "video_id": "4ziosuKKDOI",
+    "mode": "tts_extreme",
+    "run_id": "36220633786",
+    "uploaded_at": "2026-09-26T05:24:11.512924+00:00",
+    "voice_label": "Swedish (Female)",
+    "lang_code": "sv"
   }
 ]
