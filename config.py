@@ -133,7 +133,6 @@ VOICE_LANGUAGES = {
     "vi":  {"label": "Vietnamese", "male": "vi",    "female": "vi+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "PhátÂm"},
     "id":  {"label": "Indonesian", "male": "id",    "female": "id+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Pengucapan"},
     "ms":  {"label": "Malay",      "male": "ms",    "female": "ms+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Sebutan"},
-    "tr":  {"label": "Turkish",    "male": "tr",    "female": "mb-tr2", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Telaffuz"},
     "pt-br": {"label": "Portuguese (Brazil)", "male": "pt-br", "female": "mb-br4", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Pronúncia"},
     "pt":  {"label": "Portuguese (Portugal)", "male": "pt", "female": "mb-pt1", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Pronúncia"},
     "ro":  {"label": "Romanian",   "male": "ro",    "female": "ro+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Pronunție"},
@@ -152,7 +151,7 @@ VOICE_LANGUAGES = {
 LANGUAGE_LABELS_JA = {
     "fr": "フランス語", "de": "ドイツ語", "hu": "ハンガリー語", "sv": "スウェーデン語",
     "zh": "中国語", "yue": "広東語", "fi": "フィンランド語", "is": "アイスランド語",
-    "vi": "ベトナム語", "id": "インドネシア語", "ms": "マレー語", "tr": "トルコ語",
+    "vi": "ベトナム語", "id": "インドネシア語", "ms": "マレー語",
     "pt-br": "ポルトガル語(ブラジル)", "pt": "ポルトガル語(ポルトガル)",
     "ro": "ルーマニア語", "ru": "ロシア語", "th": "タイ語", "ar": "アラビア語", "he": "ヘブライ語",
 }
