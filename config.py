@@ -86,10 +86,9 @@ ARABIC_LETTERS = _assigned_chars([(0x0621, 0x064A)])
 HEBREW_LETTERS = _assigned_chars([(0x05D0, 0x05EA)])
 
 # glitchモード専用の「絵のように見える」単語生成(word_generator.
-# random_pictograph_word()参照)向けの文字プール。競合チャンネルの
-# "How to Pronounce 𒅌"(楔形文字1文字だけの動画)を見て、複数文字を
-# 組み合わせたら「絵」のように見えるか検証した結果を踏まえたもの
-# (README「ハマった罠」参照)。
+# random_pictograph_word()参照)向けの文字プール。単一の文字でも「絵」の
+# ように見える表現をヒントに、複数文字を組み合わせたら「絵」のように
+# 見えるか検証した結果を踏まえたもの(README「ハマった罠」参照)。
 #
 # 上記の他の文字体系(ロシア語・タイ語・アラビア語・ヘブライ語)と違い、
 # これらは espeak-ng に読ませると無音にはならず、コードポイントを

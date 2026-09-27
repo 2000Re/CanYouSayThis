@@ -60,8 +60,8 @@ _BASELINE_WORD_MARGIN_TOP = 130
 # FRAME_HTML_TEMPLATEと違い、キッカー("How to Pronounce")・サブラベル
 # (モード/注記)・スピーカーアイコンは一切載せない。YouTube検索/一覧の
 # サムネイルはタイトルテキストが横に別途表示されるため、サムネイル画像側に
-# 同じ文言を重複させても却って窮屈になるだけ、という競合チャンネル
-# (Sound Effect Master)の実例を踏まえた設計(README「ハマった罠」参照)。
+# 同じ文言を重複させても却って窮屈になるだけ、という競合チャンネルの実例を
+# 踏まえた設計(README「ハマった罠」参照)。
 THUMBNAIL_HTML_TEMPLATE = """
 <html><head><meta charset="utf-8"><style>
   body {{ margin:0; width:{width}px; height:{height}px; background:white;
