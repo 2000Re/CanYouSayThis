@@ -1846,5 +1846,15 @@
     "uploaded_at": "2026-09-27T01:24:11.975880+00:00",
     "voice_label": "Finnish (Female)",
     "lang_code": "fi"
+  },
+  {
+    "word": "งะนววี",
+    "label": "งะนววี",
+    "video_id": "kgjzZOT1Qo4",
+    "mode": "tts",
+    "run_id": "36291245290",
+    "uploaded_at": "2026-09-27T03:24:13.495947+00:00",
+    "voice_label": "Thai (Female)",
+    "lang_code": "th"
   }
 ]
