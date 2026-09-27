@@ -11,7 +11,7 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
 1. **単語生成**: 母音などの土台文字にUnicodeの結合文字(いわゆるZalgoテキ
    スト)や記号を大量に重ねた、見た目からして発音不能な単語をランダムに作
    ります。
-2. **音声生成**: 3つの方式、またはそれらをランダムに混ぜる方式を選べます。
+2. **音声生成**: 7つの方式、またはそれらをランダムに混ぜる方式を選べます。
    - `tts`(デフォルト): [espeak-ng](https://github.com/espeak-ng/espeak-ng)
      に単語そのものを読ませ、出てきた音をそのまま採用します。
    - `tts_extreme`: espeak-ngの奇妙な声バリエーション(`Demonic` / `croak` /
@@ -25,17 +25,31 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
      エジプト/アナトリア象形文字を組み合わせた「絵のように見える」単語に
      なります(音声が単語の内容に依存しない`glitch`モード限定。「ハマっ
      た罠」27番参照)。
-   - `random`: 1本ごとに上記3方式から`config.MODE_WEIGHTS`の重みでランダム
-     に選びます(`--count`で複数本まとめて作る際や、自動実行の日々の投稿が
-     単調にならないようにする用途)。`glitch`は単語自体を読ませない合成音
-     のため「発音してみて」というコンセプトへの説得力が弱いという判断から、
-     一時的に均等抽選(各1/3)より比率を下げていました(`tts`:`tts_extreme`:
+   - `reverse`: espeak-ngで単語を読ませた音声を、そのまま逆再生します。
+     読み上げ内容・速度は変えず、時間軸だけを反転させる別角度の加工です。
+   - `robot_voice`: espeak-ngで単語を読ませた音声に、搬送波(サイン波)との
+     リング変調(ffmpegの`amultiply`)をかけ、ロボット/ダース・ベイダー風の
+     声にします。
+   - `chorus`: 同じ単語を複数言語(3〜4言語、`config.CHORUS_VOICE_LANGUAGE_CODES`
+     からランダムに選択)のボイスで同時に読み上げて重ねます。「みんなで一斉に
+     発音してみたら」というギミックです(「ハマった罠」28番参照)。
+   - `morse`: espeak-ngは使わず、単語の文字を国際モールス符号のビープ音列に
+     変換します(結合文字・装飾記号は符号表に無いため無視されます)。単語の
+     内容(文字)が決定論的に音のパターンへ反映される点が、完全ランダムな
+     `glitch`との違いです。
+   - `random`: 1本ごとに上記いずれかの方式から`config.MODE_WEIGHTS`の重みで
+     ランダムに選びます(`--count`で複数本まとめて作る際や、自動実行の日々の
+     投稿が単調にならないようにする用途)。`glitch`は単語自体を読ませない
+     合成音のため「発音してみて」というコンセプトへの説得力が弱いという
+     判断から、一時的に均等抽選より比率を下げていました(`tts`:`tts_extreme`:
      `glitch` = 2:2:1)が、実測(`youtube_analytics.py`)で主指標(1日あたり
-     再生数)がglitchで2回連続最上位だったため、現在は均等抽選(各1/3)に
-     戻しています(「ハマった罠」参照)。
+     再生数)がglitchで2回連続最上位だったため、均等配分に戻しています
+     (「ハマった罠」参照)。`reverse`/`robot_voice`/`chorus`/`morse`はまだ
+     実測データが無いため、他と同じ重み(デフォルト値1)のまま追加しています。
 3. **多言語・声色のランダム化**(任意): `--voice random` を指定すると、
-   [tts/tts_extreme専用] 英語を含む19言語・すべての言語で男性/女性ボイスも
-   1本ごとにランダムに選びます。詳しくは後述の「多言語ボイス」を参照。
+   [tts/tts_extreme/reverse/robot_voice専用] 英語を含む19言語・すべての言語
+   で男性/女性ボイスも1本ごとにランダムに選びます。詳しくは後述の「多言語
+   ボイス」を参照。
 4. **繰り返し**: 実際のHow-to-Pronounce系動画が "word... word..." のよう
    に2回言うことが多いのに合わせて、生成した音声をデフォルトで2回繰り返し
    ます。
@@ -87,7 +101,7 @@ python3 generate.py --count 5 --mode glitch --outdir ./out_glitch
 # 極端に歪ませたTTSで5本生成
 python3 generate.py --count 5 --mode tts_extreme --outdir ./out_extreme
 
-# 3方式を1本ごとにランダムに混ぜて5本生成
+# 全方式を1本ごとにランダムに混ぜて5本生成
 python3 generate.py --count 5 --mode random --outdir ./out_mixed
 
 # 言語・性別(男性/女性)を1本ごとにランダムに選ぶ(詳しくは「多言語ボイス」を参照)
@@ -106,8 +120,8 @@ python3 generate.py --count 3 --upload --privacy-status unlisted
 |---|---|---|
 | `--count` | 生成する本数 | `3` |
 | `--outdir` | 出力ディレクトリ | `./out` |
-| `--mode` | `tts` / `tts_extreme` / `glitch` / `random`(1本ごとにランダム選択) | `tts` |
-| `--voice` | [tts/tts_extreme専用] espeak-ngの声(`en`, `en-us`, `ja` など / `random`=言語・性別をランダムに選ぶ、詳しくは「多言語ボイス」を参照) | `en` |
+| `--mode` | `tts` / `tts_extreme` / `glitch` / `reverse` / `robot_voice` / `chorus` / `morse` / `random`(1本ごとにランダム選択) | `tts` |
+| `--voice` | [tts/tts_extreme/reverse/robot_voice専用] espeak-ngの声(`en`, `en-us`, `ja` など / `random`=言語・性別をランダムに選ぶ、詳しくは「多言語ボイス」を参照) | `en` |
 | `--speed` | [tts専用。tts_extremeは毎回ランダムな速度を使うため対象外] 読み上げ速度(words/min) | `150` |
 | `--unit-duration` | [glitch専用] 「答え」1回分の長さ(秒) | `2.0` |
 | `--repeat` | 「答え」を何回繰り返すか | `2` |
@@ -591,7 +605,8 @@ python3 compile_shorts.py --privacy-status unlisted
 
 [YouTube Analytics API](https://developers.google.com/youtube/analytics)を
 使って、アップロード済みの各Shortsの再生数・視聴維持率を取得し、
-`upload_history.json`の`mode`(`tts`/`tts_extreme`/`glitch`)と突き合わせて
+`upload_history.json`の`mode`(`tts`/`tts_extreme`/`glitch`/`reverse`/
+`robot_voice`/`chorus`/`morse`)と突き合わせて
 集計します。`--mode random`の抽選比率(`config.MODE_WEIGHTS`)を「glitchは
 単語を読み上げないので説得力が弱い」という主観だけで下げた判断を、後から
 データで裏付け・再調整するために用意しました。
@@ -1435,13 +1450,61 @@ U+13000-1342F・アナトリア象形文字U+14400-14646。いずれも`_assigne
 音声側の制約(このケースでは無音ではなく長大化)次第で使えるモードが
 限定されることがある。
 
+### 28. `reverse`/`robot_voice`/`chorus`/`morse`追加時に踏んだ3つの罠(音量低下・ヘブライ語の異常な長さ・モールスの速度)
+
+音声のバリエーションを増やすため、既存の`tts`/`tts_extreme`/`glitch`とは
+別角度の4方式(`reverse`=逆再生、`robot_voice`=リング変調、`chorus`=複数
+言語同時読み上げ、`morse`=モールス信号化)を追加した際、実機検証で3つの
+問題が見つかった。
+
+**(1) リング変調(`robot_voice`)は音量が大きく下がる。** ffmpegの
+`amultiply`で音声と搬送波(サイン波)を掛け合わせると、2つの`[-1,1]`信号
+の積になる性質上、RMS音量が元の音声よりおよそ20dB(振幅にして約1/10)も
+下がることを実機の`astats`計測で確認した。`volume=10`で底上げしたうえで
+`alimiter=limit=0.95`によりクリッピングを防いでいる(`chorus`のamix後の
+音量低下も同じ理由・同じ対策)。
+
+**(2) ヘブライ語ボイスはZalgo単語(結合文字混じり)を読ませると異常に
+長くなる。** `chorus`は複数言語のボイスで同じ単語を同時に読み上げるが、
+実機で19言語すべてに同じZalgo単語を読ませて比較したところ、18言語は
+1.4〜2.6秒に収まったのに対し、ヘブライ語(`he`)だけ7.6〜7.7秒と3倍近く
+長くなった(結合文字の処理がヘブライ語の音声エンジンだけ大きく異なると
+見られる)。`chorus`はamix(`duration=longest`)で一番長いボイスに全体の
+尺が引っ張られるため、この1言語の異常値だけで動画全体が16秒を超えて
+しまっていた(`--repeat 2`で実質2倍になるため)。他の実在文字体系言語
+(ロシア語・タイ語・アラビア語)は同じ検証で問題無かったため、`config.
+CHORUS_VOICE_LANGUAGE_CODES`でヘブライ語だけを候補から除外した(前例
+の「ハマった罠」16番・26番と同じく、**問題が実証された言語だけを個別に
+対処し、他の言語を予防的に巻き込まない**方針を踏襲)。
+
+なお`chorus`/`morse`は、単語自体も常に`random_zalgo_word()`(ラテン文字
+土台)に固定している。`chorus`は「特定言語の文字体系の単語を、その言語と
+無関係な他のボイスでも同時に読ませる」不都合を避けるため、`morse`は
+`morse_synth.MORSE_CODE`がラテン文字(+区切り記号4種)にしか対応して
+いないため。
+
+**(3) モールス信号(`morse`)は素直な速度だと1本10秒を超える。** 国際
+モールス符号の標準的なタイミング(短点=1ユニット・長点=3ユニット等)を
+そのまま使い、1ユニット=0.1秒(アマチュア無線の標準速度に近い)で組み
+立てたところ、Zalgo単語の土台(6〜12文字)+区切り記号を変換すると1本
+15秒前後になり、Shortsの「答え」パートとしては長すぎた。1ユニットの長さ
+を0.015〜0.03秒(標準よりかなり速い)にランダム化することで、平均的な
+単語で3〜6秒程度に収まるよう調整した(意図的に正確な実用速度からは外れて
+いる、あくまで「ビープ音のパターン」としての演出重視)。
+
+教訓: **新しい音声加工を追加するたびに、(a) 音量、(b) 全言語/全パターン
+での実測、(c) 生成される尺の妥当性、の3点は個別に実機確認が要る**。
+1つでも欠かすと(今回のように)本番投入後に気づく可能性がある。
+
 ## プロジェクト構成
 
 ```
 config.py                    全モジュール共通の設定・定数
 word_generator.py            Zalgo風「発音不能な単語」の生成
-tts_synth.py                  TTS(espeak-ng)による音声合成 [--mode tts / tts_extreme]
+tts_synth.py                  TTS(espeak-ng)による音声合成 [--mode tts / tts_extreme /
+                               reverse / robot_voice / chorus]
 glitch_synth.py               合成グリッチ音による音声生成 [--mode glitch]
+morse_synth.py                モールス信号のビープ音による音声生成 [--mode morse]
 audio_utils.py                繰り返し・パディング無しフェード・mp3変換
 frame_builder.py              "How to Pronounce" フレーム画像の生成(Playwright)
 video_builder.py              フレーム+音声 → mp4 の合成

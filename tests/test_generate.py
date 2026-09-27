@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import config
 from generate import (
+    _SINGLE_VOICE_MODES,
     _lang_code_for_voice,
     _native_script_for_voice,
     _pictograph_word_generator,
@@ -22,7 +23,17 @@ from generate import (
 )
 from word_generator import random_zalgo_word
 
-REAL_MODES = ("tts", "tts_extreme", "glitch")
+REAL_MODES = ("tts", "tts_extreme", "glitch", "reverse", "robot_voice", "chorus", "morse")
+
+
+def test_single_voice_modes_excludes_multi_or_no_voice_modes():
+    # default_audio_language・upload_history.jsonのvoice_label/lang_code
+    # 記録の対象になるのは「単一の言語・ボイスで実際に発音を読み上げる」
+    # モードのみ(generate_one()参照)。
+    assert set(_SINGLE_VOICE_MODES) == {"tts", "tts_extreme", "reverse", "robot_voice"}
+    assert "glitch" not in _SINGLE_VOICE_MODES
+    assert "chorus" not in _SINGLE_VOICE_MODES
+    assert "morse" not in _SINGLE_VOICE_MODES
 
 
 def test_resolve_mode_passes_through_tts():
@@ -177,6 +188,18 @@ def test_word_generator_for_glitch_weighting_matches_pictograph_chance():
     )
     actual_ratio = pictograph_count / trials
     assert abs(actual_ratio - config.PICTOGRAPH_VISUAL_CHANCE) < 0.03
+
+
+def test_word_generator_for_chorus_and_morse_always_use_zalgo():
+    # chorus(複数言語同時読み上げ)・morse(ラテン文字のみ対応の符号表)は
+    # 実在文字体系の単語だと不都合があるため、常にrandom_zalgo_wordを使う
+    # (_word_generator_for()のdocstring参照)。voiceが実在文字体系の言語
+    # (例: ロシア語)でも上書きされないことを確認する。
+    random.seed(14)
+    ru_voice = config.VOICE_LANGUAGES["ru"]["male"]
+    for mode in ("chorus", "morse"):
+        for _ in range(30):
+            assert _word_generator_for(mode, ru_voice) is random_zalgo_word
 
 
 def test_youtube_metadata_title_contains_label_and_shorts_hashtag():
