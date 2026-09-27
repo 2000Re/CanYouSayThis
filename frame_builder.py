@@ -12,7 +12,7 @@ import os
 
 from playwright.sync_api import sync_playwright
 
-from config import CHROMIUM_PATH, FRAME_CSS_FONT_STACK, FRAME_SIZE, MODE_LABELS
+from config import CHROMIUM_PATH, FRAME_CSS_FONT_STACK, FRAME_SIZE, MODE_LABELS, THUMBNAIL_SIZE
 
 # サムネイルとしての見栄えを優先し、「What」よりも肝心の単語そのものを
 # どかんと大きく見せるレイアウト。"How to Pronounce" は上の小さいキッカー
@@ -56,6 +56,27 @@ _BASELINE_MAX_WIDTH_MARGIN = 80  # フレーム幅からこの分を引いたも
 # 単語上の余白(結合文字を含まない旧デザインの頃は margin-top:0 だった)。
 _BASELINE_WORD_MARGIN_TOP = 130
 
+# "絵だけ"のミニマルなサムネイル画像用のテンプレート(build_thumbnail()参照)。
+# FRAME_HTML_TEMPLATEと違い、キッカー("How to Pronounce")・サブラベル
+# (モード/注記)・スピーカーアイコンは一切載せない。YouTube検索/一覧の
+# サムネイルはタイトルテキストが横に別途表示されるため、サムネイル画像側に
+# 同じ文言を重複させても却って窮屈になるだけ、という競合チャンネル
+# (Sound Effect Master)の実例を踏まえた設計(README「ハマった罠」参照)。
+THUMBNAIL_HTML_TEMPLATE = """
+<html><head><meta charset="utf-8"><style>
+  body {{ margin:0; width:{width}px; height:{height}px; background:white;
+         font-family: {font_stack};
+         display:flex; align-items:center; justify-content:center; }}
+  h1.word {{ font-size:{word_font_size}px; font-weight:900; margin:30px 40px 0; text-align:center;
+             word-break:break-word; max-width:{word_max_width}px; line-height:1.05; color:black; }}
+</style></head>
+<body>
+<h1 class="word">{word}</h1>
+</body></html>
+"""
+
+_THUMBNAIL_MAX_WIDTH_MARGIN = 120  # フレーム幅からこの分を引いたものが単語のmax-width
+
 
 def _sub_label(mode, is_native_script):
     """フレーム下部の小さいサブテキスト([Mode / ...])を組み立てる。
@@ -86,6 +107,22 @@ def _word_font_size(word_label, width):
         base = 150
     else:
         base = 120
+    return round(base * width / _BASELINE_WIDTH)
+
+
+def _thumbnail_word_font_size(word_label, width):
+    """サムネイル(絵だけ・キッカーやサブラベル無し)用のフォントサイズ。
+    _word_font_size()と違い、競合する要素(キッカー・サブラベル・アイコン)
+    が無く画面の全高を単語だけに使えるため、同じ文字数でも一回り大きくする。"""
+    n = len(word_label)
+    if n <= 6:
+        base = 320
+    elif n <= 9:
+        base = 260
+    elif n <= 12:
+        base = 210
+    else:
+        base = 170
     return round(base * width / _BASELINE_WIDTH)
 
 _playwright_ctx = {"pw": None, "browser": None}
@@ -160,3 +197,70 @@ def build_frame(word_label, frame_path, mode="tts", size=FRAME_SIZE, display_wor
     page.screenshot(path=frame_path)
     page.close()
     os.remove(html_path)
+
+
+def build_thumbnail(word_label, thumbnail_path, size=THUMBNAIL_SIZE, display_word=None):
+    """"絵だけ"のミニマルなカスタムサムネイル画像を生成する(--upload時、
+    config.CUSTOM_THUMBNAIL_ENABLED有効時にyoutube_upload.upload_thumbnail()
+    へ渡す用)。
+
+    build_frame()と違い、キッカー("How to Pronounce")・サブラベル(モード/
+    注記)・スピーカーアイコンは一切載せない。単語(display_word)だけを
+    画面いっぱいに大きく表示する。動画本体のフレーム(縦型Shorts用)とは
+    完全に独立しており、videos.thumbnails().set()で動画本体の縦横比とは
+    無関係に設定できるため、動画がShorts(9:16)のままでもこの16:9サムネイル
+    を使える(README「ハマった罠」参照)。
+
+    word_label/display_wordの意味はbuild_frame()と同じ(前者はフォント
+    サイズ算出用、後者は実際に描画する文字列)。"""
+    display_word = word_label if display_word is None else display_word
+    width, height = size
+    html_content = THUMBNAIL_HTML_TEMPLATE.format(
+        font_stack=FRAME_CSS_FONT_STACK,
+        word=html.escape(display_word),
+        width=width,
+        height=height,
+        word_font_size=_thumbnail_word_font_size(word_label, width),
+        word_max_width=width - _THUMBNAIL_MAX_WIDTH_MARGIN,
+    )
+    html_path = thumbnail_path + ".html"
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html_content)
+
+    browser = _get_browser()
+    page = browser.new_page(viewport={"width": width, "height": height})
+    page.goto(f"file://{os.path.abspath(html_path)}")
+    _shrink_word_to_fit(page, width, height)
+    page.screenshot(path=thumbnail_path)
+    page.close()
+    os.remove(html_path)
+
+
+def _shrink_word_to_fit(page, max_width, max_height, min_font_size=48, shrink_factor=0.92):
+    """h1.wordの実際の描画結果がフレームからはみ出す場合、font-sizeを段階的に
+    縮めてはみ出さなくなるまで繰り返す(ブラウザ上で実測して調整する)。
+
+    _thumbnail_word_font_size()は文字数だけを見た見積もりで、ラテン文字を
+    基準にしている。楔形文字・エジプト/アナトリア象形文字(config.
+    PICTOGRAPH_SCRIPTS、README「ハマった罠」27番参照)は1文字あたりの幅・
+    高さがラテン文字よりずっと大きく複雑なため、同じ文字数の見積もりでは
+    フレームから大きくはみ出す(実機で確認済み。README「ハマった罠」参照)。
+    文字数ベースの見積もりを文字体系ごとに作り分けるのではなく、実際に
+    ブラウザで描画したサイズ(scrollWidth/scrollHeight)を見て縮める方式に
+    することで、どんな文字体系が来ても安全に収まるようにしている。"""
+    page.evaluate(
+        """
+        ([maxWidth, maxHeight, minFontSize, shrinkFactor]) => {
+            const el = document.querySelector('h1.word');
+            let size = parseFloat(getComputedStyle(el).fontSize);
+            while (
+                (el.scrollWidth > maxWidth || el.scrollHeight > maxHeight)
+                && size > minFontSize
+            ) {
+                size = Math.max(size * shrinkFactor, minFontSize);
+                el.style.fontSize = size + 'px';
+            }
+        }
+        """,
+        [max_width, max_height, min_font_size, shrink_factor],
+    )

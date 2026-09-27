@@ -266,6 +266,44 @@ def test_post_comment_requests_unrestricted_scopes(monkeypatch):
     assert get_client_calls == [{"scopes": None}]
 
 
+def test_quota_cost_per_call_includes_thumbnails_set():
+    assert QUOTA_COST_PER_CALL["thumbnails.set"] == 50
+
+
+def test_upload_thumbnail_sends_expected_video_id(monkeypatch, tmp_path):
+    youtube = MagicMock()
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+    thumbnail_path = tmp_path / "thumb.png"
+    thumbnail_path.write_bytes(b"fake-png-bytes")
+
+    youtube_upload.upload_thumbnail("abc123", str(thumbnail_path))
+
+    _, kwargs = youtube.thumbnails.return_value.set.call_args
+    assert kwargs["videoId"] == "abc123"
+    assert youtube_upload._api_call_counts["thumbnails.set"] == 1
+
+
+def test_upload_thumbnail_uses_default_upload_scopes(monkeypatch, tmp_path):
+    # captions/commentと違いthumbnails.setはyoutube.force-sslが不要なため、
+    # scopes=Noneに絞り込まず(引数省略で)UPLOAD_SCOPESのまま呼ぶことの確認。
+    youtube = MagicMock()
+    get_client_calls = []
+    monkeypatch.setattr(
+        youtube_upload, "get_youtube_client",
+        lambda **kwargs: get_client_calls.append(kwargs) or youtube,
+    )
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+    thumbnail_path = tmp_path / "thumb.png"
+    thumbnail_path.write_bytes(b"fake-png-bytes")
+
+    youtube_upload.upload_thumbnail("abc123", str(thumbnail_path))
+
+    assert get_client_calls == [{}]
+
+
 def test_fetch_video_stats_parses_statistics(monkeypatch):
     youtube = MagicMock()
     youtube.videos.return_value.list.return_value.execute.return_value = {

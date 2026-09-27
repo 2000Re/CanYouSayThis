@@ -77,7 +77,7 @@ _MAX_RETRIES = 8
 QUOTA_COST_PER_CALL = {
     "videos.insert": 100, "playlistItems.insert": 50, "channels.list": 1,
     "videos.list": 1, "videos.update": 50, "captions.insert": 400,
-    "commentThreads.insert": 50,
+    "commentThreads.insert": 50, "thumbnails.set": 50,
 }
 _api_call_counts = {name: 0 for name in QUOTA_COST_PER_CALL}
 
@@ -382,6 +382,26 @@ def add_to_playlist(video_id, playlist_id):
     }
     _api_call_counts["playlistItems.insert"] += 1
     youtube.playlistItems().insert(part="snippet", body=body).execute()
+
+
+def upload_thumbnail(video_id, thumbnail_path):
+    """video_idの動画にthumbnail_path(画像ファイル)をカスタムサムネイル
+    として設定する(frame_builder.build_thumbnail()の出力を渡す想定)。
+
+    [背景] YouTube側でカスタムサムネイル機能を使うにはチャンネルの電話番号
+    確認が必要で、未確認のチャンネルでこのAPIを呼ぶとforbiddenエラーになる。
+    そのため呼び出し側(generate.py)はconfig.CUSTOM_THUMBNAIL_ENABLEDで
+    ゲートし、確認が完了するまでこの関数自体を呼ばない。
+
+    thumbnails.set は youtube.upload / youtube スコープ(UPLOAD_SCOPES)で
+    完結し、captions.insert/commentThreads.insertのようなyoutube.force-ssl
+    スコープは不要。動画本体のアップロードとは別のAPI呼び出しなので、
+    呼び出し側はこの関数の例外を警告に留め、処理全体は止めない想定
+    (add_to_playlist()と同じ方針、generate.py参照)。"""
+    youtube = get_youtube_client()
+    media = MediaFileUpload(thumbnail_path)
+    _api_call_counts["thumbnails.set"] += 1
+    youtube.thumbnails().set(videoId=video_id, media_body=media).execute()
 
 
 def _srt_timestamp(seconds):

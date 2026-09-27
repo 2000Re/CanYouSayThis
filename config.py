@@ -13,6 +13,10 @@ import unicodedata
 
 CHROMIUM_PATH = "/opt/pw-browsers/chromium"  # Playwright同梱のChromium
 FRAME_SIZE = (1080, 1920)  # YouTube Shorts / TikTok / Reels向けの縦型9:16
+# カスタムサムネイル(frame_builder.build_thumbnail()参照)用のYouTube推奨
+# サイズ(1280x720、16:9)。動画本体の縦横比(Shortsは9:16)とは独立に
+# 設定できる(videos.thumbnails().set()は動画本体と無関係な画像を指定可能)。
+THUMBNAIL_SIZE = (1280, 720)
 
 # 動画フレームに表示するラベル(海外視聴者向けなので英語表記に統一)。
 # --mode randomはこのdictのキーからMODE_WEIGHTSの重みでランダムに1つ選ぶ
@@ -372,6 +376,14 @@ CAPTIONS_ENABLED = False
 # 失敗しても動画本体の投稿は止まらない設計。実運用で信頼性を見ながら、
 # 問題があればCAPTIONS_ENABLEDと同じくFalseにする。
 COMMENT_ON_UPLOAD_ENABLED = True
+
+# カスタムサムネイルのアップロード機能(youtube_upload.upload_thumbnail()、
+# frame_builder.build_thumbnail()参照)自体のON/OFF。YouTube側でこの機能を
+# 使うにはチャンネルの電話番号確認が必要で、確認が済んでいないチャンネル
+# でthumbnails.set()を呼ぶとforbiddenエラーになる。電話番号確認が完了する
+# までFalseのままにしておき、完了したらTrueに切り替える(コード側の変更は
+# 不要、generate.py参照)。
+CUSTOM_THUMBNAIL_ENABLED = False
 
 # YouTube Studioの視聴者属性(アナリティクス)で継続的に上位に入っている
 # 非英語圏(フィリピン・インドネシア・マレーシア)向けに、説明文へ常時追加
