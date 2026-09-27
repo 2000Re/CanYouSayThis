@@ -12,6 +12,7 @@ import config
 from config import DECORATIVE_SYMBOLS, SAFE_COMBINING_BLOCKS, THAI_CONSONANTS, THAI_VOWEL_MARKS
 from word_generator import (
     random_abugida_word,
+    random_pictograph_word,
     random_script_word,
     random_thai_word,
     random_zalgo_word,
@@ -175,3 +176,29 @@ def test_new_language_character_pools_are_nonempty_and_assigned_codepoints():
         assert len(pool) > 0
         for ch in pool:
             assert unicodedata.category(ch) != "Cn", f"unassigned codepoint: {hex(ord(ch))}"
+
+
+def test_pictograph_scripts_are_nonempty_and_assigned_codepoints():
+    # 楔形文字・エジプト/アナトリア象形文字のプールも同じ回帰防止確認
+    # (glitchモード専用。config.PICTOGRAPH_SCRIPTS参照)。
+    for pool in config.PICTOGRAPH_SCRIPTS:
+        assert len(pool) > 0
+        for ch in pool:
+            assert unicodedata.category(ch) != "Cn", f"unassigned codepoint: {hex(ord(ch))}"
+
+
+def test_random_pictograph_word_is_nonempty_and_only_uses_given_chars():
+    chars = config.CUNEIFORM_CHARS
+    random.seed(7)
+    for _ in range(50):
+        word = random_pictograph_word(chars)
+        assert len(word) > 0
+        assert all(ch in chars for ch in word)
+
+
+def test_random_pictograph_word_respects_length_range():
+    chars = config.EGYPTIAN_HIEROGLYPH_CHARS
+    random.seed(8)
+    for _ in range(50):
+        word = random_pictograph_word(chars, n_chars=(5, 5))
+        assert len(word) == 5
