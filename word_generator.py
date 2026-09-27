@@ -96,6 +96,17 @@ def random_abugida_word(consonants, vowels, n_syllables=(4, 7), vowel_chance=0.7
     return "".join(out)
 
 
+def random_pictograph_word(chars, n_chars=(4, 6)):
+    """楔形文字・エジプト/アナトリア象形文字のような、1文字ごとが既に
+    「絵」であるような文字体系向けの単語生成(config.PICTOGRAPH_SCRIPTS
+    参照)。random_script_word()と違い、これらの文字は子音クラスターの
+    ような言語的な見た目を狙う必要が無い(実在の単語ではなく、複数の文字を
+    組み合わせて1枚の「絵」のように見せるのが目的)ため、連打の演出はせず
+    単純にランダムな並びにする。"""
+    n = random.randint(*n_chars)
+    return "".join(random.choice(chars) for _ in range(n))
+
+
 def random_thai_word(n_syllables=(4, 7), vowel_chance=0.7):
     """random_abugida_word()のタイ文字専用ラッパー(後方互換のため残して
     ある。generate.pyは他のアブギダ言語と同じくrandom_abugida_word()を

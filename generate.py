@@ -72,6 +72,7 @@ from tts_synth import synthesize_tts, synthesize_tts_extreme
 from video_builder import build_video
 from word_generator import (
     random_abugida_word,
+    random_pictograph_word,
     random_script_word,
     random_zalgo_word,
     readable_label,
@@ -305,6 +306,21 @@ def _native_script_for_voice(voice_code):
     return None
 
 
+def _pictograph_word_generator():
+    """楔形文字・エジプト/アナトリア象形文字のいずれか1つの文字体系を
+    ランダムに選び、その単語生成関数を返す(config.PICTOGRAPH_SCRIPTS参照)。
+    _native_script_for_voice()と同様、選んだ文字体系(chars)を1回だけ
+    抽選してlambdaに固定することで、_random_unique_word()の再抽選試行中に
+    文字体系がぶれない(同じ「絵」の系統の中で単語違いを試す)ようにしている。
+
+    glitchモード専用(generate_one()参照)。これらの文字はespeak-ngに
+    読ませると無音にならず、コードポイントを桁ごとに読み上げる長い音声に
+    なってしまうこと(README「ハマった罠」参照)を実機で確認済みのため、
+    単語の読み上げ音声に依存しないglitchモードでのみ使う。"""
+    chars = random.choice(config.PICTOGRAPH_SCRIPTS)
+    return lambda: random_pictograph_word(chars)
+
+
 def _lang_code_for_voice(voice_code):
     """voice_codeがconfig.VOICE_LANGUAGESの中のどの言語のmale/femaleボイス
     コードと一致するか調べ、一致する言語コード(config.VOICE_LANGUAGESの
@@ -345,6 +361,24 @@ def _random_unique_word(existing_words, word_generator=random_zalgo_word, max_at
     return word
 
 
+def _word_generator_for(actual_mode, actual_voice):
+    """generate_one()が使う単語生成関数を決める。
+
+    楔形文字・エジプト/アナトリア象形文字の「絵のような」単語
+    (_pictograph_word_generator()参照)はglitchモード限定で、
+    config.PICTOGRAPH_VISUAL_CHANCEの確率でのみ選ぶ(これらの文字は
+    espeak-ngに読ませると無音にならず、コードポイントを桁ごとに読み上げる
+    長い音声になってしまうため、単語の読み上げ音声に依存しないglitchモード
+    でのみ使う。README「ハマった罠」参照)。
+
+    それ以外(および上記の確率に外れた場合のglitchモード)は従来通り、
+    実在文字体系のボイスならそちらの単語生成(_native_script_for_voice()参照)、
+    無ければZalgo単語(random_zalgo_word())を使う。"""
+    if actual_mode == "glitch" and random.random() < config.PICTOGRAPH_VISUAL_CHANCE:
+        return _pictograph_word_generator()
+    return _native_script_for_voice(actual_voice) or random_zalgo_word
+
+
 def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOICE,
                   speed=config.DEFAULT_SPEED, unit_duration=config.DEFAULT_UNIT_DURATION,
                   repeat=config.DEFAULT_REPEAT, repeat_gap=config.DEFAULT_REPEAT_GAP,
@@ -352,7 +386,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     actual_mode = _resolve_mode(mode)
     actual_voice, voice_label, voice_gender = _resolve_voice(voice)
     voice_pitch = _voice_pitch_for(actual_voice, voice_gender)
-    word_generator = _native_script_for_voice(actual_voice) or random_zalgo_word
+    word_generator = _word_generator_for(actual_mode, actual_voice)
     used_native_script = word_generator is not random_zalgo_word
 
     if upload:

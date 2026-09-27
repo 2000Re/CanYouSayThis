@@ -12,10 +12,12 @@ import config
 from generate import (
     _lang_code_for_voice,
     _native_script_for_voice,
+    _pictograph_word_generator,
     _random_unique_word,
     _resolve_mode,
     _resolve_voice,
     _voice_pitch_for,
+    _word_generator_for,
     _youtube_metadata,
 )
 from word_generator import random_zalgo_word
@@ -116,6 +118,65 @@ def test_native_script_for_voice_returns_generator_for_abugida_languages():
         allowed = set(entry["consonants"]) | set(entry["vowels"])
         assert all(ch in allowed for ch in word)
         assert word[0] in entry["consonants"]
+
+
+def test_pictograph_word_generator_picks_one_script_and_stays_within_it():
+    # 生成された単語の全文字が、config.PICTOGRAPH_SCRIPTSのどれか1つの
+    # プールだけに収まっていること(複数の文字体系が1単語に混ざらないこと)
+    # の確認(_pictograph_word_generator()参照)。
+    random.seed(9)
+    for _ in range(20):
+        generator = _pictograph_word_generator()
+        word = generator()
+        assert len(word) > 0
+        assert any(all(ch in pool for ch in word) for pool in config.PICTOGRAPH_SCRIPTS)
+
+
+def test_pictograph_word_generator_fixes_script_across_repeated_calls():
+    # _random_unique_word()の再抽選中に文字体系がぶれず、同じ系統の中で
+    # 単語違いを試せることの確認(1回のgenerator()呼び出しごとにプールを
+    # 選び直さない)。
+    random.seed(10)
+    generator = _pictograph_word_generator()
+    words = [generator() for _ in range(10)]
+    matching_pools = [
+        pool for pool in config.PICTOGRAPH_SCRIPTS
+        if all(all(ch in pool for ch in word) for word in words)
+    ]
+    assert len(matching_pools) == 1
+
+
+def test_word_generator_for_never_uses_pictograph_outside_glitch_mode():
+    # tts/tts_extremeでは、乱数がどう転んでもピクトグラフ生成にはならない
+    # (config.PICTOGRAPH_VISUAL_CHANCEの確率判定自体がglitchモード限定)。
+    random.seed(11)
+    en_voice = config.VOICE_LANGUAGES["en"]["male"]
+    for mode in ("tts", "tts_extreme"):
+        for _ in range(50):
+            generator = _word_generator_for(mode, en_voice)
+            assert generator is random_zalgo_word
+
+
+def test_word_generator_for_can_use_pictograph_in_glitch_mode():
+    # glitchモードでは、十分な試行回数のうちいずれかでピクトグラフ生成
+    # (random_zalgo_word以外)が選ばれることの確認(確率的な挙動なので
+    # 統計的に確認する)。
+    random.seed(12)
+    en_voice = config.VOICE_LANGUAGES["en"]["male"]
+    picks = [_word_generator_for("glitch", en_voice) for _ in range(80)]
+    assert any(g is not random_zalgo_word for g in picks)
+    assert any(g is random_zalgo_word for g in picks)
+
+
+def test_word_generator_for_glitch_weighting_matches_pictograph_chance():
+    random.seed(13)
+    trials = 4000
+    en_voice = config.VOICE_LANGUAGES["en"]["male"]
+    pictograph_count = sum(
+        1 for _ in range(trials) if _word_generator_for("glitch", en_voice) is not random_zalgo_word
+    )
+    actual_ratio = pictograph_count / trials
+    assert abs(actual_ratio - config.PICTOGRAPH_VISUAL_CHANCE) < 0.03
 
 
 def test_youtube_metadata_title_contains_label_and_shorts_hashtag():
