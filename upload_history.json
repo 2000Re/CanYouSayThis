@@ -1896,5 +1896,15 @@
     "uploaded_at": "2026-09-27T10:24:21.642200+00:00",
     "voice_label": "Hungarian (Female)",
     "lang_code": "hu"
+  },
+  {
+    "word": "הסחחחחד",
+    "label": "הסחחחחד",
+    "video_id": "_A7511AUzXU",
+    "mode": "reverse",
+    "run_id": "36315556009",
+    "uploaded_at": "2026-09-27T11:24:36.033889+00:00",
+    "voice_label": "Hebrew (Male)",
+    "lang_code": "he"
   }
 ]
