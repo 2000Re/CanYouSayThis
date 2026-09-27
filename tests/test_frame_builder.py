@@ -68,3 +68,40 @@ def test_sub_label_native_script_says_not_a_real_word():
 def test_sub_label_unknown_mode_falls_back_to_raw_mode_name():
     assert frame_builder._sub_label("mystery", is_native_script=False) == \
         "[mystery / Unpronounceable word]"
+
+
+def test_thumbnail_word_font_size_shrinks_as_length_grows():
+    # 文字数が増えるほど基準サイズが小さくなること(_word_font_size()と
+    # 同じ傾向)の確認。
+    short = frame_builder._thumbnail_word_font_size("abcdef", 1280)
+    long = frame_builder._thumbnail_word_font_size("abcdefghijklmnop", 1280)
+    assert short > long
+
+
+def test_thumbnail_word_font_size_is_larger_than_frame_font_size():
+    # サムネイルはキッカー・サブラベル・アイコンが無く全高を単語だけに
+    # 使えるため、同じ文字数でも動画フレーム用(_word_font_size)より
+    # 大きいサイズになることの確認。
+    word_label = "abcdef"
+    assert frame_builder._thumbnail_word_font_size(word_label, 1280) > \
+        frame_builder._word_font_size(word_label, 1280)
+
+
+def test_thumbnail_word_font_size_scales_with_width():
+    base = frame_builder._thumbnail_word_font_size("abcdef", 1280)
+    scaled = frame_builder._thumbnail_word_font_size("abcdef", 640)
+    assert scaled == round(base / 2)
+
+
+def test_shrink_word_to_fit_evaluates_with_expected_args():
+    # 実際のブラウザは起動せず、page.evaluate()に正しい引数(フレーム幅・
+    # 高さ・最小フォントサイズ・縮小係数)が渡ることだけを確認する。
+    page = MagicMock()
+
+    frame_builder._shrink_word_to_fit(page, 1280, 720, min_font_size=50, shrink_factor=0.9)
+
+    args, _ = page.evaluate.call_args
+    js_code, eval_args = args
+    assert "scrollWidth" in js_code
+    assert "scrollHeight" in js_code
+    assert eval_args == [1280, 720, 50, 0.9]

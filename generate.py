@@ -521,6 +521,27 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
 
         video_id = youtube_url.rsplit("/", 1)[-1]
 
+        # "絵だけ"のミニマルなカスタムサムネイル(frame_builder.build_thumbnail()
+        # 参照)。動画本体のフレーム(縦型Shorts)とは別に、キッカー・サブ
+        # ラベル・アイコンを省いた単語だけの16:9画像を作りYouTube側に設定
+        # する。YouTube側でカスタムサムネイル機能を使うには電話番号確認が
+        # 必要なため、config.CUSTOM_THUMBNAIL_ENABLEDがTrueの間だけ動く
+        # (README「ハマった罠」参照)。失敗しても動画自体は既に公開済み
+        # なので警告に留めて処理は止めない(add_to_playlistと同じ方針)。
+        if config.CUSTOM_THUMBNAIL_ENABLED:
+            from frame_builder import build_thumbnail
+            from youtube_upload import upload_thumbnail
+
+            thumbnail_path = base + "_thumbnail.png"
+            try:
+                build_thumbnail(label, thumbnail_path, display_word=frame_word)
+                upload_thumbnail(video_id, thumbnail_path)
+            except Exception as e:
+                print(f"[Warning] {word}: カスタムサムネイルのアップロードに失敗しました: {e}")
+            finally:
+                if os.path.exists(thumbnail_path):
+                    os.remove(thumbnail_path)
+
         # 手動字幕(ASRに任せるとでたらめな音声が意味不明な文字起こしになり、
         # 検索インデックス対象のテキストが無駄になるため、代わりにキーワード
         # 付きの固定テキストを入れる)。captions.insertはyoutube.force-ssl
