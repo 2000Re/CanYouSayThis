@@ -1,6 +1,12 @@
 """TTS (espeak-ng) で単語をそのまま読ませる方式 [--mode tts / デフォルト]
-および、それを奇妙な声質・極端なピッチ+ffmpegの歪みフィルタで壊す方式
-[--mode tts_extreme]。"""
+および、それを別々の角度で加工する3方式:
+  - 奇妙な声質・極端なピッチ+ffmpegの歪みフィルタで壊す [--mode tts_extreme]
+  - そのまま逆再生する [--mode reverse]
+  - 搬送波とのリング変調でロボット風の声にする [--mode robot_voice]
+  - 複数言語のボイスで同時に読み上げて重ねる [--mode chorus]
+いずれも単語自体はespeak-ngに読ませており(chorusのみ複数ボイス)、
+単語の内容とは無関係な合成音を当てるglitch_synth.py/morse_synth.pyとは
+性質が異なる。"""
 
 import os
 import random
@@ -155,3 +161,107 @@ def synthesize_tts_extreme(word, wav_path, voice="en"):
     _stretch_to_min_duration(filtered_wav, wav_path, config.TTS_EXTREME_MIN_DURATION_SECONDS)
     if os.path.exists(filtered_wav):
         os.remove(filtered_wav)
+
+
+def synthesize_tts_reverse(word, wav_path, voice="en", speed=150, pitch=None):
+    """espeak-ngで単語を読ませた音声を、そのまま逆再生する [--mode reverse]。
+
+    tts_extremeのピッチ/速度変化とは違い、読み上げ内容(声質・速度)自体は
+    一切変えず、時間軸だけを反転させる。長さはsynthesize_tts()と完全に
+    同じまま保たれるため、tts_extremeのような最短尺の保険は不要。"""
+    raw_wav = wav_path + ".raw.wav"
+    synthesize_tts(word, raw_wav, voice=voice, speed=speed, pitch=pitch)
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", raw_wav, "-af", "areverse", wav_path],
+        check=True,
+        capture_output=True,
+    )
+    os.remove(raw_wav)
+
+
+def synthesize_tts_robot(word, wav_path, voice="en", speed=150, pitch=None, carrier_freq=None):
+    """espeak-ngで単語を読ませた音声に、搬送波(サイン波)とのリング変調
+    (ffmpegの`amultiply`で2つの音声ストリームをサンプルごとに掛け合わせる)
+    をかけ、ロボット/ダース・ベイダー風の声にする [--mode robot_voice]。
+    tts_extremeのピッチ/速度変化+ビットクラッシュとは別の軸の歪み。
+
+    実機で確認したところ、単純にamultiplyしただけだとRMS音量が元の音声
+    より約20dB(振幅にして約1/10)下がってしまう(2つの[-1,1]信号を掛け
+    合わせる性質上、振幅が縮む)ため、volumeで底上げしたうえでalimiterで
+    クリッピングを防いでいる(README「ハマった罠」参照)。"""
+    if carrier_freq is None:
+        carrier_freq = random.randint(30, 120)  # 低いほど「ブーン」とした金属質な唸りになる
+
+    raw_wav = wav_path + ".raw.wav"
+    synthesize_tts(word, raw_wav, voice=voice, speed=speed, pitch=pitch)
+    duration = _probe_duration(raw_wav)
+
+    carrier_src = f"sine=frequency={carrier_freq}:duration={duration}"
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-i", raw_wav,
+            "-f", "lavfi", "-i", carrier_src,
+            "-filter_complex", "[0:a][1:a]amultiply,volume=10,alimiter=limit=0.95[out]",
+            "-map", "[out]", wav_path,
+        ],
+        check=True,
+        capture_output=True,
+    )
+    os.remove(raw_wav)
+
+
+def synthesize_tts_chorus(word, wav_path, n_voices=(3, 4)):
+    """同じ単語を複数言語のTTSボイスで同時に読み上げ、重ねてミックスする
+    [--mode chorus]。「多言語で一斉に発音してみたら」という、単一の声を
+    加工する他方式とは別角度のギミック。
+
+    config.VOICE_LANGUAGESから重複無くn_voices個の言語をランダムに選び、
+    各言語ごとに性別もランダムに選ぶ(femaleが無い言語はmaleのみ)。開始
+    タイミングを少しだけランダムにずらす(adelay)ことで、完全に揃って
+    読み上げるのではなく「めいめいバラバラに話し始める」自然さを出す。
+
+    実機で確認したところ、amix(normalize=1)だけだと単一ボイスの音声より
+    RMS音量が下がる(声の数で割られるため)ため、volumeで底上げしたうえで
+    alimiterでクリッピングを防いでいる(synthesize_tts_robot()と同じ理由。
+    README「ハマった罠」参照)。
+
+    候補言語はconfig.VOICE_LANGUAGES全体ではなくconfig.CHORUS_VOICE_LANGUAGE_CODES
+    (ヘブライ語を除いたもの)を使う。ヘブライ語ボイスでZalgo単語を読ませると
+    他言語の3倍近い長さになることを実機で確認したため(config.py参照)。"""
+    n = random.randint(*n_voices)
+    lang_codes = random.sample(
+        config.CHORUS_VOICE_LANGUAGE_CODES, k=min(n, len(config.CHORUS_VOICE_LANGUAGE_CODES))
+    )
+
+    raw_paths = []
+    for i, lang_code in enumerate(lang_codes):
+        entry = config.VOICE_LANGUAGES[lang_code]
+        genders = ["male"] + (["female"] if entry["female"] else [])
+        gender = random.choice(genders)
+        raw_path = f"{wav_path}.chorus{i}.wav"
+        synthesize_tts(word, raw_path, voice=entry[gender], speed=config.DEFAULT_SPEED)
+        raw_paths.append(raw_path)
+
+    cmd = ["ffmpeg", "-y"]
+    filter_parts = []
+    labels = []
+    for i, path in enumerate(raw_paths):
+        cmd += ["-i", path]
+        delay_ms = random.randint(0, 250)
+        label = f"v{i}"
+        filter_parts.append(f"[{i}:a]adelay={delay_ms}:all=1[{label}]")
+        labels.append(f"[{label}]")
+
+    mix_inputs = "".join(labels)
+    filter_parts.append(
+        f"{mix_inputs}amix=inputs={len(raw_paths)}:duration=longest:normalize=1,"
+        "volume=2.2,alimiter=limit=0.95[out]"
+    )
+    filter_complex = ";".join(filter_parts)
+
+    cmd += ["-filter_complex", filter_complex, "-map", "[out]", wav_path]
+    subprocess.run(cmd, check=True, capture_output=True)
+
+    for path in raw_paths:
+        os.remove(path)

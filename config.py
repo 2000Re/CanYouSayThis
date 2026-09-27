@@ -23,6 +23,10 @@ MODE_LABELS = {
     "tts": "Text-to-Speech",
     "glitch": "Synthesized Glitch Audio",
     "tts_extreme": "Distorted Text-to-Speech",
+    "reverse": "Reversed Text-to-Speech",
+    "robot_voice": "Robot Voice",
+    "chorus": "Multilingual Chorus",
+    "morse": "Morse Code",
 }
 
 # --mode random で各モードが選ばれる相対的な重み(generate.py
@@ -34,6 +38,9 @@ MODE_LABELS = {
 # 最上位だったため、均等配分に戻した(README「ハマった罠」参照。サンプルは
 # まだ各10〜19本程度のため、さらに強気の配分にするかは追加データを見て
 # 再判断する)。
+# reverse/robot_voice/chorus/morseは、まだ実測データが無いためここには
+# 追加せず(=他と同じ重み1がデフォルトで適用される)、データが貯まって
+# から個別に重みを調整する。
 MODE_WEIGHTS = {
     "tts": 1,
     "tts_extreme": 1,
@@ -171,6 +178,16 @@ VOICE_LANGUAGES = {
     "ar":  {"label": "Arabic",     "male": "ar",    "female": "ar+f3", "script": "cluster", "chars": ARABIC_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "نطق"},
     "he":  {"label": "Hebrew",     "male": "he",    "female": "he+f3", "script": "cluster", "chars": HEBREW_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "הגייה"},
 }
+
+# --mode chorus専用: 複数言語のボイスで同時に読み上げる際の候補言語プール。
+# 実機で検証したところ、ヘブライ語ボイス(he)でZalgo単語(結合文字混じり)
+# を読ませると、他の18言語(1.4〜2.6秒)の3倍近い7.6秒台まで長くなることを
+# 確認した(ヘブライ語の音声エンジンが結合文字を処理する際の挙動が他言語と
+# 大きく異なるためと見られる。他の実在文字体系言語(ロシア語・タイ語・
+# アラビア語)は同じ検証で問題無かったため、ヘブライ語のみ除外している)。
+# chorusはamix(duration=longest)で一番長いボイスに全体の尺が引っ張られる
+# ため、この差が致命的に響く(README「ハマった罠」参照)。
+CHORUS_VOICE_LANGUAGE_CODES = [code for code in VOICE_LANGUAGES if code != "he"]
 
 # タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド、
 # generate.py _youtube_metadata()参照)で、VOICE_LANGUAGESの"label"に対応する

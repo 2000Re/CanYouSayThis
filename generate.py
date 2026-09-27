@@ -6,7 +6,7 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 1. Zalgo風「発音不能な単語」をランダム生成          -> word_generator.py
    (--upload時は、upload_history.jsonに既に記録済みの単語と被らないものを
    選ぶ。チャンネルへの重複投稿を避けるため)
-2. 音声を作る(4方式から選択):     -> tts_synth.py / glitch_synth.py
+2. 音声を作る(7方式から選択):     -> tts_synth.py / glitch_synth.py / morse_synth.py
      --mode tts          : espeak-ng に単語そのものを読ませ、出てきた音を採用
                             (デフォルト。単語の文字列がそのまま音に反映され
                             るので「本当にその単語を読ませている」感が出せる)
@@ -17,7 +17,14 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
                             毎回激しく変わる)
      --mode glitch       : チャープ音・ノイズバースト・ビットクラッシュを
                             合成(単語の音とは無関係な効果音を当てる)
-     --mode random       : 1本ごとに上記3方式からランダムに選ぶ
+     --mode reverse      : espeak-ngに読ませた音声をそのまま逆再生する
+     --mode robot_voice  : espeak-ngに読ませた音声に搬送波とのリング変調
+                            (ffmpegのamultiply)をかけ、ロボット風の声にする
+     --mode chorus       : 同じ単語を複数言語のボイスで同時に読み上げて重ねる
+     --mode morse        : 単語の文字をモールス信号のビープ音に変換する
+                            (espeak-ngは使わず、文字パターンから決定論的に
+                            音を組み立てる)
+     --mode random       : 1本ごとに上記いずれかの方式からランダムに選ぶ
                             (--countで複数本まとめて作る際や、自動実行の
                             日々の投稿に単調さが出ないようにする用途)
 3. 「答え」を --repeat 回(デフォルト2回)繰り返す      -> audio_utils.py
@@ -28,7 +35,7 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 7. --upload 指定時は、書き出したmp4をそのままYouTubeにアップロードする -> youtube_upload.py
    (アップロード成功時は upload_history.json にも記録し、compile_shorts.py が
     10本たまるごとに結合動画を作れるようにする。--mode random で作った回も、
-    実際に使われた方式(tts/tts_extreme/glitchのいずれか)が記録される)
+    実際に使われた方式が記録される)
 
 --count で複数本生成する場合、1本の失敗(クォータ超過・一時的なネットワーク
 エラー等)で残りの本数まで巻き添えで止めることはしない。失敗した回は記録
@@ -68,7 +75,14 @@ import config
 from audio_utils import finalize_audio, repeat_audio, wav_to_mp3
 from frame_builder import build_frame, close_browser
 from glitch_synth import synthesize_glitch_chunk
-from tts_synth import synthesize_tts, synthesize_tts_extreme
+from morse_synth import synthesize_morse
+from tts_synth import (
+    synthesize_tts,
+    synthesize_tts_chorus,
+    synthesize_tts_extreme,
+    synthesize_tts_reverse,
+    synthesize_tts_robot,
+)
 from video_builder import build_video
 from word_generator import (
     random_abugida_word,
@@ -78,6 +92,13 @@ from word_generator import (
     readable_label,
     zalgo_display_word,
 )
+
+# 単一の言語・ボイスで実際に「発音」を読み上げるモード(chorusのように複数
+# 言語を同時に使ったり、glitch/morseのように単語の内容と無関係/文字パターン
+# 由来だったりするモードは含まない)。この集合に入っているモードのみ、
+# YouTube側のdefault_audio_language・upload_history.jsonのvoice_label/
+# lang_codeへ実際のボイス言語を記録する(generate_one()参照)。
+_SINGLE_VOICE_MODES = ("tts", "tts_extreme", "reverse", "robot_voice")
 
 
 def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_native_script=False,
@@ -371,11 +392,24 @@ def _word_generator_for(actual_mode, actual_voice):
     長い音声になってしまうため、単語の読み上げ音声に依存しないglitchモード
     でのみ使う。README「ハマった罠」参照)。
 
+    chorus/morseは、それぞれ「複数言語のボイスで同時に同じ単語を読む」
+    「単語の文字をモールス符号のビープ音に変換する」という性質上、実在
+    文字体系の単語(結合文字を含まない)だと不都合がある:
+      - chorus: 特定言語の文字体系の単語を、その言語と無関係な他のボイス
+        でも同時に読ませることになり、狙いと合わない。
+      - morse: morse_synth.MORSE_CODEはラテン文字(+区切り記号4種)のみに
+        対応しており、キリル文字・アラビア文字等は変換できない(無視される
+        だけで音自体は壊れないが、単語の見た目と音の対応が薄くなる)。
+    そのため両モードは常にZalgo単語(random_zalgo_word()、土台がラテン文字
+    のBASE_CHARSのみ)を使う。
+
     それ以外(および上記の確率に外れた場合のglitchモード)は従来通り、
     実在文字体系のボイスならそちらの単語生成(_native_script_for_voice()参照)、
     無ければZalgo単語(random_zalgo_word())を使う。"""
     if actual_mode == "glitch" and random.random() < config.PICTOGRAPH_VISUAL_CHANCE:
         return _pictograph_word_generator()
+    if actual_mode in ("chorus", "morse"):
+        return random_zalgo_word
     return _native_script_for_voice(actual_voice) or random_zalgo_word
 
 
@@ -423,8 +457,19 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # unit_durationが「1回分」の長さ。--repeatで指定した回数ぶん、
         # これがそのまま繰り返される(動画の総尺は自動的に決まる)
         synthesize_glitch_chunk(raw_wav, target_seconds=unit_duration)
+    elif actual_mode == "reverse":
+        synthesize_tts_reverse(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+    elif actual_mode == "robot_voice":
+        synthesize_tts_robot(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+    elif actual_mode == "chorus":
+        synthesize_tts_chorus(word, raw_wav)
+    elif actual_mode == "morse":
+        synthesize_morse(word, raw_wav)
     else:
-        raise ValueError(f"unknown mode: {actual_mode!r} (tts / tts_extreme / glitch)")
+        raise ValueError(
+            f"unknown mode: {actual_mode!r} "
+            "(tts / tts_extreme / glitch / reverse / robot_voice / chorus / morse)"
+        )
 
     repeat_audio(raw_wav, rep_wav, times=repeat, gap=repeat_gap)
     # 無音パディングはしない。中身の実際の長さのまま、末尾だけ短くフェード
@@ -461,11 +506,12 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
             word, label, actual_mode, playlist_id=shorts_playlist_id, voice_label=voice_label,
             is_native_script=used_native_script, lang_code=lang_code,
         )
-        # glitchモードは単語を読み上げない合成音のみで、対応する音声言語が
-        # 無いためdefault_audio_languageは設定しない(YouTube側の自動判定に
-        # 任せる)。tts/tts_extremeのみ、実際に読み上げた言語をメタデータに
+        # glitch/chorus/morseは単一言語の音声読み上げではない(glitchは合成音
+        # のみ、chorusは複数言語同時、morseはビープ音)ため、対応する音声言語
+        # が無くdefault_audio_languageは設定しない(YouTube側の自動判定に
+        # 任せる)。_SINGLE_VOICE_MODESのみ、実際に読み上げた言語をメタデータに
         # 反映する(タイトル・タグへの言語名追加とは別軸のSEO施策、README参照)。
-        default_audio_language = lang_code if actual_mode in ("tts", "tts_extreme") else None
+        default_audio_language = lang_code if actual_mode in _SINGLE_VOICE_MODES else None
         youtube_url = upload_video(
             video_path, title=title, description=description, tags=tags,
             privacy_status=privacy_status, default_audio_language=default_audio_language,
@@ -518,13 +564,14 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # 存在しない動画IDが compile_shorts.py の結合対象に紛れ込むため)
         from upload_history import append_upload
 
-        # glitchモードは単語を読み上げないため、voice_label/lang_codeを
-        # 記録しても意味を持たない(default_audio_languageと同じ扱い)。
+        # glitch/chorus/morseは単一の音声言語を持たないため、voice_label/
+        # lang_codeを記録しても意味を持たない(default_audio_languageと
+        # 同じ扱い、_SINGLE_VOICE_MODES参照)。
         append_upload(
             word=word, label=label, video_id=video_id, mode=actual_mode,
             run_id=os.environ.get("GITHUB_RUN_ID"),
-            voice_label=voice_label if actual_mode in ("tts", "tts_extreme") else None,
-            lang_code=lang_code if actual_mode in ("tts", "tts_extreme") else None,
+            voice_label=voice_label if actual_mode in _SINGLE_VOICE_MODES else None,
+            lang_code=lang_code if actual_mode in _SINGLE_VOICE_MODES else None,
         )
 
         # 任意。設定されていれば、アップロードした動画をShorts用の再生リストに
@@ -546,16 +593,22 @@ def main():
     ap = argparse.ArgumentParser(description="How-to-Pronounce ネタ動画 自動生成")
     ap.add_argument("--count", type=int, default=3, help="生成する本数")
     ap.add_argument("--outdir", type=str, default="./out", help="出力ディレクトリ")
-    ap.add_argument("--mode", type=str, choices=["tts", "tts_extreme", "glitch", "random"],
+    ap.add_argument("--mode", type=str,
+                     choices=["tts", "tts_extreme", "glitch", "reverse", "robot_voice",
+                              "chorus", "morse", "random"],
                      default=config.DEFAULT_MODE,
                      help="音声の作り方: tts=espeak-ngに単語を読ませる(デフォルト) / "
                           "tts_extreme=奇妙な声+極端なピッチ・速度+ffmpegの歪みフィルタで読ませる / "
                           "glitch=合成グリッチ音を当てる / "
-                          "random=1本ごとに上記3方式からランダムに選ぶ")
+                          "reverse=espeak-ngで読ませた音声をそのまま逆再生する / "
+                          "robot_voice=espeak-ngで読ませた音声に搬送波とのリング変調をかける / "
+                          "chorus=複数言語のボイスで同時に読み上げて重ねる / "
+                          "morse=単語をモールス信号のビープ音に変換する / "
+                          "random=1本ごとに上記いずれかからランダムに選ぶ")
     ap.add_argument("--voice", type=str, default=config.DEFAULT_VOICE,
-                     help="[tts/tts_extreme専用] espeak-ngの声(例: en, en-us, ja)。"
-                          "random=1本ごとにconfig.VOICE_LANGUAGESから言語・性別を"
-                          "ランダムに選ぶ(発音の違いで聞こえ方が変わる)")
+                     help="[tts/tts_extreme/reverse/robot_voice専用] espeak-ngの声"
+                          "(例: en, en-us, ja)。random=1本ごとにconfig.VOICE_LANGUAGESから"
+                          "言語・性別をランダムに選ぶ(発音の違いで聞こえ方が変わる)")
     ap.add_argument("--speed", type=int, default=config.DEFAULT_SPEED,
                      help="[tts専用。tts_extremeは毎回ランダムな速度を使うため対象外] "
                           "読み上げ速度(words/min)")
