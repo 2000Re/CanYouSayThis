@@ -229,7 +229,7 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     caption_text = f'How to pronounce "{label}"'
     if lang_label:
         caption_text += f" in {lang_label}"
-    caption_text += "? Not a real word — just a joke, try saying it anyway! 😄"
+    caption_text += "? Not a real word — just a joke, give it a try! 😄"
 
     # タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド)。
     # YouTube側の視聴環境が日本語の視聴者には、通常のtitle/descriptionの
