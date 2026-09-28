@@ -1956,5 +1956,15 @@
     "uploaded_at": "2026-09-28T03:24:17.314820+00:00",
     "voice_label": "Icelandic (Male)",
     "lang_code": "is"
+  },
+  {
+    "word": "فمؿؿطهه",
+    "label": "فمؿؿطهه",
+    "video_id": "fLKB6i8mMRM",
+    "mode": "robot_voice",
+    "run_id": "36381677071",
+    "uploaded_at": "2026-09-28T05:24:38.684379+00:00",
+    "voice_label": "Arabic (Female)",
+    "lang_code": "ar"
   }
 ]
