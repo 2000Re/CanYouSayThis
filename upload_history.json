@@ -1946,5 +1946,15 @@
     "uploaded_at": "2026-09-28T01:24:26.972604+00:00",
     "voice_label": "Vietnamese (Male)",
     "lang_code": "vi"
+  },
+  {
+    "word": "v᷎᷄ᷤᷡ᷼᷍v᷑᷉ᷕᷘᷦ᷃ᷜᷙ᷾᷁v᷄ᷣ᷻᷉vvv ◔",
+    "label": "vvvvvv ◔",
+    "video_id": "0rI7dLdz_yE",
+    "mode": "robot_voice",
+    "run_id": "36373508540",
+    "uploaded_at": "2026-09-28T03:24:17.314820+00:00",
+    "voice_label": "Icelandic (Male)",
+    "lang_code": "is"
   }
 ]
