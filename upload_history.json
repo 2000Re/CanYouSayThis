@@ -2046,5 +2046,15 @@
     "uploaded_at": "2026-09-29T01:24:12.532660+00:00",
     "voice_label": "Thai (Female)",
     "lang_code": "th"
+  },
+  {
+    "word": "m᷾᷑ᷤ᷌᷇ᷔ᷶᷼uuuuua֖֔֜֞֒E ◚",
+    "label": "muuuuuaE ◚",
+    "video_id": "Jqx4m3NRyN4",
+    "mode": "robot_voice",
+    "run_id": "36516889818",
+    "uploaded_at": "2026-09-29T03:24:12.024615+00:00",
+    "voice_label": "Finnish (Male)",
+    "lang_code": "fi"
   }
 ]
