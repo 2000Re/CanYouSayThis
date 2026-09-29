@@ -2076,5 +2076,15 @@
     "uploaded_at": "2026-09-29T07:24:20.991827+00:00",
     "voice_label": "Malay (Female)",
     "lang_code": "ms"
+  },
+  {
+    "word": "𓐏𓄪𓈪𓎴𓄦",
+    "label": "𓐏𓄪𓈪𓎴𓄦",
+    "video_id": "zK1My2JWEW8",
+    "mode": "glitch",
+    "run_id": "36548819915",
+    "uploaded_at": "2026-09-29T09:24:36.559122+00:00",
+    "voice_label": null,
+    "lang_code": null
   }
 ]
