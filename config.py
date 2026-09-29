@@ -107,6 +107,12 @@ EGYPTIAN_HIEROGLYPH_CHARS = _assigned_chars([(0x13000, 0x1342F)])  # エジプ�
 ANATOLIAN_HIEROGLYPH_CHARS = _assigned_chars([(0x14400, 0x14646)])  # アナトリア象形文字
 PICTOGRAPH_SCRIPTS = [CUNEIFORM_CHARS, EGYPTIAN_HIEROGLYPH_CHARS, ANATOLIAN_HIEROGLYPH_CHARS]
 
+# PICTOGRAPH_SCRIPTSから文字体系を選ぶ際の重み(generate.py
+# _pictograph_word_generator()のrandom.choices()参照)。順序は
+# PICTOGRAPH_SCRIPTSと対応(楔形文字/エジプト/アナトリア)。エジプト・
+# ヒエログリフが見た目として一番「らしい」ため他の2倍出やすくしている。
+PICTOGRAPH_SCRIPT_WEIGHTS = [1, 2, 1]
+
 # glitchモードでPICTOGRAPH_SCRIPTSの「絵のような」単語を使う確率(それ以外は
 # 従来通りのZalgo単語)。NATIVE_SCRIPT_VOICE_CHANCE(tts/tts_extremeで実在
 # 文字体系を使う確率)と同じ考え方で、glitchモードの見た目に一定の頻度で
