@@ -329,7 +329,8 @@ def _native_script_for_voice(voice_code):
 
 def _pictograph_word_generator():
     """楔形文字・エジプト/アナトリア象形文字のいずれか1つの文字体系を
-    ランダムに選び、その単語生成関数を返す(config.PICTOGRAPH_SCRIPTS参照)。
+    config.PICTOGRAPH_SCRIPT_WEIGHTSの重みに従って選び、その単語生成関数を
+    返す(config.PICTOGRAPH_SCRIPTS参照)。
     _native_script_for_voice()と同様、選んだ文字体系(chars)を1回だけ
     抽選してlambdaに固定することで、_random_unique_word()の再抽選試行中に
     文字体系がぶれない(同じ「絵」の系統の中で単語違いを試す)ようにしている。
@@ -338,7 +339,9 @@ def _pictograph_word_generator():
     読ませると無音にならず、コードポイントを桁ごとに読み上げる長い音声に
     なってしまうこと(README「ハマった罠」参照)を実機で確認済みのため、
     単語の読み上げ音声に依存しないglitchモードでのみ使う。"""
-    chars = random.choice(config.PICTOGRAPH_SCRIPTS)
+    chars = random.choices(
+        config.PICTOGRAPH_SCRIPTS, weights=config.PICTOGRAPH_SCRIPT_WEIGHTS
+    )[0]
     return lambda: random_pictograph_word(chars)
 
 

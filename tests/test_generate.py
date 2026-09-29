@@ -157,6 +157,26 @@ def test_pictograph_word_generator_fixes_script_across_repeated_calls():
     assert len(matching_pools) == 1
 
 
+def test_pictograph_word_generator_weighting_matches_script_weights():
+    # 文字体系の選ばれる比率がconfig.PICTOGRAPH_SCRIPT_WEIGHTSの重みに
+    # 従っていること(エジプト・ヒエログリフが他の2倍出やすいこと)の確認。
+    random.seed(14)
+    trials = 6000
+    counts = [0] * len(config.PICTOGRAPH_SCRIPTS)
+    for _ in range(trials):
+        generator = _pictograph_word_generator()
+        word = generator()
+        for i, pool in enumerate(config.PICTOGRAPH_SCRIPTS):
+            if all(ch in pool for ch in word):
+                counts[i] += 1
+                break
+    total_weight = sum(config.PICTOGRAPH_SCRIPT_WEIGHTS)
+    for count, weight in zip(counts, config.PICTOGRAPH_SCRIPT_WEIGHTS):
+        expected_ratio = weight / total_weight
+        actual_ratio = count / trials
+        assert abs(actual_ratio - expected_ratio) < 0.03
+
+
 def test_word_generator_for_never_uses_pictograph_outside_glitch_mode():
     # tts/tts_extremeでは、乱数がどう転んでもピクトグラフ生成にはならない
     # (config.PICTOGRAPH_VISUAL_CHANCEの確率判定自体がglitchモード限定)。
