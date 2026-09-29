@@ -2036,5 +2036,15 @@
     "uploaded_at": "2026-09-28T14:24:11.562256+00:00",
     "voice_label": null,
     "lang_code": null
+  },
+  {
+    "word": "อตูสวโ",
+    "label": "อตสวโ",
+    "video_id": "y46rSDd7CDQ",
+    "mode": "robot_voice",
+    "run_id": "36507638322",
+    "uploaded_at": "2026-09-29T01:24:12.532660+00:00",
+    "voice_label": "Thai (Female)",
+    "lang_code": "th"
   }
 ]
