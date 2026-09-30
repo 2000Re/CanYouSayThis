@@ -328,9 +328,9 @@ def _native_script_for_voice(voice_code):
 
 
 def _pictograph_word_generator():
-    """楔形文字・エジプト/アナトリア象形文字のいずれか1つの文字体系を
-    config.PICTOGRAPH_SCRIPT_WEIGHTSの重みに従って選び、その単語生成関数を
-    返す(config.PICTOGRAPH_SCRIPTS参照)。
+    """楔形文字・エジプト/アナトリア象形文字・線文字B表意文字のいずれか1つの
+    文字体系をconfig.PICTOGRAPH_SCRIPT_WEIGHTSの重みに従って選び、その単語
+    生成関数を返す(config.PICTOGRAPH_SCRIPTS参照)。
     _native_script_for_voice()と同様、選んだ文字体系(chars)を1回だけ
     抽選してlambdaに固定することで、_random_unique_word()の再抽選試行中に
     文字体系がぶれない(同じ「絵」の系統の中で単語違いを試す)ようにしている。

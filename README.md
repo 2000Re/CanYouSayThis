@@ -13,7 +13,7 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
 2. **音声生成**: 7つの方式、またはそれらをランダムに混ぜる方式を選べます。
    - `tts`(デフォルト): [espeak-ng](https://github.com/espeak-ng/espeak-ng)に単語そのものを読ませる。
    - `tts_extreme`: 奇妙な声バリエーション+極端なピッチ・速度で読ませ、ffmpegでさらに歪ませる。
-   - `glitch`: 単語の音とは無関係な合成効果音を当てる。単語自体も一定確率(`config.PICTOGRAPH_VISUAL_CHANCE`、デフォルト0.3)で楔形文字・エジプト/アナトリア象形文字を組み合わせた「絵のように見える」単語になる(`glitch`限定、「ハマった罠」27番)。
+   - `glitch`: 単語の音とは無関係な合成効果音を当てる。単語自体も一定確率(`config.PICTOGRAPH_VISUAL_CHANCE`、デフォルト0.4)で楔形文字・エジプト/アナトリア象形文字・線文字B表意文字を組み合わせた「絵のように見える」単語になる(`glitch`限定、「ハマった罠」27番)。
    - `reverse`: espeak-ngの読み上げ音声をそのまま逆再生する。
    - `robot_voice`: 読み上げ音声に搬送波とのリング変調(ffmpegの`amultiply`)をかけロボット風の声にする。
    - `chorus`: 同じ単語を複数言語(3〜4言語、`config.CHORUS_VOICE_LANGUAGE_CODES`)のボイスで同時に読み上げて重ねる(「ハマった罠」28番)。
@@ -506,11 +506,12 @@ assets/
     プールから撤去した**: ジョーク注記を追加しても指摘が続いた(同じ視聴者
     のロシア語コメントは好意的だった)。教訓: 否定的な反応が繰り返される
     言語だけ個別に見直す。
-27. **楔形文字・エジプト/アナトリア象形文字は「絵のように見える」が
-    espeak-ngで長大な音声になる**: Playwright+Notoフォントで5文字組み合わ
-    せると絵のような見た目になる一方、espeak-ngはコードポイントを桁ごとに
-    読み上げ17〜18秒になる。単語の音に依存しない`glitch`モード専用に採用
-    (`config.PICTOGRAPH_SCRIPTS`、`PICTOGRAPH_VISUAL_CHANCE`デフォルト0.3)。
+27. **楔形文字・エジプト/アナトリア象形文字・線文字B表意文字は「絵のように
+    見える」がespeak-ngで長大な音声になる**: Playwright+Notoフォントで
+    5文字組み合わせると絵のような見た目になる一方、espeak-ngはコードポイント
+    を桁ごとに読み上げ17〜18秒になる。単語の音に依存しない`glitch`モード
+    専用に採用(`config.PICTOGRAPH_SCRIPTS`、`PICTOGRAPH_VISUAL_CHANCE`
+    デフォルト0.4)。
 28. **`reverse`/`robot_voice`/`chorus`/`morse`追加時に踏んだ3つの罠**:
     (1) リング変調(`amultiply`)はRMS音量が約20dB低下→`volume`+`alimiter`で
     補正(chorusのamixも同様)。(2) ヘブライ語ボイスはZalgo単語で他18言語

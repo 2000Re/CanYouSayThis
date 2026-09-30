@@ -98,27 +98,31 @@ HEBREW_LETTERS = _assigned_chars([(0x05D0, 0x05EA)])
 # 合成音)専用にし、tts/tts_extremeでは使わない(generate.py
 # generate_one()参照)。
 #
-# 3つの文字体系を別々のリストのままPICTOGRAPH_SCRIPTSにまとめているのは、
+# 4つの文字体系を別々のリストのままPICTOGRAPH_SCRIPTSにまとめているのは、
 # 1つの単語の中で複数の文字体系を混ぜると(例えば楔形文字とヒエログリフの
 # 混在)見た目に一貫性が無くなるため、生成時にどれか1つを選んでから
 # その中だけで文字を組み合わせるようにするため(word_generator参照)。
 CUNEIFORM_CHARS = _assigned_chars([(0x12000, 0x1254F)])  # 楔形文字(記号+数字/句読点+初期王朝拡張)
 EGYPTIAN_HIEROGLYPH_CHARS = _assigned_chars([(0x13000, 0x1342F)])  # エジプト・ヒエログリフ
 ANATOLIAN_HIEROGLYPH_CHARS = _assigned_chars([(0x14400, 0x14646)])  # アナトリア象形文字
-PICTOGRAPH_SCRIPTS = [CUNEIFORM_CHARS, EGYPTIAN_HIEROGLYPH_CHARS, ANATOLIAN_HIEROGLYPH_CHARS]
+LINEAR_B_IDEOGRAM_CHARS = _assigned_chars([(0x10080, 0x100FF)])  # 線文字B・表意文字(物を絵で表す記号群)
+PICTOGRAPH_SCRIPTS = [
+    CUNEIFORM_CHARS, EGYPTIAN_HIEROGLYPH_CHARS, ANATOLIAN_HIEROGLYPH_CHARS,
+    LINEAR_B_IDEOGRAM_CHARS,
+]
 
 # PICTOGRAPH_SCRIPTSから文字体系を選ぶ際の重み(generate.py
 # _pictograph_word_generator()のrandom.choices()参照)。順序は
-# PICTOGRAPH_SCRIPTSと対応(楔形文字/エジプト/アナトリア)。エジプト・
+# PICTOGRAPH_SCRIPTSと対応(楔形文字/エジプト/アナトリア/線文字B)。エジプト・
 # ヒエログリフが見た目として一番「らしい」ため他の2倍出やすくしている。
-PICTOGRAPH_SCRIPT_WEIGHTS = [1, 2, 1]
+PICTOGRAPH_SCRIPT_WEIGHTS = [1, 2, 1, 1]
 
 # glitchモードでPICTOGRAPH_SCRIPTSの「絵のような」単語を使う確率(それ以外は
 # 従来通りのZalgo単語)。NATIVE_SCRIPT_VOICE_CHANCE(tts/tts_extremeで実在
 # 文字体系を使う確率)と同じ考え方で、glitchモードの見た目に一定の頻度で
 # noveltyを混ぜつつ、これまでのZalgo系の見た目も引き続き主流のまま残す
 # ようにしている(generate.py _pictograph_word_generator()参照)。
-PICTOGRAPH_VISUAL_CHANCE = 0.3
+PICTOGRAPH_VISUAL_CHANCE = 0.4
 
 # --voice random(generate.py _resolve_voice()参照)が抽選する言語/性別の
 # 候補。単語自体は母音中心のBASE_CHARSしか使わないので、言語ごとの発音規則の
