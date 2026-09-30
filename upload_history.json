@@ -2166,5 +2166,15 @@
     "uploaded_at": "2026-09-30T05:24:07.151704+00:00",
     "voice_label": null,
     "lang_code": null
+  },
+  {
+    "word": "-aaaaaa- ◝ ❆ ❒",
+    "label": "-aaaaaa- ◝ ❆...",
+    "video_id": "M2ST3mPYNXQ",
+    "mode": "robot_voice",
+    "run_id": "36683378888",
+    "uploaded_at": "2026-09-30T07:24:12.301311+00:00",
+    "voice_label": "Finnish (Female)",
+    "lang_code": "fi"
   }
 ]
