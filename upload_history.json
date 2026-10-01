@@ -2226,5 +2226,15 @@
     "uploaded_at": "2026-09-30T13:27:04.041714+00:00",
     "voice_label": null,
     "lang_code": null
+  },
+  {
+    "word": "ฃโยฉญุ",
+    "label": "ฃโยฉญ",
+    "video_id": "9IF2AcSdVMM",
+    "mode": "reverse",
+    "run_id": "36852652742",
+    "uploaded_at": "2026-10-01T11:01:39.045871+00:00",
+    "voice_label": "Thai (Male)",
+    "lang_code": "th"
   }
 ]
