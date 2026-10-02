@@ -2296,5 +2296,15 @@
     "uploaded_at": "2026-10-02T11:33:21.895450+00:00",
     "voice_label": "Swedish (Female)",
     "lang_code": "sv"
+  },
+  {
+    "word": "ฟโบูชโวปีลาภุ",
+    "label": "ฟโบชโวปีลาภ",
+    "video_id": "ItOPZf6XgKM",
+    "mode": "tts_extreme",
+    "run_id": "37027655707",
+    "uploaded_at": "2026-10-02T15:38:47.719231+00:00",
+    "voice_label": "Thai (Female)",
+    "lang_code": "th"
   }
 ]
