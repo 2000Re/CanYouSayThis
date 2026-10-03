@@ -43,7 +43,7 @@ YOUTUBE_REFRESH_TOKEN として GitHub Secretsに登録する。表示される�
 
 同時に表示される今日の日付も YOUTUBE_REFRESH_TOKEN_ISSUED_AT として登録
 しておくと、OAuth同意画面が「テスト」ステータスの場合の既知の7日失効
-ルールが近づいた/過ぎた際に、generate.py / compile_shorts.py の実行ログに
+ルールが近づいた/過ぎた際に、generate.py / repost_shorts.py の実行ログに
 警告が出るようになる(任意だが強く推奨)。
 """
 

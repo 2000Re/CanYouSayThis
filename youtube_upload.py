@@ -22,8 +22,8 @@ OAuth同意フロー(InstalledAppFlow)は使わない。代わりに、あらか
     YOUTUBE_SHORTS_PLAYLIST_ID
                             設定しておくと、generate.pyがアップロードした各Shortsを
                             このIDの再生リストに自動追加する(add_to_playlist()参照)。
-    YOUTUBE_COMPILATION_PLAYLIST_ID
-                            設定しておくと、compile_shorts.pyがアップロードした結合動画を
+    YOUTUBE_REPOST_PLAYLIST_ID
+                            設定しておくと、repost_shorts.pyがアップロードした通常動画を
                             このIDの再生リストに自動追加する。
 
 罠: 1つのGoogleアカウントで複数のYouTubeチャンネル(ブランドアカウント)を
@@ -259,7 +259,7 @@ def _verify_channel(youtube):
 def get_youtube_client(scopes=_SCOPES_UNSET):
     """認証済みのYouTube Data APIクライアントを返す(チャンネル確認込み)。
 
-    upload_video() と compile_shorts.py の両方から使う共通処理。
+    upload_video() と repost_shorts.py の両方から使う共通処理。
 
     scopesを省略するとUPLOAD_SCOPESに絞り込んでリクエストする。
     upload_caption()はscopes=Noneを渡し、youtube.force-sslがまだ付与されて
@@ -350,8 +350,9 @@ def append_video_description(video_id, extra_text):
     してから description だけ書き換えて送り返す必要がある(取得せずに
     description のみ送ると title 等の他フィールドが失われてしまう)。
 
-    compile_shorts.py が、結合動画の元になった各Shortsの概要欄に結合動画
-    へのリンクを追記し、回遊(リピート視聴)を誘導するために使う。"""
+    repost_shorts.py が、元Shortsの概要欄に変換後の通常動画へのリンクを、
+    通常動画の概要欄に元Shortsへのリンクを追記し、回遊(リピート視聴)を
+    誘導するために使う。"""
     youtube = get_youtube_client()
 
     _api_call_counts["videos.list"] += 1
@@ -372,7 +373,7 @@ def add_to_playlist(video_id, playlist_id):
 
     動画本体のアップロードとは別のAPI呼び出しなので、失敗しても動画自体は
     既に公開済みである(呼び出し側はこの関数の例外を警告に留め、処理全体は
-    止めない想定。generate.py / compile_shorts.py 参照)。"""
+    止めない想定。generate.py / repost_shorts.py 参照)。"""
     youtube = get_youtube_client()
     body = {
         "snippet": {

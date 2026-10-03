@@ -46,13 +46,13 @@ on:
 
 permissions:
   contents: write
-  # compile_shorts.pyがGitHub Actions APIで過去の動画生成アーティファクト
+  # repost_shorts.pyがGitHub Actions APIで過去の動画生成アーティファクト
   # を取得するために必要(YouTubeへのyt-dlp再ダウンロードをやめたため)。
   actions: read
 
-# upload_history.json/compilation_state.json をこのワークフローがgit push
+# upload_history.json/repost_state.json をこのワークフローがgit push
 # するため、手動実行が重なった場合に同じファイルへのpushが競合したり、
-# 結合バッチが二重に処理されたりしないよう同時実行を1本に制限する。
+# 同じ動画が二重に変換されたりしないよう同時実行を1本に制限する。
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: false
@@ -114,43 +114,44 @@ jobs:
           fi
           python3 generate.py "${args[@]}"
 
-      # compile_shorts.pyが後で(この回も含めて)GitHub Actions API経由で
+      # repost_shorts.pyが後で(この回も含めて)GitHub Actions API経由で
       # 動画本体を取得し直せるよう、YouTubeへのアップロードより前(という
-      # より、compile_shorts.py実行より前)にアーティファクトとして
+      # より、repost_shorts.py実行より前)にアーティファクトとして
       # 保存しておく必要がある(out/の中身はこの時点以降変化しないため、
       # ここでアップロードして問題ない)。
-      - name: Upload generated videos (backup/audit + compile_shorts.py用)
+      - name: Upload generated videos (backup/audit + repost_shorts.py用)
         uses: actions/upload-artifact@v4
         with:
           name: generated-videos
           path: out/
           if-no-files-found: error
 
-      # upload_history.jsonに公開済みShortsが10本たまるごとに、各動画が
-      # 生成された回のgenerated-videosアーティファクト(GitHub Actions API
-      # 経由)から動画本体を取得し直し、横型(16:9)の結合動画としてアップ
-      # ロードする。アップロードしていない回(upload=false)は履歴が増えない
-      # ため、結合する対象もないのでスキップする。本編パイプラインとは独立
-      # した追加機能なので、失敗しても後続の処理はブロックしない
-      # (compile_shorts.py側で例外を吸収する)。
-      - name: Compile Shorts into a regular video (every 10 videos)
+      # upload_history.jsonに記録された公開済みShortsのうち未変換のものを
+      # 1本(config.REPOST_MAX_PER_RUN)、生成された回のgenerated-videos
+      # アーティファクト(GitHub Actions API経由)から動画本体を取得し直し、
+      # 横型(16:9)にピラーボックスした「通常動画」として、元Shortsと同じ
+      # タイトルのまま再アップロードする。アップロードしていない回
+      # (upload=false)は履歴が増えないため、変換する対象もないのでスキップ
+      # する。本編パイプラインとは独立した追加機能なので、失敗しても後続の
+      # 処理はブロックしない(repost_shorts.py側で例外を吸収する)。
+      - name: Repost a Short as a regular video
         if: ${{ inputs.upload }}
-        run: python3 compile_shorts.py --privacy-status "${{ inputs.privacy_status }}"
+        run: python3 repost_shorts.py --privacy-status "${{ inputs.privacy_status }}"
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
           YOUTUBE_REFRESH_TOKEN_ISSUED_AT: ${{ secrets.YOUTUBE_REFRESH_TOKEN_ISSUED_AT }}
-          # 任意。設定しておくと、結合動画をこの再生リストに自動追加する
-          YOUTUBE_COMPILATION_PLAYLIST_ID: ${{ secrets.YOUTUBE_COMPILATION_PLAYLIST_ID }}
+          # 任意。設定しておくと、変換した通常動画をこの再生リストに自動追加する
+          YOUTUBE_REPOST_PLAYLIST_ID: ${{ secrets.YOUTUBE_REPOST_PLAYLIST_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Commit updated upload history and compilation state
+      - name: Commit updated upload history and repost state
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add upload_history.json compilation_state.json
+          git add upload_history.json repost_state.json
           git diff --cached --quiet || git commit -m "chore: update upload history"
 
           # git push はGitHub側の一時的な障害で失敗することがある。この時点で
