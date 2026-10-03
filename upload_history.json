@@ -2406,5 +2406,15 @@
     "uploaded_at": "2026-10-03T21:35:40.398325+00:00",
     "voice_label": "Swedish (Female)",
     "lang_code": "sv"
+  },
+  {
+    "word": "𐃀𐂼𐂭𐃮𐃁𐂳",
+    "label": "𐃀𐂼𐂭𐃮𐃁𐂳",
+    "video_id": "V9RMMPDtt9g",
+    "mode": "glitch",
+    "run_id": "37162192151",
+    "uploaded_at": "2026-10-03T23:35:30.514438+00:00",
+    "voice_label": null,
+    "lang_code": null
   }
 ]
