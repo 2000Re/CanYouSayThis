@@ -1,7 +1,7 @@
 """
 upload_history.json(YouTubeへのアップロード成功履歴)の読み書きを共通化する。
 
-generate.py(アップロード成功時に記録)と compile_shorts.py(結合対象の
+generate.py(アップロード成功時に記録)と repost_shorts.py(変換対象の
 選定に使う)の両方から参照するため、ここに集約する。
 
 moviepy/google-api-python-client等の重い依存を持たないため、
@@ -20,7 +20,7 @@ def load_upload_history() -> list:
     各要素は {"word": str, "label": str, "video_id": str, "mode": str,
     "run_id": str|None, "uploaded_at": str|None, "voice_label": str|None,
     "lang_code": str|None}。
-    run_idはcompile_shorts.pyが、この動画が生成された回のGitHub Actions
+    run_idはrepost_shorts.pyが、この動画が生成された回のGitHub Actions
     アーティファクトを取得し直すために使う(GITHUB_RUN_IDはGitHub Actions
     が各実行に自動設定する環境変数。ローカル実行等でrunがない場合はNone)。
     uploaded_atはappend_upload()呼び出し時点(=YouTubeへのアップロード
@@ -35,8 +35,8 @@ def load_upload_history() -> list:
 
     ここへの記録は generate.py が youtube_upload.upload_video() の成功を
     確認した後にのみ行う。TTS/動画生成/アップロードのいずれかで失敗した
-    回をここに記録すると、実際には存在しない動画IDが compile_shorts.py の
-    結合対象に紛れ込んでしまうため。
+    回をここに記録すると、実際には存在しない動画IDが repost_shorts.py の
+    変換対象に紛れ込んでしまうため。
 
     ファイルが無い/空/壊れている場合は履歴なしとして扱い、処理を止めない
     (手動編集や書き込み中の異常終了で空ファイルになるケースがあるため)。"""

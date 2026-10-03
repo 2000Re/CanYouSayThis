@@ -426,21 +426,33 @@ EXTRA_TITLE_LOCALIZATIONS = {
 
 UPLOAD_HISTORY_PATH = "upload_history.json"  # generate.py --upload の成功履歴
 
-# --- compile_shorts.py: Shorts結合動画 ---------------------------------------
+# --- repost_shorts.py: Shorts→通常動画への個別変換 -----------------------------
 #
-# Shorts(縦型9:16、3分以内)は本数を連結しても合計尺が短いままだと縦型ゆえに
-# YouTubeにShorts判定されてしまう(判定は投稿者の意図ではなく、アスペクト比
-# +尺のみで決まる仕様のため)。そのため結合時は各クリップを横型(16:9)
-# キャンバスにピラーボックス(左右に無地の帯)で配置し直し、確実に「通常動画」
-# として扱われるようにする。
+# [設計変更の経緯] 当初はShortsが10本たまるごとに1本の結合動画にまとめて
+# いたが、再生数がほとんど伸びなかった。このチャンネルの動画タイトル
+# ("How to Pronounce <word>")は、「how to pronounce (記号/単語)」という
+# 具体的な検索語との一致で再生数を得る性質が強く、10単語ぶんを1つの
+# タイトルにまとめてしまうと個々の単語の検索語に一致しなくなり、この
+# 強みを自ら潰してしまっていたと判断(類似フォーマットの他チャンネルが
+# 1記号1本・数秒の動画で数百万再生を得ている実例を踏まえた判断)。そのため
+# Shorts1本ごとに、同じタイトル・説明文を保ったまま横型(16:9)の通常動画
+# として個別に再アップロードする方式に変更した。
+#
+# Shorts(縦型9:16、3分以内)はアスペクト比+尺のみでYouTubeにShorts判定
+# されてしまう(判定は投稿者の意図ではなく機械的な仕様のため)。そのため
+# 変換時は各クリップを横型(16:9)キャンバスにピラーボックス(左右に無地の
+# 帯)で配置し直し、確実に「通常動画」として扱われるようにする。
 
-COMPILATION_STATE_PATH = "compilation_state.json"
-COMPILATION_BATCH_SIZE = 10  # この件数たまるごとに結合動画を1本作る
-COMPILATION_DOWNLOAD_DIR = "compilation_downloads"
-COMPILATION_OUTPUT_DIR = "compilation_output"
-COMPILATION_VIDEO_WIDTH = 1920
-COMPILATION_VIDEO_HEIGHT = 1080
-COMPILATION_BG_COLOR = (11, 13, 18)  # generate_channel_art.BG_COLOR(#0B0D12)と統一
+REPOST_STATE_PATH = "repost_state.json"
+REPOST_DOWNLOAD_DIR = "repost_downloads"
+REPOST_OUTPUT_DIR = "repost_output"
+REPOST_VIDEO_WIDTH = 1920
+REPOST_VIDEO_HEIGHT = 1080
+REPOST_BG_COLOR = (11, 13, 18)  # generate_channel_art.BG_COLOR(#0B0D12)と統一
+# 1回のワークフロー実行あたり変換する最大件数。YouTube側の「1日あたり
+# アップロード本数」上限(アカウント単位、未認証チャンネルほど低い)に、
+# generate.py本編のアップロード分と合わせて収まるよう控えめにしている。
+REPOST_MAX_PER_RUN = 1
 # GitHub ActionsのIPがYouTube側に「Sign in to confirm you're not a bot」で
 # ボット判定される問題(player_client変更・cookie認証のいずれでも解決しない)
 # を根本的に回避するため、動画本体はYouTubeからyt-dlpで再ダウンロードせず、
@@ -450,19 +462,18 @@ COMPILATION_BG_COLOR = (11, 13, 18)  # generate_channel_art.BG_COLOR(#0B0D12)と
 #
 # アーティファクトの取得先(該当runのID)が見つからない/保持期限切れ等の
 # 「恒久的に取得不可能」なケースと、一時的なネットワーク不調を区別するための
-# リトライ回数。前者はcompilation_state.jsonのskipped_video_idsに記録し、
-# 結合対象から永久に除外する(次回以降取得を再試行しない)。
-COMPILATION_DOWNLOAD_MAX_RETRIES = 2
-COMPILATION_DOWNLOAD_RETRY_BACKOFF_SECONDS = 5
-COMPILATION_GITHUB_API_TIMEOUT_SECONDS = 20
+# リトライ回数。前者はrepost_state.jsonのskipped_video_idsに記録し、
+# 変換対象から永久に除外する(次回以降取得を再試行しない)。
+REPOST_DOWNLOAD_MAX_RETRIES = 2
+REPOST_DOWNLOAD_RETRY_BACKOFF_SECONDS = 5
+REPOST_GITHUB_API_TIMEOUT_SECONDS = 20
 # GitHub Actionsアーティファクトのデフォルト保持期間は90日(組織/リポジトリの
-# 設定で変更されていなければ)。COMPILATION_BATCH_SIZE(10件)たまるまでの
-# 実運用上の日数は十分この範囲に収まる想定。
-COMPILATION_ARTIFACT_NAME = "generated-videos"
+# 設定で変更されていなければ)。
+REPOST_ARTIFACT_NAME = "generated-videos"
 
 # --- YouTube Data API クォータ ------------------------------------------------
 #
-# youtube_upload.py / compile_shorts.py の両方から参照し、実行ログに
+# youtube_upload.py / repost_shorts.py の両方から参照し、実行ログに
 # 「今回の実行でどれだけ消費し、残りがどれくらいか」を概算表示するために使う。
 DAILY_QUOTA_UNITS = 10000  # 日次クォータの目安(GCPコンソールのデフォルト)
 DAILY_UPLOAD_LIMIT = 100   # videos.insertとは別枠の「1日あたりの動画投稿数」上限

@@ -24,7 +24,7 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
 5. **動画合成**: [Playwright](https://playwright.dev/)経由のChromiumでフレームを描画し音声と合成(縦型9:16、Shorts向け)。動画尺は音声の実際の長さに追従(固定尺パディング無し)。
 6. **YouTubeへの自動アップロード**(任意): `--upload`でYouTube Data API v3経由でチャンネルにアップロード。
 7. **カスタムサムネイル**(任意、`config.CUSTOM_THUMBNAIL_ENABLED`): 単語だけを大きく表示したミニマルな16:9画像を生成・アップロード。電話番号確認が必要なため現在デフォルト無効(「カスタムサムネイル」参照)。
-8. **Shorts結合動画**(任意): Shortsが10本たまるごとに結合して「通常動画」として自動アップロード(「Shorts結合動画」参照)。
+8. **通常動画への変換**(任意): アップロード済みのShortsを1本ずつ、同じタイトルのまま横型(16:9)の「通常動画」として自動的に再アップロード(「Shorts→通常動画への変換」参照)。
 
 ## セットアップ
 
@@ -88,9 +88,9 @@ out/
 ```
 
 `--upload`時はアップロード成功後、完成動画が`{video_id}.mp4`にリネームされ
-ます。`compile_shorts.py`が`upload_history.json`の`video_id`をキーにGitHub
-Actionsアーティファクト内の該当ファイルを特定するためです(「Shorts結合
-動画」・「ハマった罠」8番参照)。
+ます。`repost_shorts.py`が`upload_history.json`の`video_id`をキーにGitHub
+Actionsアーティファクト内の該当ファイルを特定するためです(「Shorts→通常
+動画への変換」・「ハマった罠」8番参照)。
 
 ## 多言語ボイス(`--voice random`)
 
@@ -199,7 +199,7 @@ python3 get_youtube_refresh_token.py --client-id YOUR_CLIENT_ID --client-secret 
 | `YOUTUBE_CHANNEL_ID` | 推奨 | アップロード先チャンネルID(`UC...`)。不一致ならアップロード前にエラーで止まる |
 | `YOUTUBE_REFRESH_TOKEN_ISSUED_AT` | 推奨 | 手順2実行日(`YYYY-MM-DD`)。7日失効ルールの警告に使う |
 | `YOUTUBE_SHORTS_PLAYLIST_ID` | 任意 | 設定するとShortsをこの再生リストに自動追加 |
-| `YOUTUBE_COMPILATION_PLAYLIST_ID` | 任意 | 設定すると結合動画をこの再生リストに自動追加 |
+| `YOUTUBE_REPOST_PLAYLIST_ID` | 任意 | 設定すると変換後の通常動画をこの再生リストに自動追加 |
 
 ### 4. 実行
 
@@ -216,12 +216,12 @@ OAuth同意画面が「テスト」ステータスの場合、リフレッシュ
 
 ### 6. APIクォータ使用量のログ
 
-`--upload`/`compile_shorts.py`実行後、消費クォータ概算と残容量目安を実行
+`--upload`/`repost_shorts.py`実行後、消費クォータ概算と残容量目安を実行
 ログへ出力します(`youtube_upload.log_api_usage_summary()`)。
 
 ### 7. 再生リストへの自動追加(任意)
 
-`YOUTUBE_SHORTS_PLAYLIST_ID`/`YOUTUBE_COMPILATION_PLAYLIST_ID`を設定する
+`YOUTUBE_SHORTS_PLAYLIST_ID`/`YOUTUBE_REPOST_PLAYLIST_ID`を設定する
 と自動追加します(`add_to_playlist()`)。再生リスト自体はYouTube Studioで
 事前に手動作成が必要です(URLの`list=`以降がID)。失敗しても動画本体は既に
 公開済みなので警告のみで処理は続行します。
@@ -291,28 +291,40 @@ OAuth同意画面が「テスト」ステータスの場合、リフレッシュ
 動画本体は既に公開済みなので処理は継続します(`upload_thumbnail()`、
 50 units)。
 
-## Shorts結合動画
+## Shorts→通常動画への変換
 
-`upload_history.json`が10本たまるごとに、動画本体をGitHub Actionsアーティ
-ファクトから取得し直して1本の横型(16:9)動画に結合し、通常動画として自動
-アップロードします(`compile_shorts.py`、取得元の経緯は「ハマった罠」8番)。
+`upload_history.json`に記録された未変換のShortsを1本(`config.REPOST_MAX_PER_RUN`)、
+動画本体をGitHub Actionsアーティファクトから取得し直し、横型(16:9)に
+ピラーボックスした「通常動画」として、**元のShortsと同じタイトル・説明文
+のまま**再アップロードします(`repost_shorts.py`、取得元の経緯は「ハマった
+罠」8番)。
 
-**なぜ結合が必要か**: YouTubeのShorts判定はアスペクト比+尺のみで機械的に
-決まるため、縦型のまま繋げても短ければShorts扱いのままです。各クリップを
+**なぜ1本ずつ別々に変換するのか**: 当初はShortsが10本たまるごとに1本の
+結合動画にまとめていたが、再生数がほとんど伸びなかった。このチャンネルの
+タイトル("How to Pronounce <word>")は「how to pronounce (記号/単語)」と
+いう具体的な検索語との一致で再生数を得る性質が強く、10単語ぶんを1つの
+タイトルにまとめると個々の単語の検索語に一致しなくなり、この強みを自ら
+潰してしまっていた(類似フォーマットの他チャンネルが1記号1本・数秒の動画
+で数百万再生を得ている実例を踏まえた判断)。そのため1本ずつ、Shortsと全く
+同じタイトルを保ったまま変換する方式にした。
+
+**なぜ横型への変換が必要か**: YouTubeのShorts判定はアスペクト比+尺のみで
+機械的に決まるため、縦型のままでは短ければShorts扱いのままです。各クリップを
 横型キャンバスにピラーボックス配置することで通常動画として扱われます。
 
-**状態管理**: 結合済み(`compiled_video_ids`)・諦めた動画(`skipped_video_ids`)
-は`compilation_state.json`に、アップロード履歴は`upload_history.json`に
+**状態管理**: 変換済み(`converted_video_ids`)・諦めた動画(`skipped_video_ids`)
+は`repost_state.json`に、アップロード履歴は`upload_history.json`に
 記録しワークフロー末尾でコミットします(Actionsランナーは使い捨てのため)。
 `uploaded_at`(ISO 8601)も各エントリに記録(古いエントリには無いため
 `entry.get("uploaded_at")`で参照)。
 
-**元Shortsへのリンク追記**: 結合成功後、元になった各Shortsの概要欄に結合
-動画へのリンクを追記し回遊を促します(`append_video_description()`、失敗
-しても他への影響なし)。
+**元Shorts⇔通常動画の相互リンク**: 変換成功後、元Shortsの概要欄に通常動画
+へのリンクを、通常動画の概要欄に元Shortsへのリンクをそれぞれ追記し、検索で
+どちらかにしか辿り着かなかった視聴者にもう片方への導線を示します
+(`append_video_description()`、失敗しても他への影響なし)。
 
 ```bash
-python3 compile_shorts.py --privacy-status unlisted
+python3 repost_shorts.py --privacy-status unlisted --max-count 1
 ```
 
 (認証は`--upload`と同じ環境変数に加え、アーティファクト取得用の
@@ -432,12 +444,12 @@ assets/
 7. **1つのGoogleアカウントに複数チャンネルがあると誤爆する**: APIはエラー
    を返さずアクティブだったチャンネルへ黙ってアップロードする。
    `YOUTUBE_CHANNEL_ID`設定で不一致時にエラー停止。
-8. **Shorts結合動画の取得はYouTubeではなくGitHub Actionsアーティファクト
+8. **Shorts→通常動画変換の取得はYouTubeではなくGitHub Actionsアーティファクト
    から**: 当初yt-dlpで再ダウンロードしていたが、ActionsランナーのIPが
    ボット判定される問題があった(別リポジトリで確認)。`generate.yml`が保存
    したアーティファクトをGitHub Actions APIで取得する方式に変更、`run_id`で
    対象runを特定。privacyStatusに関係なく取得可能になった利点もある。移行前
-   のエントリ・90日超過分は結合対象外。
+   のエントリ・90日超過分は変換対象外。
 9. **同じブランチにsquash mergeを繰り返すと無関係な変更まで衝突扱いになる**:
    merge-baseが古いまま止まるため。対策: 新しい変更前に`git merge origin/main`。
 10. **動画フレームは長らく「ほぼZalgoではない文字列」を表示していた**:
@@ -524,6 +536,13 @@ assets/
     は象形文字の実描画サイズに対応できずフレームから見切れた。実際の
     `scrollWidth`/`scrollHeight`を見て段階的に縮める`_shrink_word_to_fit()`
     に変更。
+30. **Shorts10本の結合動画は再生数がほとんど伸びなかった**: 類似フォーマット
+    の他チャンネル(1記号1本・数秒の動画で数百万再生)と見比べて、このチャン
+    ネルのタイトル("How to Pronounce <word>")は検索語との完全一致で再生数を
+    得る性質が強いと判断。10単語ぶんを1つのタイトルにまとめる結合動画は、
+    個々の単語の検索語に一致しなくなりこの強みを自ら潰していた。`compile_shorts.py`
+    (`COMPILATION_BATCH_SIZE`件たまるごとに結合)を廃止し、`repost_shorts.py`
+    で1本ずつ元Shortsと同じタイトルのまま横型動画に変換する方式に置き換えた。
 
 ## プロジェクト構成
 
@@ -539,8 +558,8 @@ frame_builder.py              "How to Pronounce" フレーム画像・カスタ�
 video_builder.py              フレーム+音声 → mp4 の合成
 youtube_upload.py             YouTube Data API v3への動画/サムネイルアップロード [--upload]
 upload_history.py             アップロード成功履歴(upload_history.json)の読み書き
-compilation_state.py          Shorts結合動画の状態(compilation_state.json)管理
-compile_shorts.py             Shortsが10本たまるごとに結合動画を作りアップロード
+repost_state.py                Shorts→通常動画変換の状態(repost_state.json)管理
+repost_shorts.py               Shortsを1本ずつ横型の通常動画に変換してアップロード
 youtube_analytics.py          YouTube Analytics APIでモード別の再生数・視聴維持率を集計
 youtube_quick_stats.py         videos.listで直近投稿の即時再生数・高評価数・コメント数を取得
 get_youtube_refresh_token.py  YouTubeアップロード用リフレッシュトークンの取得(ローカルで一度だけ実行)

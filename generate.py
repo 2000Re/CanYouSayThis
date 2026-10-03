@@ -33,9 +33,9 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 5. "How to Pronounce <word>" 形式のミニマルな静止画フレームを生成 -> frame_builder.py
 6. 音声+フレームを合成して mp4 を書き出す(尺は音声の長さに追従)  -> video_builder.py
 7. --upload 指定時は、書き出したmp4をそのままYouTubeにアップロードする -> youtube_upload.py
-   (アップロード成功時は upload_history.json にも記録し、compile_shorts.py が
-    10本たまるごとに結合動画を作れるようにする。--mode random で作った回も、
-    実際に使われた方式が記録される)
+   (アップロード成功時は upload_history.json にも記録し、repost_shorts.py が
+    横型の通常動画への変換対象として使えるようにする。--mode random で作った
+    回も、実際に使われた方式が記録される)
 
 --count で複数本生成する場合、1本の失敗(クォータ超過・一時的なネットワーク
 エラー等)で残りの本数まで巻き添えで止めることはしない。失敗した回は記録
@@ -576,7 +576,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
             except Exception as e:
                 print(f"[Warning] {word}: コメントの投稿に失敗しました: {e}")
 
-        # compile_shorts.pyが後で(この回も含めて)GitHub Actions API経由で
+        # repost_shorts.pyが後で(この回も含めて)GitHub Actions API経由で
         # このrunのアーティファクトから動画本体を取り出せるよう、video_idを
         # そのままファイル名にしておく(アーティファクト自体のアップロードは
         # このgenerate.py実行の後、ワークフロー側で行う)。
@@ -585,7 +585,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         result["video"] = video_id_path
 
         # アップロードが成功して初めて履歴に記録する(失敗した回を記録すると、
-        # 存在しない動画IDが compile_shorts.py の結合対象に紛れ込むため)
+        # 存在しない動画IDが repost_shorts.py の変換対象に紛れ込むため)
         from upload_history import append_upload
 
         # glitch/chorus/morseは単一の音声言語を持たないため、voice_label/
