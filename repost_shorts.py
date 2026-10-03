@@ -65,6 +65,7 @@ import requests
 from moviepy import ColorClip, CompositeVideoClip, VideoFileClip
 
 import config
+from frame_builder import build_thumbnail
 from repost_state import (
     extract_zip_member,
     find_artifact,
@@ -76,6 +77,7 @@ from repost_state import (
 from upload_history import load_upload_history
 import youtube_upload
 from youtube_upload import add_to_playlist, append_video_description, log_api_usage_summary
+from word_generator import zalgo_display_word
 
 GITHUB_API_BASE = "https://api.github.com"
 
@@ -308,13 +310,32 @@ def main():
                     tags=metadata["tags"], privacy_status=args.privacy_status,
                 )
                 print(f"[Repost] アップロード完了: {entry['label']} -> {repost_url}")
+                repost_video_id = repost_url.rsplit("/", 1)[-1]
+
+                # "絵だけ"のミニマルなカスタムサムネイル(frame_builder.
+                # build_thumbnail()参照)。元Shortsと同じ単語をそのまま
+                # 16:9画像として設定する(generate.py同様の方針)。YouTube側
+                # でカスタムサムネイル機能を使うには電話番号確認が必要なため、
+                # config.CUSTOM_THUMBNAIL_ENABLEDがTrueの間だけ動く。失敗
+                # しても動画自体は既に公開済みなので警告に留めて処理は止めない。
+                if config.CUSTOM_THUMBNAIL_ENABLED:
+                    thumbnail_path = output_path + "_thumbnail.png"
+                    try:
+                        display_word = zalgo_display_word(entry["word"])
+                        build_thumbnail(entry["label"], thumbnail_path, display_word=display_word)
+                        youtube_upload.upload_thumbnail(repost_video_id, thumbnail_path)
+                    except Exception as e:
+                        print(f"::warning::{entry['label']} ({entry['video_id']}) のカスタムサムネイル"
+                              f"のアップロードに失敗しました: {e}")
+                    finally:
+                        if os.path.exists(thumbnail_path):
+                            os.remove(thumbnail_path)
 
                 # 任意。設定されていれば、変換後の通常動画専用の再生リストに
                 # 追加する(失敗しても動画自体は既に公開済みなので、警告に
                 # 留めて処理は止めない)。
                 if repost_playlist_id:
                     try:
-                        repost_video_id = repost_url.rsplit("/", 1)[-1]
                         add_to_playlist(repost_video_id, repost_playlist_id)
                     except Exception as e:
                         print(f"::warning::通常動画の再生リストへの追加に失敗しました: {e}")

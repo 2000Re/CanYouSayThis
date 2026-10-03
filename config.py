@@ -389,10 +389,9 @@ COMMENT_ON_UPLOAD_ENABLED = True
 # カスタムサムネイルのアップロード機能(youtube_upload.upload_thumbnail()、
 # frame_builder.build_thumbnail()参照)自体のON/OFF。YouTube側でこの機能を
 # 使うにはチャンネルの電話番号確認が必要で、確認が済んでいないチャンネル
-# でthumbnails.set()を呼ぶとforbiddenエラーになる。電話番号確認が完了する
-# までFalseのままにしておき、完了したらTrueに切り替える(コード側の変更は
-# 不要、generate.py参照)。
-CUSTOM_THUMBNAIL_ENABLED = False
+# でthumbnails.set()を呼ぶとforbiddenエラーになる。電話番号確認が完了した
+# ため有効化(generate.py・repost_shorts.pyの両方で参照)。
+CUSTOM_THUMBNAIL_ENABLED = True
 
 # YouTube Studioの視聴者属性(アナリティクス)で継続的に上位に入っている
 # 非英語圏(フィリピン・インドネシア・マレーシア)向けに、説明文へ常時追加
