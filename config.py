@@ -448,10 +448,15 @@ REPOST_OUTPUT_DIR = "repost_output"
 REPOST_VIDEO_WIDTH = 1920
 REPOST_VIDEO_HEIGHT = 1080
 REPOST_BG_COLOR = (11, 13, 18)  # generate_channel_art.BG_COLOR(#0B0D12)と統一
-# 1回のワークフロー実行あたり変換する最大件数。YouTube側の「1日あたり
-# アップロード本数」上限(アカウント単位、未認証チャンネルほど低い)に、
-# generate.py本編のアップロード分と合わせて収まるよう控えめにしている。
-REPOST_MAX_PER_RUN = 1
+# [優先順位] 同じ実行(同じGITHUB_RUN_ID)でgenerate.pyが今まさに作った
+# Shortsは、件数に関わらず常に全て優先して変換する(「同じ単語をShorts・
+# 通常動画の両方に」という要望のため、generate.pyの--countと無関係に
+# 上限を設けない)。そのうえで、まだ余力があれば過去のバックログ
+# (古いShorts)もこの件数ぶんだけ追加で消化する。バックログは
+# upload_history.jsonの記録順(=古い順)でこの件数ぶん処理する。
+# YouTube側の「1日あたりアップロード本数」上限(アカウント単位、未認証
+# チャンネルほど低い)に配慮し控えめにしている。
+REPOST_BACKLOG_PER_RUN = 1
 # GitHub ActionsのIPがYouTube側に「Sign in to confirm you're not a bot」で
 # ボット判定される問題(player_client変更・cookie認証のいずれでも解決しない)
 # を根本的に回避するため、動画本体はYouTubeからyt-dlpで再ダウンロードせず、

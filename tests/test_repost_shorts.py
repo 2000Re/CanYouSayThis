@@ -1,6 +1,6 @@
-"""repost_shorts.py の download_video()/ build_repost_metadata() に対する
-ユニットテスト。requests.getをモックし、実際のGitHub API呼び出しは
-行わない(軽いテストのみ)。"""
+"""repost_shorts.py の download_video()/ build_repost_metadata()/
+select_targets() に対するユニットテスト。requests.getをモックし、実際の
+GitHub API呼び出しは行わない(軽いテストのみ)。"""
 
 import sys
 from pathlib import Path
@@ -108,3 +108,43 @@ def test_build_repost_metadata_skips_language_suffix_for_english():
     entry = {"word": "abc", "label": "abc", "mode": "tts", "voice_label": None, "lang_code": "en"}
     metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
     assert "in English" not in metadata["title"]
+
+
+def _entry(video_id, run_id):
+    return {"video_id": video_id, "run_id": run_id, "label": video_id}
+
+
+def test_select_targets_includes_all_own_run_entries_without_cap():
+    # 同じ実行(同じGITHUB_RUN_ID)で生成されたShortsは、backlog_countが
+    # どれだけ小さくても全件優先して含まれる(「Shortsと通常動画に同じ
+    # 単語を」という要望のため、件数に上限を設けない)。
+    pending = [
+        _entry("old1", "run_a"), _entry("new1", "run_current"),
+        _entry("new2", "run_current"), _entry("new3", "run_current"),
+        _entry("old2", "run_b"),
+    ]
+    targets = repost_shorts.select_targets(pending, "run_current", backlog_count=0)
+    assert {t["video_id"] for t in targets} == {"new1", "new2", "new3"}
+
+
+def test_select_targets_fills_remaining_budget_from_oldest_backlog():
+    pending = [
+        _entry("old1", "run_a"), _entry("old2", "run_b"),
+        _entry("new1", "run_current"), _entry("old3", "run_c"),
+    ]
+    targets = repost_shorts.select_targets(pending, "run_current", backlog_count=2)
+    ids = [t["video_id"] for t in targets]
+    assert ids == ["new1", "old1", "old2"]
+
+
+def test_select_targets_uses_only_backlog_when_no_own_run_entries():
+    pending = [_entry("old1", "run_a"), _entry("old2", "run_b"), _entry("old3", "run_c")]
+    targets = repost_shorts.select_targets(pending, "run_current", backlog_count=2)
+    assert [t["video_id"] for t in targets] == ["old1", "old2"]
+
+
+def test_select_targets_handles_missing_current_run_id():
+    # ローカル実行等でGITHUB_RUN_IDが無い場合、全てバックログ扱いになる。
+    pending = [_entry("old1", "run_a"), _entry("old2", "run_b")]
+    targets = repost_shorts.select_targets(pending, None, backlog_count=1)
+    assert [t["video_id"] for t in targets] == ["old1"]

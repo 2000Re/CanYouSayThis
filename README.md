@@ -294,11 +294,16 @@ OAuth同意画面が「テスト」ステータスの場合、リフレッシュ
 
 ## Shorts→通常動画への変換
 
-`upload_history.json`に記録された未変換のShortsを1本(`config.REPOST_MAX_PER_RUN`)、
-動画本体をGitHub Actionsアーティファクトから取得し直し、横型(16:9)に
-ピラーボックスした「通常動画」として、**元のShortsと同じタイトル・説明文
-のまま**再アップロードします(`repost_shorts.py`、取得元の経緯は「ハマった
-罠」8番)。
+`upload_history.json`に記録された未変換のShortsの動画本体をGitHub Actions
+アーティファクトから取得し直し、横型(16:9)にピラーボックスした「通常
+動画」として、**元のShortsと同じタイトル・説明文のまま**再アップロードし
+ます(`repost_shorts.py`、取得元の経緯は「ハマった罠」8番)。
+
+**優先順位**: 同じワークフロー実行で`generate.py`が今まさに作ったShorts
+(同じ`GITHUB_RUN_ID`で紐付け)は、件数に関わらず常に全て優先して変換し、
+「同じ単語がShorts・通常動画の両方に載る」ようにします。そのうえでまだ
+余力があれば、過去のバックログ(未変換の古いShorts)も`config.REPOST_BACKLOG_PER_RUN`
+件ぶん記録順(古い順)で追加消化します(`select_targets()`参照)。
 
 **なぜ1本ずつ別々に変換するのか**: 当初はShortsが10本たまるごとに1本の
 結合動画にまとめていたが、再生数がほとんど伸びなかった。このチャンネルの
@@ -308,6 +313,12 @@ OAuth同意画面が「テスト」ステータスの場合、リフレッシュ
 潰してしまっていた(類似フォーマットの他チャンネルが1記号1本・数秒の動画
 で数百万再生を得ている実例を踏まえた判断)。そのため1本ずつ、Shortsと全く
 同じタイトルを保ったまま変換する方式にした。
+
+**注意**: 通常動画側のアップロードはShortsとは別カウントのため、同じ回で
+両方アップロードすると実質的に1日のアップロード本数が増えます。YouTube側
+の1日あたりアップロード本数上限(未認証チャンネルほど低い)に以前実際に
+到達した実績があるため、上限に当たるようであれば`generate.py`の生成頻度
+や`config.REPOST_BACKLOG_PER_RUN`の調整を検討してください。
 
 **なぜ横型への変換が必要か**: YouTubeのShorts判定はアスペクト比+尺のみで
 機械的に決まるため、縦型のままでは短ければShorts扱いのままです。各クリップを
@@ -325,7 +336,7 @@ OAuth同意画面が「テスト」ステータスの場合、リフレッシュ
 (`append_video_description()`、失敗しても他への影響なし)。
 
 ```bash
-python3 repost_shorts.py --privacy-status unlisted --max-count 1
+python3 repost_shorts.py --privacy-status unlisted --backlog-count 1
 ```
 
 (認証は`--upload`と同じ環境変数に加え、アーティファクト取得用の

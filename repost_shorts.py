@@ -40,10 +40,16 @@ run_idが記録されていない旧いエントリ(この方式導入前にア�
 
 [設計] 各エントリは互いに独立しているため(結合動画と違い複数本まとめて
 1本にする必要がない)、1本の取得が一時的なエラーで失敗しても、その回の
-処理全体を止めず残りの候補へ進む。config.REPOST_MAX_PER_RUNで1回の実行
-あたりの変換件数を絞り、YouTube側の1日あたりアップロード本数上限
-(未認証チャンネルほど低い)にgenerate.py本編のアップロード分と合わせて
-収まるようにしている。
+処理全体を止めず残りの候補へ進む。
+
+[設計] 変換の優先順位(select_targets()参照): 「Shortsと通常動画に同じ
+単語を載せたい」という要望に応え、generate.pyが同じワークフロー実行内で
+今まさに作ったShorts(entry["run_id"]が自分自身のGITHUB_RUN_IDと一致する
+もの)は、件数に関わらず常に全て優先して変換する。そのうえでまだ余力が
+あれば、config.REPOST_BACKLOG_PER_RUN件ぶんだけ過去のバックログ(古い
+Shorts)も記録順(古い順)で追加消化する。YouTube側の1日あたりアップロード
+本数上限(未認証チャンネルほど低い)との兼ね合いで、バックログ側の件数を
+控えめにしている。
 
 [設計] 変換後、通常動画の概要欄に元Shortsへのリンクを、元Shortsの概要欄に
 通常動画へのリンクをそれぞれ追記する(youtube_upload.append_video_description())。
@@ -238,12 +244,30 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
     return {"title": title, "description": description, "tags": tags}
 
 
+def select_targets(pending: list, current_run_id: str | None, backlog_count: int) -> list:
+    """変換対象を「同じ実行でgenerate.pyが今まさに作ったShorts」優先で並べる。
+
+    同じワークフロー実行内ではGITHUB_RUN_IDがgenerate.py・repost_shorts.py
+    の両ステップで共通のため、pending中のentry["run_id"]がcurrent_run_idと
+    一致するものは「今回生成されたばかりのShorts」だと判別できる。これは
+    「Shortsと通常動画に同じ単語を載せたい」という要望に応えるため、件数に
+    関わらず全て優先して変換する。
+
+    残りの予算(backlog_count)は、pendingの記録順(=古い順)のまま、まだ
+    今回選ばれていない中から先頭から詰める形でバックログ(過去のShorts)を
+    消化する。"""
+    own_run = [e for e in pending if current_run_id and e.get("run_id") == current_run_id]
+    own_run_ids = {e["video_id"] for e in own_run}
+    backlog = [e for e in pending if e["video_id"] not in own_run_ids]
+    return own_run + backlog[:backlog_count]
+
+
 def main():
-    ap = argparse.ArgumentParser(description="アップロード済みShortsを1本ずつ通常動画として変換・再アップロードする")
+    ap = argparse.ArgumentParser(description="アップロード済みShortsを通常動画として変換・再アップロードする")
     ap.add_argument("--privacy-status", type=str, choices=["public", "unlisted", "private"],
                      default="public", help="変換後の通常動画の公開範囲")
-    ap.add_argument("--max-count", type=int, default=config.REPOST_MAX_PER_RUN,
-                     help="1回の実行あたりの変換件数上限")
+    ap.add_argument("--backlog-count", type=int, default=config.REPOST_BACKLOG_PER_RUN,
+                     help="同じ実行で生成されたShorts分とは別に、過去のバックログから追加で処理する件数")
     args = ap.parse_args()
 
     history = load_upload_history()
@@ -258,20 +282,19 @@ def main():
         print("変換対象がありません。")
         return
 
+    current_run_id = os.environ.get("GITHUB_RUN_ID")
+    targets = select_targets(pending, current_run_id, args.backlog_count)
+
     os.makedirs(config.REPOST_DOWNLOAD_DIR, exist_ok=True)
     os.makedirs(config.REPOST_OUTPUT_DIR, exist_ok=True)
 
     newly_skipped_ids = []
     newly_converted_ids = []
-    converted_count = 0
 
     repost_playlist_id = os.environ.get("YOUTUBE_REPOST_PLAYLIST_ID")
 
     try:
-        for entry in pending:
-            if converted_count >= args.max_count:
-                break
-
+        for entry in targets:
             path = os.path.join(config.REPOST_DOWNLOAD_DIR, f"{entry['video_id']}.mp4")
             print(f"  取得中: {entry['label']} ({entry['video_id']}, run {entry['run_id']})")
             try:
@@ -353,7 +376,6 @@ def main():
                           f"通常動画リンク追記に失敗しました: {e}")
 
                 newly_converted_ids.append(entry["video_id"])
-                converted_count += 1
             finally:
                 if boxed_clip:
                     try:
@@ -372,7 +394,7 @@ def main():
                     except Exception as e:
                         print(f"[Warning] Failed to remove temp file {p}: {e}")
 
-        if converted_count == 0 and not newly_skipped_ids:
+        if not newly_converted_ids and not newly_skipped_ids:
             print("今回変換できた動画はありませんでした。")
 
         log_api_usage_summary()
