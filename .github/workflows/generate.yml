@@ -126,15 +126,18 @@ jobs:
           path: out/
           if-no-files-found: error
 
-      # upload_history.jsonに記録された公開済みShortsのうち未変換のものを
-      # 1本(config.REPOST_MAX_PER_RUN)、生成された回のgenerated-videos
-      # アーティファクト(GitHub Actions API経由)から動画本体を取得し直し、
-      # 横型(16:9)にピラーボックスした「通常動画」として、元Shortsと同じ
-      # タイトルのまま再アップロードする。アップロードしていない回
-      # (upload=false)は履歴が増えないため、変換する対象もないのでスキップ
-      # する。本編パイプラインとは独立した追加機能なので、失敗しても後続の
-      # 処理はブロックしない(repost_shorts.py側で例外を吸収する)。
-      - name: Repost a Short as a regular video
+      # 直前の「Generate videos」ステップで今まさに生成・アップロードされた
+      # Shorts全件を、同じ単語のまま横型(16:9)にピラーボックスした「通常
+      # 動画」として常に優先して再アップロードする(同じGITHUB_RUN_IDで
+      # 紐付け、select_targets()参照)。そのうえで余力があれば、
+      # upload_history.jsonに記録された過去の未変換バックログも
+      # config.REPOST_BACKLOG_PER_RUNぶんだけ追加で変換する。動画本体は
+      # generated-videosアーティファクト(GitHub Actions API経由)から取得
+      # し直す。アップロードしていない回(upload=false)は履歴が増えないため、
+      # 変換する対象もないのでスキップする。本編パイプラインとは独立した
+      # 追加機能なので、失敗しても後続の処理はブロックしない
+      # (repost_shorts.py側で例外を吸収する)。
+      - name: Repost Shorts as regular videos
         if: ${{ inputs.upload }}
         run: python3 repost_shorts.py --privacy-status "${{ inputs.privacy_status }}"
         env:
