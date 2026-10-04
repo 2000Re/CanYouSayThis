@@ -439,15 +439,22 @@ UPLOAD_HISTORY_PATH = "upload_history.json"  # generate.py --upload の成功履
 #
 # Shorts(縦型9:16、3分以内)はアスペクト比+尺のみでYouTubeにShorts判定
 # されてしまう(判定は投稿者の意図ではなく機械的な仕様のため)。そのため
-# 変換時は各クリップを横型(16:9)キャンバスにピラーボックス(左右に無地の
-# 帯)で配置し直し、確実に「通常動画」として扱われるようにする。
+# 元の縦型フレームをそのまま横型キャンバスに載せ替える(ピラーボックス)
+# のではなく、config.CUSTOM_THUMBNAIL_ENABLEDのカスタムサムネイルと全く
+# 同じ「単語だけを画面いっぱいに大きく表示する」横型(16:9)フレームを
+# frame_builder.build_thumbnail()で新たに生成し、ダウンロードし直した
+# 元Shortsの音声(audio_utils.extract_audio_track())と合成して動画化する
+# (video_builder.build_video()、generate.pyが本編のShortsを作るのと同じ
+# 「静止画+音声」方式)。左右に無地の帯が残るピラーボックスと違い、画面
+# いっぱいに単語を表示できる(類似フォーマットの他チャンネルの実例を
+# 踏まえた判断)。生成したフレーム画像はそのままカスタムサムネイルにも
+# 使い回す(動画と同じ構図のため、わざわざ別画像を作る必要がない)。
 
 REPOST_STATE_PATH = "repost_state.json"
 REPOST_DOWNLOAD_DIR = "repost_downloads"
 REPOST_OUTPUT_DIR = "repost_output"
 REPOST_VIDEO_WIDTH = 1920
 REPOST_VIDEO_HEIGHT = 1080
-REPOST_BG_COLOR = (11, 13, 18)  # generate_channel_art.BG_COLOR(#0B0D12)と統一
 # [優先順位] 同じ実行(同じGITHUB_RUN_ID)でgenerate.pyが今まさに作った
 # Shortsは、件数に関わらず常に全て優先して変換する(「同じ単語をShorts・
 # 通常動画の両方に」という要望のため、generate.pyの--countと無関係に

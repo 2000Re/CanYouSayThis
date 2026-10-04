@@ -64,21 +64,6 @@ def test_select_pending_preserves_order_with_empty_state():
     assert repost_state.select_pending(repostable, state) == repostable
 
 
-def test_pillarbox_scale_fits_by_height_when_width_stays_within_canvas():
-    # 9:16の縦動画(1080x1920)を1920x1080キャンバスに収める -> 高さ基準
-    scale = repost_state.pillarbox_scale(1080, 1920, 1920, 1080)
-    assert scale == 1080 / 1920
-    assert 1080 * scale <= 1920
-
-
-def test_pillarbox_scale_falls_back_to_width_when_height_based_scale_overflows():
-    # 極端に横長のクリップ(2000x100)を1920x1080キャンバスに収める場合、
-    # 高さ基準だと幅がキャンバスを超えるため、幅基準にフォールバックする
-    scale = repost_state.pillarbox_scale(2000, 100, 1920, 1080)
-    assert scale == 1920 / 2000
-    assert 2000 * scale <= 1920
-
-
 def test_find_artifact_matches_by_name():
     artifacts = [
         {"name": "candidates", "id": 1},
