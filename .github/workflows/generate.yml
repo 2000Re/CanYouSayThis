@@ -159,9 +159,10 @@ jobs:
 
           # git push はGitHub側の一時的な障害で失敗することがある。この時点で
           # 動画は既にYouTubeへアップロード済みなので、ここで諦めると
-          # upload_history.jsonへの記録だけが失われ、結合動画の対象カウントが
-          # ずれてしまう。そのため数回リトライする(間にpull --rebaseを挟み、
-          # 他の実行が先にpushしていた場合にも追従できるようにする)。
+          # upload_history.json/repost_state.jsonへの記録だけが失われ、次回
+          # repost_shorts.pyの変換対象の判定がずれてしまう。そのため数回
+          # リトライする(間にpull --rebaseを挟み、他の実行が先にpushして
+          # いた場合にも追従できるようにする)。
           for attempt in 1 2 3 4 5; do
             if git push; then
               exit 0
@@ -173,12 +174,3 @@ jobs:
           echo "git push が複数回失敗しました。upload_history.json の更新が反映されていない" \
                "可能性があります。手動での確認・修正が必要です。"
           exit 1
-
-      # compilation_output/ は10件たまった回にしか作られないため、
-      # それ以外の日は対象ファイルなしで正常にスキップされる。
-      - name: Upload compilation video as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: compilation-output-${{ github.run_number }}
-          path: compilation_output/
-          if-no-files-found: ignore
