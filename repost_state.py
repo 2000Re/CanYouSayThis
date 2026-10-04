@@ -3,9 +3,9 @@ repost_state.py
 
 repost_shorts.py の変換状態(変換済み・恒久的に取得不可能な動画)を管理する。
 
-moviepy/google-api-python-client等の重い依存を持たないため、
-requirements-dev.txtだけの軽量なテスト環境からもインポートしてテストできる
-(upload_history.pyと同じ狙いでrepost_shorts.pyから切り出している)。
+google-api-python-client等の重い依存を持たないため、requirements-dev.txt
+だけの軽量なテスト環境からもインポートしてテストできる(upload_history.py
+と同じ狙いでrepost_shorts.pyから切り出している)。
 """
 import io
 import json
@@ -68,14 +68,3 @@ def extract_zip_member(zip_bytes: bytes, member_name: str) -> bytes:
     (zipfile.ZipFile.readの標準動作)。"""
     with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
         return zf.read(member_name)
-
-
-def pillarbox_scale(clip_width: int, clip_height: int, canvas_width: int, canvas_height: int) -> float:
-    """縦長クリップを横型キャンバスに収めるための拡大率を返す。
-
-    まず高さをキャンバスの高さに合わせる。それでも幅がキャンバス幅を
-    超える場合(極端に横長のクリップが来た場合の安全策)は、幅基準にする。"""
-    scale = canvas_height / clip_height
-    if clip_width * scale > canvas_width:
-        scale = canvas_width / clip_width
-    return scale

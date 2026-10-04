@@ -1,11 +1,14 @@
 """
 音声の後処理ユーティリティ(TTS/グリッチどちらの断片にも使う共通処理)。
 
-- repeat_audio  : 「答え」をN回繰り返す(How-to-Pronounce系動画が
-                   "word... word..." のように2回言うことが多いのに寄せた機能)
-- finalize_audio: 無音パディングはせず、中身の実際の長さの末尾だけ短く
-                   フェードアウトする(動画の尺は音声の実際の長さに追従する)
-- wav_to_mp3    : mp3へのエンコード
+- repeat_audio      : 「答え」をN回繰り返す(How-to-Pronounce系動画が
+                       "word... word..." のように2回言うことが多いのに
+                       寄せた機能)
+- finalize_audio    : 無音パディングはせず、中身の実際の長さの末尾だけ短く
+                       フェードアウトする(動画の尺は音声の実際の長さに追従する)
+- wav_to_mp3        : mp3へのエンコード
+- extract_audio_track: 動画ファイルから音声トラックだけを取り出す
+                       (repost_shorts.py参照)
 """
 
 import subprocess
@@ -67,6 +70,21 @@ def finalize_audio(src_wav, dst_wav, fade=0.4):
 def wav_to_mp3(src_wav, dst_mp3):
     subprocess.run(
         ["ffmpeg", "-y", "-i", src_wav, "-acodec", "libmp3lame", "-q:a", "4", dst_mp3],
+        check=True,
+        capture_output=True,
+    )
+
+
+def extract_audio_track(video_path, audio_path):
+    """動画ファイル(video_path)から音声トラックだけを取り出し、
+    audio_pathに書き出す(映像は破棄)。再エンコードせずストリームコピー
+    するため高速・無劣化(-acodec copy)。
+
+    repost_shorts.pyが、ダウンロードし直した元Shortsの音声を、新しく
+    生成した横型フレーム画像と合成して通常動画を作るために使う
+    (video_builder.build_video()参照)。"""
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", video_path, "-vn", "-acodec", "copy", audio_path],
         check=True,
         capture_output=True,
     )

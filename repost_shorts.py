@@ -3,8 +3,8 @@
 repost_shorts.py
 
 upload_history.json に記録された「アップロード成功済み」の動画を1本ずつ、
-横型(16:9)にピラーボックスした「通常動画」として、元のShortsと同じ
-タイトル・説明文のまま再アップロードする。
+横型(16:9)の「通常動画」として、元のShortsと同じタイトル・説明文のまま
+再アップロードする。
 
 [設計変更の経緯] 当初はconfig.REPOST_STATE_PATHが示す通りShortsが10本
 たまるごとに1本の結合動画にまとめていたが、再生数がほとんど伸びなかった。
@@ -14,10 +14,17 @@ pronounce (記号/単語)」という具体的な検索語との一致で再生�
 なり、この強みを自ら潰してしまっていたと判断(詳細はconfig.py参照)。その
 ため1本ずつ、同じタイトルを保ったまま変換する方式に変更した。
 
-[設計] Shorts(縦型9:16、3分以内)を単純に横型キャンバスに載せ替えるのは、
-YouTubeのShorts判定がアスペクト比+尺のみで機械的に決まる仕様のため
-(投稿者の意図では変えられない)。ピラーボックス配置で確実に「通常動画」
-として扱われるようにする。
+[設計] 動画本体の作り方: 元の縦型Shortsフレーム(キッカー+単語+アイコン、
+build_frame())をそのまま横型キャンバスに載せ替える(ピラーボックス)と
+左右に無地の帯が残ってしまう。類似フォーマットの他チャンネルは横型動画の
+画面いっぱいに単語を表示しているため、それに合わせてconfig.CUSTOM_THUMBNAIL_ENABLED
+のカスタムサムネイルと全く同じ「単語だけを大きく表示する」横型フレームを
+frame_builder.build_thumbnail()で新たに生成し、ダウンロードし直した元
+Shortsの音声(audio_utils.extract_audio_track()で動画から音声だけを
+抜き出す)と合成して動画化する(video_builder.build_video()、generate.py
+が本編のShortsを作るのと同じ「静止画+音声」方式)。生成したフレーム画像は
+そのままカスタムサムネイルにも使い回す(動画のフレームと同じ構図のため、
+わざわざ別画像を作る必要がない)。
 
 [設計] 動画本体の取得元について: YouTubeに公開済みの動画をyt-dlpで
 再ダウンロードする方式だと、GitHub ActionsのIPがYouTube側に
@@ -68,21 +75,21 @@ import time
 import uuid
 
 import requests
-from moviepy import ColorClip, CompositeVideoClip, VideoFileClip
 
 import config
+from audio_utils import extract_audio_track
 from frame_builder import build_thumbnail
 from repost_state import (
     extract_zip_member,
     find_artifact,
     load_repost_state,
-    pillarbox_scale,
     save_repost_state,
     select_pending,
 )
 from upload_history import load_upload_history
 import youtube_upload
 from youtube_upload import add_to_playlist, append_video_description, log_api_usage_summary
+from video_builder import build_video
 from word_generator import zalgo_display_word
 
 GITHUB_API_BASE = "https://api.github.com"
@@ -191,18 +198,6 @@ def download_video_with_retry(entry: dict, output_path: str) -> None:
             print(f"    取得{attempt}回目失敗: {e}")
             time.sleep(config.REPOST_DOWNLOAD_RETRY_BACKOFF_SECONDS)
     raise last_error
-
-
-def pillarbox(clip):
-    """縦長のクリップを、横型キャンバスの中央に配置し、左右を無地で埋める。"""
-    scale = pillarbox_scale(clip.w, clip.h, config.REPOST_VIDEO_WIDTH, config.REPOST_VIDEO_HEIGHT)
-    resized = clip.resized(scale)
-    bg = ColorClip(
-        size=(config.REPOST_VIDEO_WIDTH, config.REPOST_VIDEO_HEIGHT),
-        color=config.REPOST_BG_COLOR,
-        duration=clip.duration,
-    )
-    return CompositeVideoClip([bg, resized.with_position("center")]).with_duration(clip.duration)
 
 
 def build_repost_metadata(entry: dict, original_url: str) -> dict:
@@ -316,15 +311,24 @@ def main():
                       f"(次回同じ動画から再試行します): {e}")
                 continue
 
-            clip = None
-            boxed_clip = None
-            output_path = os.path.join(config.REPOST_OUTPUT_DIR, f"repost_{uuid.uuid4().hex}.mp4")
+            uid = uuid.uuid4().hex
+            audio_path = os.path.join(config.REPOST_DOWNLOAD_DIR, f"repost_{uid}_audio.m4a")
+            frame_path = os.path.join(config.REPOST_OUTPUT_DIR, f"repost_{uid}_frame.png")
+            output_path = os.path.join(config.REPOST_OUTPUT_DIR, f"repost_{uid}.mp4")
             try:
-                clip = VideoFileClip(path)
-                boxed_clip = pillarbox(clip)
-                boxed_clip.write_videofile(
-                    output_path, fps=30, codec="libx264", audio_codec="aac", logger=None
+                # ダウンロードした元Shortsの動画からは音声だけを抜き出し、
+                # 映像は使わない(ピラーボックスはしない設計、config.py参照)。
+                extract_audio_track(path, audio_path)
+
+                # カスタムサムネイルと全く同じ「単語だけを画面いっぱいに
+                # 大きく表示する」横型フレームを動画の絵としてそのまま使う。
+                display_word = zalgo_display_word(entry["word"])
+                build_thumbnail(
+                    entry["label"], frame_path,
+                    size=(config.REPOST_VIDEO_WIDTH, config.REPOST_VIDEO_HEIGHT),
+                    display_word=display_word,
                 )
+                build_video(frame_path, audio_path, output_path)
 
                 original_url = f"https://youtu.be/{entry['video_id']}"
                 metadata = build_repost_metadata(entry, original_url)
@@ -335,24 +339,18 @@ def main():
                 print(f"[Repost] アップロード完了: {entry['label']} -> {repost_url}")
                 repost_video_id = repost_url.rsplit("/", 1)[-1]
 
-                # "絵だけ"のミニマルなカスタムサムネイル(frame_builder.
-                # build_thumbnail()参照)。元Shortsと同じ単語をそのまま
-                # 16:9画像として設定する(generate.py同様の方針)。YouTube側
-                # でカスタムサムネイル機能を使うには電話番号確認が必要なため、
-                # config.CUSTOM_THUMBNAIL_ENABLEDがTrueの間だけ動く。失敗
-                # しても動画自体は既に公開済みなので警告に留めて処理は止めない。
+                # カスタムサムネイル。動画のフレームとして使ったframe_pathを
+                # そのまま使い回す(同じ構図のため別画像を作る必要がない)。
+                # YouTube側でカスタムサムネイル機能を使うには電話番号確認が
+                # 必要なため、config.CUSTOM_THUMBNAIL_ENABLEDがTrueの間だけ
+                # 動く。失敗しても動画自体は既に公開済みなので警告に留めて
+                # 処理は止めない。
                 if config.CUSTOM_THUMBNAIL_ENABLED:
-                    thumbnail_path = output_path + "_thumbnail.png"
                     try:
-                        display_word = zalgo_display_word(entry["word"])
-                        build_thumbnail(entry["label"], thumbnail_path, display_word=display_word)
-                        youtube_upload.upload_thumbnail(repost_video_id, thumbnail_path)
+                        youtube_upload.upload_thumbnail(repost_video_id, frame_path)
                     except Exception as e:
                         print(f"::warning::{entry['label']} ({entry['video_id']}) のカスタムサムネイル"
                               f"のアップロードに失敗しました: {e}")
-                    finally:
-                        if os.path.exists(thumbnail_path):
-                            os.remove(thumbnail_path)
 
                 # 任意。設定されていれば、変換後の通常動画専用の再生リストに
                 # 追加する(失敗しても動画自体は既に公開済みなので、警告に
@@ -377,17 +375,7 @@ def main():
 
                 newly_converted_ids.append(entry["video_id"])
             finally:
-                if boxed_clip:
-                    try:
-                        boxed_clip.close()
-                    except Exception:
-                        pass
-                if clip:
-                    try:
-                        clip.close()
-                    except Exception:
-                        pass
-                for p in (path, output_path):
+                for p in (path, audio_path, frame_path, output_path):
                     try:
                         if os.path.exists(p):
                             os.remove(p)

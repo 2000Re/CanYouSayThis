@@ -4,8 +4,8 @@ upload_history.json(YouTubeへのアップロード成功履歴)の読み書き�
 generate.py(アップロード成功時に記録)と repost_shorts.py(変換対象の
 選定に使う)の両方から参照するため、ここに集約する。
 
-moviepy/google-api-python-client等の重い依存を持たないため、
-requirements-dev.txtだけの軽量なテスト環境からもインポートしてテストできる。
+google-api-python-client等の重い依存を持たないため、requirements-dev.txt
+だけの軽量なテスト環境からもインポートしてテストできる。
 """
 import json
 import os
