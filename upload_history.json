@@ -2556,5 +2556,15 @@
     "uploaded_at": "2026-10-05T15:14:20.348386+00:00",
     "voice_label": "Swedish (Female)",
     "lang_code": "sv"
+  },
+  {
+    "word": "ؽععػكغغغغض",
+    "label": "ؽععػكغغغغض",
+    "video_id": "zMYn-izU9vs",
+    "mode": "reverse",
+    "run_id": "37354278373",
+    "uploaded_at": "2026-10-05T18:14:24.315712+00:00",
+    "voice_label": "Arabic (Male)",
+    "lang_code": "ar"
   }
 ]
