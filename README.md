@@ -262,6 +262,7 @@ OAuth同意画面が「テスト」ステータスの場合、リフレッシュ
 (説明欄・フレームより確実に読まれるため)。字幕と同じ`youtube.force-ssl`
 スコープが必要で同様に不安定になりうる点は注意してください。ピン留め
 専用APIは無いため、必要ならYouTube Studioから手動で行ってください。
+`repost_shorts.py`(変換後の通常動画)でも同じ文面で投稿します。
 
 **音声言語メタデータ**: `defaultAudioLanguage`に実際に読み上げた言語を設定
 (glitch系は設定しない)。`defaultLanguage`は常に`"en"`。

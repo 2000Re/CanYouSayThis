@@ -236,7 +236,16 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
     if lang_label:
         tags.append(f"{lang_label.lower()} pronunciation")
 
-    return {"title": title, "description": description, "tags": tags}
+    # generate.py _youtube_metadata()のcaption_textと全く同じ文面(運営者
+    # コメントの自動投稿に使う、post_comment()参照)。「実在の単語ではない/
+    # ジョークだ」という注記をコメント欄にも確実に出すことで、説明欄まで
+    # 読まない視聴者にも伝わるようにする狙いはShortsと同じ。
+    caption_text = f'How to pronounce "{label}"'
+    if lang_label:
+        caption_text += f" in {lang_label}"
+    caption_text += "? Not a real word — just a joke, give it a try! \U0001F604"
+
+    return {"title": title, "description": description, "tags": tags, "caption_text": caption_text}
 
 
 def select_targets(pending: list, current_run_id: str | None, backlog_count: int) -> list:
@@ -351,6 +360,20 @@ def main():
                     except Exception as e:
                         print(f"::warning::{entry['label']} ({entry['video_id']}) のカスタムサムネイル"
                               f"のアップロードに失敗しました: {e}")
+
+                # 運営者コメントの自動投稿(generate.pyのShortsと同じ文面)。
+                # 「実在の単語ではない/ジョークだ」という注記を説明欄だけで
+                # なくコメント欄にも出し、視聴者の誤解を減らす狙い。YouTube
+                # Data APIにはコメントの固定表示(ピン留め)専用エンドポイント
+                # が無いため、投稿するところまでが範囲(固定したい場合は
+                # YouTube Studioから手動で行う必要がある、post_comment()
+                # 参照)。失敗しても動画自体は既に公開済みなので警告に留める。
+                if config.COMMENT_ON_UPLOAD_ENABLED:
+                    try:
+                        youtube_upload.post_comment(repost_video_id, metadata["caption_text"])
+                    except Exception as e:
+                        print(f"::warning::{entry['label']} ({entry['video_id']}) の運営者コメント"
+                              f"投稿に失敗しました: {e}")
 
                 # 任意。設定されていれば、変換後の通常動画専用の再生リストに
                 # 追加する(失敗しても動画自体は既に公開済みなので、警告に
