@@ -2526,5 +2526,15 @@
     "uploaded_at": "2026-10-05T06:14:12.454374+00:00",
     "voice_label": "German (Female)",
     "lang_code": "de"
+  },
+  {
+    "word": ":OOOOOooooo֢֦֤֑֑֯) ◚ ✦",
+    "label": ":OOOOOooooo)...",
+    "video_id": "LKArXh21ebA",
+    "mode": "tts_extreme",
+    "run_id": "37288578222",
+    "uploaded_at": "2026-10-05T09:14:19.500762+00:00",
+    "voice_label": "Romanian (Female)",
+    "lang_code": "ro"
   }
 ]
