@@ -90,6 +90,9 @@ def test_build_repost_metadata_mirrors_short_title_without_shorts_tag():
     assert "#Shorts" not in metadata["title"]
     assert "#Shorts" not in metadata["description"]
     assert "https://youtu.be/xyz" in metadata["description"]
+    assert metadata["caption_text"] == (
+        'How to pronounce "abc123"? Not a real word — just a joke, give it a try! \U0001F604'
+    )
 
 
 def test_build_repost_metadata_adds_language_to_title_and_tags():
@@ -102,6 +105,7 @@ def test_build_repost_metadata_adds_language_to_title_and_tags():
     assert 'in French?' in metadata["title"]
     assert "french pronunciation" in metadata["tags"]
     assert "Voice: French (Male)" in metadata["description"]
+    assert 'in French? Not a real word' in metadata["caption_text"]
 
 
 def test_build_repost_metadata_skips_language_suffix_for_english():
