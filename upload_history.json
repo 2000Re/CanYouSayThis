@@ -2636,5 +2636,15 @@
     "uploaded_at": "2026-10-06T15:14:22.474738+00:00",
     "voice_label": null,
     "lang_code": null
+  },
+  {
+    "word": "يآآآةة",
+    "label": "يآآآةة",
+    "video_id": "omJJQSpTC4w",
+    "mode": "reverse",
+    "run_id": "37509593967",
+    "uploaded_at": "2026-10-06T18:14:21.255342+00:00",
+    "voice_label": "Arabic (Male)",
+    "lang_code": "ar"
   }
 ]
