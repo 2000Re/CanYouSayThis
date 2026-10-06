@@ -2616,5 +2616,15 @@
     "uploaded_at": "2026-10-06T09:14:34.707968+00:00",
     "voice_label": "Portuguese (Brazil) (Female)",
     "lang_code": "pt-br"
+  },
+  {
+    "word": ":E҈҉҄҈҆҉҇҈҆҇ooooo( ❊ ✫ ❀",
+    "label": ":E҈҉҈҉҈ooooo...",
+    "video_id": "Iojo9Cm3p_E",
+    "mode": "tts",
+    "run_id": "37461693086",
+    "uploaded_at": "2026-10-06T12:14:20.631900+00:00",
+    "voice_label": "Cantonese (Female)",
+    "lang_code": "yue"
   }
 ]
