@@ -60,6 +60,13 @@ concurrency:
 jobs:
   generate:
     runs-on: ubuntu-latest
+    # ランナー側の一時的な不調(aptミラーが応答を返さないまま固まる等)で
+    # ジョブがスタックすると、concurrency(cancel-in-progress: false)により
+    # 後続の定期実行が丸ごと詰まってしまう(実機で3時間以上スタックし、
+    # 次の実行がキューで待たされ続ける事故を確認)。通常は数分〜長くても
+    # 二十数分で完了する(Playwright Chromiumのダウンロードが遅い場合が
+    # 一番時間がかかる)ため、十分な余裕を見て30分で強制終了する。
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
