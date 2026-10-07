@@ -590,6 +590,13 @@ assets/
     `youtube_upload.upload_video()`内で該当ステータスの場合はセッションを
     作り直すように修正(`chunksize=-1`で全体を1チャンクで送る設定なので、
     作り直しても送信済みバイトの引き継ぎは不要)。
+34. **ランナーの不調で`generate.yml`が「Install system dependencies」で
+    3時間以上スタックし、後続の定期実行まで巻き添えで止まった**:
+    `concurrency`(`cancel-in-progress: false`)で同時実行を1本に制限して
+    いるため、1回がスタックすると後続の実行がキューで待たされ続ける。
+    `jobs.generate`に`timeout-minutes: 30`を追加し、スタックしたジョブを
+    自動的に強制終了してキューを解消するようにした(通常は数分、遅くても
+    二十数分で完了するため30分は十分な余裕)。
 
 ## プロジェクト構成
 
