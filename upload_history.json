@@ -2676,5 +2676,15 @@
     "uploaded_at": "2026-10-07T03:14:15.215436+00:00",
     "voice_label": null,
     "lang_code": null
+  },
+  {
+    "word": "nnnvvvo ◡",
+    "label": "nnnvvvo ◡",
+    "video_id": "Y3212bkb6gI",
+    "mode": "robot_voice",
+    "run_id": "37580314830",
+    "uploaded_at": "2026-10-07T06:14:12.746362+00:00",
+    "voice_label": "Vietnamese (Female)",
+    "lang_code": "vi"
   }
 ]
