@@ -432,6 +432,89 @@ def test_fetch_video_stats_queries_in_batches(monkeypatch):
     assert youtube_upload._api_call_counts["videos.list"] == 2
 
 
+def test_fetch_video_status_parses_status_and_processing_details(monkeypatch):
+    youtube = MagicMock()
+    youtube.videos.return_value.list.return_value.execute.return_value = {
+        "items": [
+            {
+                "id": "v1",
+                "status": {
+                    "uploadStatus": "processed", "privacyStatus": "public",
+                },
+                "processingDetails": {"processingStatus": "succeeded"},
+            },
+            {
+                "id": "v2",
+                "status": {
+                    "uploadStatus": "rejected", "rejectionReason": "duplicate",
+                    "privacyStatus": "private",
+                },
+                "processingDetails": {
+                    "processingStatus": "failed",
+                    "processingFailureReason": "transcodeError",
+                },
+            },
+        ]
+    }
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    result = youtube_upload.fetch_video_status(["v1", "v2"])
+
+    assert result == {
+        "v1": {
+            "uploadStatus": "processed", "failureReason": None,
+            "rejectionReason": None, "privacyStatus": "public",
+            "processingStatus": "succeeded", "processingFailureReason": None,
+        },
+        "v2": {
+            "uploadStatus": "rejected", "failureReason": None,
+            "rejectionReason": "duplicate", "privacyStatus": "private",
+            "processingStatus": "failed",
+            "processingFailureReason": "transcodeError",
+        },
+    }
+    _, kwargs = youtube.videos.return_value.list.call_args
+    assert kwargs["part"] == "status,processingDetails"
+    assert youtube_upload._api_call_counts["videos.list"] == 1
+
+
+def test_fetch_video_status_omits_videos_not_returned(monkeypatch):
+    # 削除済み・存在しないIDはvideos.listのレスポンスに含まれないため、
+    # 結果のdictにも含めない。
+    youtube = MagicMock()
+    youtube.videos.return_value.list.return_value.execute.return_value = {"items": []}
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    result = youtube_upload.fetch_video_status(["missing"])
+
+    assert result == {}
+
+
+def test_fetch_video_status_queries_in_batches(monkeypatch):
+    monkeypatch.setattr(youtube_upload.config, "ANALYTICS_VIDEO_BATCH_SIZE", 1)
+    youtube = MagicMock()
+    responses = iter([
+        {"items": [{"id": "v1", "status": {"uploadStatus": "processed"},
+                     "processingDetails": {"processingStatus": "succeeded"}}]},
+        {"items": [{"id": "v2", "status": {"uploadStatus": "processed"},
+                     "processingDetails": {"processingStatus": "succeeded"}}]},
+    ])
+    youtube.videos.return_value.list.return_value.execute.side_effect = lambda: next(responses)
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    result = youtube_upload.fetch_video_status(["v1", "v2"])
+
+    assert set(result) == {"v1", "v2"}
+    assert youtube.videos.return_value.list.call_count == 2
+    assert youtube_upload._api_call_counts["videos.list"] == 2
+
+
 def test_fetch_video_stats_omits_videos_with_no_data(monkeypatch):
     youtube = MagicMock()
     youtube.videos.return_value.list.return_value.execute.return_value = {"items": []}
