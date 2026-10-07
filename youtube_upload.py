@@ -79,6 +79,44 @@ _RETRIABLE_STATUS_CODES = (500, 502, 503, 504)
 _SESSION_EXPIRED_STATUS_CODES = (404, 410)
 _MAX_RETRIES = 8
 
+# thumbnails.set / commentThreads.insert で実機で確認した、一時的と見られる
+# エラーのステータスコード。
+# - thumbnails.set の403「forbidden」: 電話番号未確認の場合の恒久的な
+#   forbiddenとは別に、実行環境のネットワーク不調が疑われる回で一時的に
+#   発生するケースを確認(README「ハマった罠」参照)。
+# - commentThreads.insert の401/403: youtube.force-sslスコープがGoogle側で
+#   「制限付きスコープ」扱いのため、OAuth同意画面が未検証だと断続的に
+#   認証が拒否される(captions.insertの403と同根、README「ハマった罠」
+#   21番参照)。同じ認証情報のまま再試行しても成功することがある
+#   (3回中2回失敗した実績はあるが、1回は成功している=決定的な拒否では
+#   ない)、という経験則に基づく。
+_THUMBNAIL_RETRIABLE_STATUS_CODES = _RETRIABLE_STATUS_CODES + (403,)
+_COMMENT_RETRIABLE_STATUS_CODES = _RETRIABLE_STATUS_CODES + (401, 403)
+
+
+def _execute_with_retry(request, retriable_statuses, max_retries=None):
+    """googleapiclientのrequestオブジェクトの.execute()を、指定したHTTPステータス
+    コードについてのみ指数バックオフで再試行する共通ヘルパー。videos.insert()の
+    レジューム可能アップロード(next_chunk()を使うため別扱い、upload_video()
+    参照)以外の、1回のexecute()呼び出しで完結するAPIリクエスト向け。
+
+    max_retriesは呼び出し時点の_MAX_RETRIESを参照する(デフォルト引数の値を
+    関数定義時に固定してしまうと、テストでmonkeypatchしても反映されない
+    ため、Noneをデフォルトにして関数内で参照する)。"""
+    if max_retries is None:
+        max_retries = _MAX_RETRIES
+    retries = 0
+    while True:
+        try:
+            return request.execute()
+        except HttpError as e:
+            if e.resp.status in retriable_statuses and retries < max_retries:
+                retries += 1
+                time.sleep(min(2 ** retries + random.random(), 60))
+                continue
+            raise
+
+
 # YouTube Data API v3の公式ドキュメントに基づく、1回あたりのクォータ消費コスト
 # (日次クォータの目安に対する概算を実行ログに表示するために使う)
 QUOTA_COST_PER_CALL = {
@@ -413,11 +451,18 @@ def upload_thumbnail(video_id, thumbnail_path):
     完結し、captions.insert/commentThreads.insertのようなyoutube.force-ssl
     スコープは不要。動画本体のアップロードとは別のAPI呼び出しなので、
     呼び出し側はこの関数の例外を警告に留め、処理全体は止めない想定
-    (add_to_playlist()と同じ方針、generate.py参照)。"""
+    (add_to_playlist()と同じ方針、generate.py参照)。
+
+    一時的なエラー(500系、および実機で確認した一時的な403)は
+    _execute_with_retry()で指数バックオフ再試行する
+    (_THUMBNAIL_RETRIABLE_STATUS_CODES参照)。"""
     youtube = get_youtube_client()
     media = MediaFileUpload(thumbnail_path)
     _api_call_counts["thumbnails.set"] += 1
-    youtube.thumbnails().set(videoId=video_id, media_body=media).execute()
+    _execute_with_retry(
+        youtube.thumbnails().set(videoId=video_id, media_body=media),
+        _THUMBNAIL_RETRIABLE_STATUS_CODES,
+    )
 
 
 def _srt_timestamp(seconds):
@@ -484,11 +529,14 @@ def post_comment(video_id, text):
 
     commentThreads.insertはyoutube.force-ssl スコープが必要。upload_caption()
     と同じくget_youtube_client(scopes=None)を使う(UPLOAD_SCOPESの罠コメント
-    参照)。captions.insertと同じスコープを使うため、同様に断続的な403
-    forbiddenが起きる可能性がある(「ハマった罠」21番参照)。動画本体の
-    アップロードとは別のAPI呼び出しなので、呼び出し側はこの関数の例外を
-    警告に留め、処理全体は止めない想定(upload_caption()と同じ方針、
-    generate.py参照)。"""
+    参照)。captions.insertと同じスコープを使うため、同様に断続的な401/403が
+    起きる可能性がある(「ハマった罠」21番参照)。動画本体のアップロードとは
+    別のAPI呼び出しなので、呼び出し側はこの関数の例外を警告に留め、処理全体は
+    止めない想定(upload_caption()と同じ方針、generate.py参照)。
+
+    上記の断続的な401/403(および一時的なサーバーエラー)は
+    _execute_with_retry()で指数バックオフ再試行する
+    (_COMMENT_RETRIABLE_STATUS_CODES参照)。"""
     youtube = get_youtube_client(scopes=None)
     body = {
         "snippet": {
@@ -499,7 +547,10 @@ def post_comment(video_id, text):
         }
     }
     _api_call_counts["commentThreads.insert"] += 1
-    youtube.commentThreads().insert(part="snippet", body=body).execute()
+    _execute_with_retry(
+        youtube.commentThreads().insert(part="snippet", body=body),
+        _COMMENT_RETRIABLE_STATUS_CODES,
+    )
 
 
 def fetch_video_stats(video_ids):
