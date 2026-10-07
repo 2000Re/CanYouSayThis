@@ -583,3 +583,39 @@ def fetch_video_stats(video_ids):
                 "comments": int(stats.get("commentCount", 0)),
             }
     return stats_by_id
+
+
+def fetch_video_status(video_ids):
+    """video_ids(リスト)のアップロード・処理状況を
+    video_id -> {"uploadStatus", "failureReason", "rejectionReason",
+    "privacyStatus", "processingStatus", "processingFailureReason"} の
+    dictで返す(値が無いキーはNone)。
+
+    [背景] 「保留中」のまま長時間変わらない動画など、YouTube側の処理が
+    止まっている疑いがある動画を診断するための軽量ツール
+    (youtube_video_status.py参照)。processingDetailsパートは動画の
+    所有者(自チャンネル)のみ取得できる。videos.listが返さなかったID
+    (動画が削除済み・存在しない等)は結果のdictに含めない。
+
+    fetch_video_stats()と同じくvideos.listは1回のリクエストにつき1 unit
+    (IDを何件まとめて渡しても同じ)なので、同じバッチサイズで分割する。"""
+    youtube = get_youtube_client()
+    status_by_id = {}
+    for i in range(0, len(video_ids), config.ANALYTICS_VIDEO_BATCH_SIZE):
+        batch = video_ids[i:i + config.ANALYTICS_VIDEO_BATCH_SIZE]
+        _api_call_counts["videos.list"] += 1
+        response = youtube.videos().list(
+            part="status,processingDetails", id=",".join(batch)
+        ).execute()
+        for item in response.get("items", []):
+            status = item.get("status", {})
+            processing = item.get("processingDetails", {})
+            status_by_id[item["id"]] = {
+                "uploadStatus": status.get("uploadStatus"),
+                "failureReason": status.get("failureReason"),
+                "rejectionReason": status.get("rejectionReason"),
+                "privacyStatus": status.get("privacyStatus"),
+                "processingStatus": processing.get("processingStatus"),
+                "processingFailureReason": processing.get("processingFailureReason"),
+            }
+    return status_by_id

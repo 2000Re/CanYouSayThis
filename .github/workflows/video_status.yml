@@ -1,0 +1,42 @@
+name: video-status
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_ids:
+        description: "確認する動画ID(カンマ区切りで複数指定可)"
+        required: true
+
+jobs:
+  video-status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Fetch video upload/processing status
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: |
+          # 動画IDは "-" で始まることがあり(traffic_source.ymlと同じ理由、
+          # READMEハマった罠参照)、"--video-id VALUE"(空白区切り)だと
+          # argparseがVALUEを新しいオプションだと誤認して
+          # "expected one argument" エラーになる。"--video-id=VALUE" の形に
+          # することで、先頭が "-" の値でも確実にこのオプションの値として渡せる。
+          IFS=',' read -ra IDS <<< "${{ inputs.video_ids }}"
+          args=()
+          for id in "${IDS[@]}"; do
+            args+=(--video-id="$id")
+          done
+          python3 youtube_video_status.py "${args[@]}"

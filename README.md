@@ -416,6 +416,32 @@ python3 youtube_traffic_source.py --video-id mFGTwTBPy7Q --days 7
 `traffic_source.yml`。なお実際の検索クエリ自体はAPIで取得できません
 (`insightTrafficSourceDetail`は`YT_SEARCH`非対応、「ハマった罠」25番)。
 
+## 動画の処理状況の確認(`youtube_video_status.py`)
+
+YouTube Studioで「保留中」のまま長時間変わらない動画など、処理が
+止まっている・拒否されている疑いがある動画を`videos.list`
+(`part=status,processingDetails`)で診断します。
+
+```bash
+python3 youtube_video_status.py --video-id Y3212bkb6gI --video-id rvpCgStB8wA
+```
+
+```
+=== Y3212bkb6gI ===
+  uploadStatus: processed
+  failureReason: None
+  rejectionReason: None
+  privacyStatus: public
+  processingStatus: succeeded
+  processingFailureReason: None
+```
+
+GitHub Actionsは`video_status.yml`(`video_ids`入力はカンマ区切りで複数指定可)。
+`uploadStatus`が`processed`以外(`failed`/`rejected`/`deleted`等)や
+`processingStatus`が`failed`の場合、YouTube側で処理が止まっている・拒否
+されていることが分かります。videos.listと同じ即時反映の値なので
+Analytics APIのようなラグはありません。
+
 ## 日本語ローカライズが崩れて表示された動画の手動修正(`youtube_fix_localization.py`)
 
 「ハマった罠」24番のbidi修正は新規アップロード分にしか効かないため、
@@ -626,6 +652,7 @@ repost_state.py                Shorts→通常動画変換の状態(repost_state
 repost_shorts.py               Shortsを1本ずつ横型の通常動画に変換してアップロード
 youtube_analytics.py          YouTube Analytics APIでモード別の再生数・視聴維持率を集計
 youtube_quick_stats.py         videos.listで直近投稿の即時再生数・高評価数・コメント数を取得
+youtube_video_status.py        videos.listで動画のアップロード・処理状況(status/processingDetails)を確認
 get_youtube_refresh_token.py  YouTubeアップロード用リフレッシュトークンの取得(ローカルで一度だけ実行)
 generate.py                   CLIエントリポイント
 generate_channel_art.py       YouTubeチャンネル用アイコン・バナーの生成
