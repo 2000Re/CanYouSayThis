@@ -2696,5 +2696,15 @@
     "uploaded_at": "2026-10-07T09:14:18.162380+00:00",
     "voice_label": "Arabic (Female)",
     "lang_code": "ar"
+  },
+  {
+    "word": "ققققشاآآآآ",
+    "label": "ققققشاآآآآ",
+    "video_id": "5SLnmxhQRhw",
+    "mode": "reverse",
+    "run_id": "37620549322",
+    "uploaded_at": "2026-10-07T12:24:21.527266+00:00",
+    "voice_label": "Arabic (Female)",
+    "lang_code": "ar"
   }
 ]
