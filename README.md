@@ -579,6 +579,17 @@ assets/
     逆転が確認できた。`reverse`/`glitch`/`chorus`の重みを2に引き上げる一方、
     `tts_extreme`は明示的には下げていない(`reverse`/`chorus`はまだ各8本と
     サンプルが少なく、強く振り切るにはデータ不足と判断したため)。
+33. **`videos.insert`のレジューム可能アップロードが410 Goneで失敗した**:
+    実機で`HttpError 410 ... "Gone"`を確認(本番の`generate.yml`実行が
+    1本丸ごと失敗)。これは一時的なサーバーエラー(500系、既に
+    `_RETRIABLE_STATUS_CODES`でリトライ対応済み)とは別物で、アップロード
+    セッション自体が失効した状態。同じ`request`オブジェクトで`next_chunk()`
+    を再試行してもセッションが無効なままなので無意味で、新しい
+    `MediaFileUpload`/`insert()`(新しいセッション)を作り直して再試行する
+    必要がある。`_SESSION_EXPIRED_STATUS_CODES = (404, 410)`を追加し、
+    `youtube_upload.upload_video()`内で該当ステータスの場合はセッションを
+    作り直すように修正(`chunksize=-1`で全体を1チャンクで送る設定なので、
+    作り直しても送信済みバイトの引き継ぎは不要)。
 
 ## プロジェクト構成
 

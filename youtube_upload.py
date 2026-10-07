@@ -70,6 +70,13 @@ TOKEN_URI = "https://oauth2.googleapis.com/token"
 # アップロード中に一時的なサーバーエラーが起きても、無条件に諦めず
 # 指数バックオフで再試行する(公式サンプルに倣った値)
 _RETRIABLE_STATUS_CODES = (500, 502, 503, 504)
+# 404/410はレジューム可能アップロードのセッション自体が失効した場合に返る
+# (実機で410 Goneを確認。README「ハマった罠」参照)。同じrequestオブジェクトで
+# next_chunk()を再試行しても同じセッションを指したままなので無意味で、
+# 新しいアップロードセッション(新しいMediaFileUpload/insert())を作り直す
+# 必要がある。chunksize=-1(1チャンクで全体を送る設定)なので、作り直しても
+# 送信済みバイトの引き継ぎは不要(やり直しで問題ない)。
+_SESSION_EXPIRED_STATUS_CODES = (404, 410)
 _MAX_RETRIES = 8
 
 # YouTube Data API v3の公式ドキュメントに基づく、1回あたりのクォータ消費コスト
@@ -321,8 +328,11 @@ def upload_video(video_path, title, description, tags=None, category_id=config.Y
         body["localizations"] = localizations
         part += ",localizations"
 
-    media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
-    request = youtube.videos().insert(part=part, body=body, media_body=media)
+    def _new_request():
+        media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
+        return youtube.videos().insert(part=part, body=body, media_body=media)
+
+    request = _new_request()
 
     # 一時的なサーバーエラーでリトライが発生しても、実際に消費されるクォータは
     # 動画1本ぶんだけなので、リトライのたびに加算せずここで1回だけ数える。
@@ -336,6 +346,11 @@ def upload_video(video_path, title, description, tags=None, category_id=config.Y
             if e.resp.status in _RETRIABLE_STATUS_CODES and retries < _MAX_RETRIES:
                 retries += 1
                 time.sleep(min(2 ** retries + random.random(), 60))
+                continue
+            if e.resp.status in _SESSION_EXPIRED_STATUS_CODES and retries < _MAX_RETRIES:
+                retries += 1
+                time.sleep(min(2 ** retries + random.random(), 60))
+                request = _new_request()
                 continue
             raise
 

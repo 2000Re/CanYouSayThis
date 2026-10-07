@@ -448,4 +448,78 @@ def test_upload_video_omits_localizations_when_not_given(monkeypatch, tmp_path):
 
     _, kwargs = youtube.videos.return_value.insert.call_args
     assert "localizations" not in kwargs["body"]
-    assert "localizations" not in kwargs["part"]
+    assert kwargs["part"] == "snippet,status"
+
+
+def _http_error(status):
+    from googleapiclient.errors import HttpError
+    resp = MagicMock(status=status)
+    return HttpError(resp, b'{"error": {"message": "boom"}}')
+
+
+def test_upload_video_retries_with_fresh_session_on_410_gone(monkeypatch, tmp_path):
+    # 実機で確認した挙動の回帰テスト: レジューム可能アップロードが410 Gone
+    # (セッション失効)を返した場合、同じrequestでnext_chunk()を再試行しても
+    # 無意味なので、新しいアップロードセッション(新しいinsert()呼び出し)を
+    # 作り直して再試行する。
+    video_path = tmp_path / "video.mp4"
+    video_path.write_bytes(b"fake video bytes")
+
+    expired_request = MagicMock()
+    expired_request.next_chunk.side_effect = _http_error(410)
+    fresh_request = MagicMock()
+    fresh_request.next_chunk.return_value = (None, {"id": "abc123"})
+
+    youtube = MagicMock()
+    youtube.videos.return_value.insert.side_effect = [expired_request, fresh_request]
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+    monkeypatch.setattr(youtube_upload.time, "sleep", lambda _seconds: None)
+
+    url = youtube_upload.upload_video(str(video_path), title="t", description="d")
+
+    assert url == "https://youtu.be/abc123"
+    assert youtube.videos.return_value.insert.call_count == 2
+
+
+def test_upload_video_raises_after_exhausting_retries_on_persistent_410(monkeypatch, tmp_path):
+    video_path = tmp_path / "video.mp4"
+    video_path.write_bytes(b"fake video bytes")
+
+    always_expired = MagicMock()
+    always_expired.next_chunk.side_effect = _http_error(410)
+
+    youtube = MagicMock()
+    youtube.videos.return_value.insert.return_value = always_expired
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+    monkeypatch.setattr(youtube_upload.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(youtube_upload, "_MAX_RETRIES", 2)
+
+    from googleapiclient.errors import HttpError
+    with pytest.raises(HttpError):
+        youtube_upload.upload_video(str(video_path), title="t", description="d")
+
+    assert youtube.videos.return_value.insert.call_count == 3
+
+
+def test_upload_video_still_raises_immediately_on_non_retriable_error(monkeypatch, tmp_path):
+    video_path = tmp_path / "video.mp4"
+    video_path.write_bytes(b"fake video bytes")
+
+    request = MagicMock()
+    request.next_chunk.side_effect = _http_error(403)
+
+    youtube = MagicMock()
+    youtube.videos.return_value.insert.return_value = request
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    from googleapiclient.errors import HttpError
+    with pytest.raises(HttpError):
+        youtube_upload.upload_video(str(video_path), title="t", description="d")
+
+    assert youtube.videos.return_value.insert.call_count == 1
