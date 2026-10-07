@@ -597,6 +597,16 @@ assets/
     `jobs.generate`に`timeout-minutes: 30`を追加し、スタックしたジョブを
     自動的に強制終了してキューを解消するようにした(通常は数分、遅くても
     二十数分で完了するため30分は十分な余裕)。
+35. **`thumbnails.set`/`commentThreads.insert`が断続的な401/403で失敗した**:
+    実機でネットワーク不調が疑われる回に`thumbnails.set`が一時的な403
+    forbiddenで、`commentThreads.insert`が401 Invalid Credentials
+    (`youtube.force-ssl`が制限付きスコープのため、「ハマった罠」21番と
+    同根)でそれぞれ失敗するのを確認。どちらも動画本体のアップロードとは
+    別のAPI呼び出しで、失敗しても処理全体は止めない設計だったため実害は
+    無かったが、`_execute_with_retry()`という共通ヘルパーを追加し、該当
+    ステータスコードを指数バックオフで再試行するようにした
+    (`videos.insert`のレジューム可能アップロードはセッションの作り直しが
+    必要なため、こちらとは別扱いのまま)。
 
 ## プロジェクト構成
 

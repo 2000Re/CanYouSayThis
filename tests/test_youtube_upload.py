@@ -304,6 +304,93 @@ def test_upload_thumbnail_uses_default_upload_scopes(monkeypatch, tmp_path):
     assert get_client_calls == [{}]
 
 
+def test_upload_thumbnail_retries_on_transient_403(monkeypatch, tmp_path):
+    # 実機で確認した一時的な403 forbiddenの回帰テスト: 電話番号未確認時の
+    # 恒久的なforbiddenとは別に、一時的なものは再試行で成功しうる。
+    youtube = MagicMock()
+    youtube.thumbnails.return_value.set.return_value.execute.side_effect = [
+        _http_error(403), {},
+    ]
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+    monkeypatch.setattr(youtube_upload.time, "sleep", lambda _seconds: None)
+    thumbnail_path = tmp_path / "thumb.png"
+    thumbnail_path.write_bytes(b"fake-png-bytes")
+
+    youtube_upload.upload_thumbnail("abc123", str(thumbnail_path))
+
+    assert youtube.thumbnails.return_value.set.return_value.execute.call_count == 2
+
+
+def test_upload_thumbnail_raises_after_exhausting_retries_on_persistent_403(monkeypatch, tmp_path):
+    youtube = MagicMock()
+    youtube.thumbnails.return_value.set.return_value.execute.side_effect = _http_error(403)
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+    monkeypatch.setattr(youtube_upload.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(youtube_upload, "_MAX_RETRIES", 2)
+    thumbnail_path = tmp_path / "thumb.png"
+    thumbnail_path.write_bytes(b"fake-png-bytes")
+
+    from googleapiclient.errors import HttpError
+    with pytest.raises(HttpError):
+        youtube_upload.upload_thumbnail("abc123", str(thumbnail_path))
+
+    assert youtube.thumbnails.return_value.set.return_value.execute.call_count == 3
+
+
+def test_upload_thumbnail_raises_immediately_on_non_retriable_error(monkeypatch, tmp_path):
+    youtube = MagicMock()
+    youtube.thumbnails.return_value.set.return_value.execute.side_effect = _http_error(400)
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+    thumbnail_path = tmp_path / "thumb.png"
+    thumbnail_path.write_bytes(b"fake-png-bytes")
+
+    from googleapiclient.errors import HttpError
+    with pytest.raises(HttpError):
+        youtube_upload.upload_thumbnail("abc123", str(thumbnail_path))
+
+    assert youtube.thumbnails.return_value.set.return_value.execute.call_count == 1
+
+
+def test_post_comment_retries_on_transient_401(monkeypatch):
+    # 実機で確認した断続的な401 Invalid Credentials(youtube.force-sslが
+    # 制限付きスコープのため起きる、README「ハマった罠」21番と同根)の
+    # 回帰テスト。
+    youtube = MagicMock()
+    youtube.commentThreads.return_value.insert.return_value.execute.side_effect = [
+        _http_error(401), {},
+    ]
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+    monkeypatch.setattr(youtube_upload.time, "sleep", lambda _seconds: None)
+
+    youtube_upload.post_comment("abc123", "How to pronounce this?")
+
+    assert youtube.commentThreads.return_value.insert.return_value.execute.call_count == 2
+
+
+def test_post_comment_raises_after_exhausting_retries_on_persistent_401(monkeypatch):
+    youtube = MagicMock()
+    youtube.commentThreads.return_value.insert.return_value.execute.side_effect = _http_error(401)
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+    monkeypatch.setattr(youtube_upload.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(youtube_upload, "_MAX_RETRIES", 2)
+
+    from googleapiclient.errors import HttpError
+    with pytest.raises(HttpError):
+        youtube_upload.post_comment("abc123", "How to pronounce this?")
+
+    assert youtube.commentThreads.return_value.insert.return_value.execute.call_count == 3
+
+
 def test_fetch_video_stats_parses_statistics(monkeypatch):
     youtube = MagicMock()
     youtube.videos.return_value.list.return_value.execute.return_value = {
