@@ -71,12 +71,15 @@ TOKEN_URI = "https://oauth2.googleapis.com/token"
 # 指数バックオフで再試行する(公式サンプルに倣った値)
 _RETRIABLE_STATUS_CODES = (500, 502, 503, 504)
 # 404/410はレジューム可能アップロードのセッション自体が失効した場合に返る
-# (実機で410 Goneを確認。README「ハマった罠」参照)。同じrequestオブジェクトで
-# next_chunk()を再試行しても同じセッションを指したままなので無意味で、
-# 新しいアップロードセッション(新しいMediaFileUpload/insert())を作り直す
+# (実機で410 Goneを確認。README「ハマった罠」参照)。401は実機でvideos.insert
+# の初回next_chunk()自体が「Invalid Credentials」で失敗するケースを確認した
+# もので、セッション失効とは原因が異なる(認証情報側の一時的な問題と見られる)
+# が、対処は同じ: 同じrequestオブジェクトでnext_chunk()を再試行しても
+# 同じセッション・同じ認証情報を指したままなので無意味で、新しいアップロード
+# セッション(新しいget_youtube_client()/MediaFileUpload/insert())を作り直す
 # 必要がある。chunksize=-1(1チャンクで全体を送る設定)なので、作り直しても
 # 送信済みバイトの引き継ぎは不要(やり直しで問題ない)。
-_SESSION_EXPIRED_STATUS_CODES = (404, 410)
+_NEW_SESSION_RETRIABLE_STATUS_CODES = (401, 404, 410)
 _MAX_RETRIES = 8
 
 # thumbnails.set / commentThreads.insert で実機で確認した、一時的と見られる
@@ -366,11 +369,19 @@ def upload_video(video_path, title, description, tags=None, category_id=config.Y
         body["localizations"] = localizations
         part += ",localizations"
 
-    def _new_request():
+    def _build_request():
         media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
         return youtube.videos().insert(part=part, body=body, media_body=media)
 
-    request = _new_request()
+    def _new_request_with_fresh_credentials():
+        # 401(認証情報の一時的な問題)の場合はセッションだけでなく認証情報
+        # 自体も作り直したいので、youtubeクライアントもここで取り直す
+        # (_NEW_SESSION_RETRIABLE_STATUS_CODES参照)。
+        nonlocal youtube
+        youtube = get_youtube_client()
+        return _build_request()
+
+    request = _build_request()
 
     # 一時的なサーバーエラーでリトライが発生しても、実際に消費されるクォータは
     # 動画1本ぶんだけなので、リトライのたびに加算せずここで1回だけ数える。
@@ -385,10 +396,10 @@ def upload_video(video_path, title, description, tags=None, category_id=config.Y
                 retries += 1
                 time.sleep(min(2 ** retries + random.random(), 60))
                 continue
-            if e.resp.status in _SESSION_EXPIRED_STATUS_CODES and retries < _MAX_RETRIES:
+            if e.resp.status in _NEW_SESSION_RETRIABLE_STATUS_CODES and retries < _MAX_RETRIES:
                 retries += 1
                 time.sleep(min(2 ** retries + random.random(), 60))
-                request = _new_request()
+                request = _new_request_with_fresh_credentials()
                 continue
             raise
 

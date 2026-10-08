@@ -653,6 +653,42 @@ def test_upload_video_retries_with_fresh_session_on_410_gone(monkeypatch, tmp_pa
     assert youtube.videos.return_value.insert.call_count == 2
 
 
+def test_upload_video_retries_with_fresh_credentials_on_401_invalid_credentials(monkeypatch, tmp_path):
+    # 実機で確認した挙動の回帰テスト: videos.insertの初回next_chunk()自体が
+    # 401 Invalid Credentialsで失敗するケースがあった。410と同じくセッション
+    # を作り直すだけでなく、get_youtube_client()も呼び直して認証情報自体を
+    # 更新していることを確認する。
+    video_path = tmp_path / "video.mp4"
+    video_path.write_bytes(b"fake video bytes")
+
+    expired_request = MagicMock()
+    expired_request.next_chunk.side_effect = _http_error(401)
+    fresh_request = MagicMock()
+    fresh_request.next_chunk.return_value = (None, {"id": "abc123"})
+
+    stale_youtube = MagicMock()
+    stale_youtube.videos.return_value.insert.return_value = expired_request
+    fresh_youtube = MagicMock()
+    fresh_youtube.videos.return_value.insert.return_value = fresh_request
+
+    get_client_calls = []
+    clients = iter([stale_youtube, fresh_youtube])
+
+    def fake_get_youtube_client():
+        get_client_calls.append(1)
+        return next(clients)
+
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", fake_get_youtube_client)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+    monkeypatch.setattr(youtube_upload.time, "sleep", lambda _seconds: None)
+
+    url = youtube_upload.upload_video(str(video_path), title="t", description="d")
+
+    assert url == "https://youtu.be/abc123"
+    assert len(get_client_calls) == 2
+
+
 def test_upload_video_raises_after_exhausting_retries_on_persistent_410(monkeypatch, tmp_path):
     video_path = tmp_path / "video.mp4"
     video_path.write_bytes(b"fake video bytes")
