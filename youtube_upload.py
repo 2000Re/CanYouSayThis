@@ -71,15 +71,24 @@ TOKEN_URI = "https://oauth2.googleapis.com/token"
 # 指数バックオフで再試行する(公式サンプルに倣った値)
 _RETRIABLE_STATUS_CODES = (500, 502, 503, 504)
 # 404/410はレジューム可能アップロードのセッション自体が失効した場合に返る
-# (実機で410 Goneを確認。README「ハマった罠」参照)。401は実機でvideos.insert
-# の初回next_chunk()自体が「Invalid Credentials」で失敗するケースを確認した
-# もので、セッション失効とは原因が異なる(認証情報側の一時的な問題と見られる)
-# が、対処は同じ: 同じrequestオブジェクトでnext_chunk()を再試行しても
-# 同じセッション・同じ認証情報を指したままなので無意味で、新しいアップロード
-# セッション(新しいget_youtube_client()/MediaFileUpload/insert())を作り直す
-# 必要がある。chunksize=-1(1チャンクで全体を送る設定)なので、作り直しても
-# 送信済みバイトの引き継ぎは不要(やり直しで問題ない)。
-_NEW_SESSION_RETRIABLE_STATUS_CODES = (401, 404, 410)
+# (実機で410 Goneを確認。README「ハマった罠」参照)。このセッションURIは
+# サーバー側でも無効になっているため、新しいアップロードセッション(新しい
+# MediaFileUpload/insert())を作り直すしかない。
+_SESSION_EXPIRED_STATUS_CODES = (404, 410)
+# 401は実機でvideos.insertのnext_chunk()が「Invalid Credentials」で失敗する
+# ケースを確認したもの。重要なのは、401はこのリクエスト固有の認証情報が
+# 拒否されただけで、レジューム可能アップロードのセッション自体はサーバー側で
+# 生きている(=アップロード自体は既に完了している)ことがある点(README
+# 「ハマった罠」39番参照)。そのため401で新しいセッション(新しいinsert())を
+# 作り直すと、サーバー側で実は成功していた場合に本当の重複動画を作って
+# しまう(実機で複数件確認済み)。401では認証情報だけ取り直し、同じrequest
+# オブジェクトのhttpだけ差し替えて再試行する(_reauthorize_retriable_request()
+# 参照)。googleapiclient.http.HttpRequest.next_chunk()は、直前の呼び出しで
+# エラーが起きるとself._in_error_stateをTrueにする実装になっており、次回
+# 呼び出し時にまず"Content-Range: bytes */{size}"のステータス確認PUTを
+# 送ってから本体データを送る。既にアップロード済みならそのレスポンスが
+# そのまま返るため、同じrequestを使い回す限り重複が防げる。
+_AUTH_RETRIABLE_STATUS_CODES = (401,)
 _MAX_RETRIES = 8
 
 # thumbnails.set / commentThreads.insert で実機で確認した、一時的と見られる
@@ -373,13 +382,16 @@ def upload_video(video_path, title, description, tags=None, category_id=config.Y
         media = MediaFileUpload(video_path, chunksize=-1, resumable=True, mimetype="video/mp4")
         return youtube.videos().insert(part=part, body=body, media_body=media)
 
-    def _new_request_with_fresh_credentials():
-        # 401(認証情報の一時的な問題)の場合はセッションだけでなく認証情報
-        # 自体も作り直したいので、youtubeクライアントもここで取り直す
-        # (_NEW_SESSION_RETRIABLE_STATUS_CODES参照)。
+    def _reauthorize_request():
+        # 401対策。新しいinsert()を作る(=新しいレジューム可能アップロード
+        # セッション)のではなく、同じrequestのhttpだけ新しい認証情報のものに
+        # 差し替える。セッション自体(request.resumable_uri)は維持したまま
+        # 次のnext_chunk()を呼べば、_AUTH_RETRIABLE_STATUS_CODESのコメントで
+        # 説明した通りサーバー側のステータス確認が先に行われるため、既に
+        # アップロード済みの場合の重複作成を避けられる。
         nonlocal youtube
         youtube = get_youtube_client()
-        return _build_request()
+        request.http = youtube._http
 
     request = _build_request()
 
@@ -396,10 +408,15 @@ def upload_video(video_path, title, description, tags=None, category_id=config.Y
                 retries += 1
                 time.sleep(min(2 ** retries + random.random(), 60))
                 continue
-            if e.resp.status in _NEW_SESSION_RETRIABLE_STATUS_CODES and retries < _MAX_RETRIES:
+            if e.resp.status in _AUTH_RETRIABLE_STATUS_CODES and retries < _MAX_RETRIES:
                 retries += 1
                 time.sleep(min(2 ** retries + random.random(), 60))
-                request = _new_request_with_fresh_credentials()
+                _reauthorize_request()
+                continue
+            if e.resp.status in _SESSION_EXPIRED_STATUS_CODES and retries < _MAX_RETRIES:
+                retries += 1
+                time.sleep(min(2 ** retries + random.random(), 60))
+                request = _build_request()
                 continue
             raise
 
@@ -599,14 +616,19 @@ def fetch_video_stats(video_ids):
 def fetch_video_status(video_ids):
     """video_ids(リスト)のアップロード・処理状況を
     video_id -> {"uploadStatus", "failureReason", "rejectionReason",
-    "privacyStatus", "processingStatus", "processingFailureReason"} の
-    dictで返す(値が無いキーはNone)。
+    "privacyStatus", "processingStatus", "processingFailureReason",
+    "title", "publishedAt"} の dictで返す(値が無いキーはNone)。
 
     [背景] 「保留中」のまま長時間変わらない動画など、YouTube側の処理が
     止まっている疑いがある動画を診断するための軽量ツール
     (youtube_video_status.py参照)。processingDetailsパートは動画の
     所有者(自チャンネル)のみ取得できる。videos.listが返さなかったID
     (動画が削除済み・存在しない等)は結果のdictに含めない。
+
+    title/publishedAt(snippetパート)は、upload_history.json/
+    repost_state.jsonのどちらにも記録が無いvideo_id(URLだけ分かっている
+    「出所不明」な動画)の正体を特定するために追加した。タイトルが
+    "How to Pronounce ..."形式ならこのチャンネルの生成物と判断できる。
 
     fetch_video_stats()と同じくvideos.listは1回のリクエストにつき1 unit
     (IDを何件まとめて渡しても同じ)なので、同じバッチサイズで分割する。"""
@@ -616,11 +638,12 @@ def fetch_video_status(video_ids):
         batch = video_ids[i:i + config.ANALYTICS_VIDEO_BATCH_SIZE]
         _api_call_counts["videos.list"] += 1
         response = youtube.videos().list(
-            part="status,processingDetails", id=",".join(batch)
+            part="status,processingDetails,snippet", id=",".join(batch)
         ).execute()
         for item in response.get("items", []):
             status = item.get("status", {})
             processing = item.get("processingDetails", {})
+            snippet = item.get("snippet", {})
             status_by_id[item["id"]] = {
                 "uploadStatus": status.get("uploadStatus"),
                 "failureReason": status.get("failureReason"),
@@ -628,5 +651,7 @@ def fetch_video_status(video_ids):
                 "privacyStatus": status.get("privacyStatus"),
                 "processingStatus": processing.get("processingStatus"),
                 "processingFailureReason": processing.get("processingFailureReason"),
+                "title": snippet.get("title"),
+                "publishedAt": snippet.get("publishedAt"),
             }
     return status_by_id
