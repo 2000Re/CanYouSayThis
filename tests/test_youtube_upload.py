@@ -656,23 +656,23 @@ def test_upload_video_retries_with_fresh_session_on_410_gone(monkeypatch, tmp_pa
     assert youtube.videos.return_value.insert.call_count == 2
 
 
-def test_upload_video_retries_with_fresh_credentials_on_401_invalid_credentials(monkeypatch, tmp_path):
-    # 実機で確認した挙動の回帰テスト: videos.insertの初回next_chunk()自体が
-    # 401 Invalid Credentialsで失敗するケースがあった。410と同じくセッション
-    # を作り直すだけでなく、get_youtube_client()も呼び直して認証情報自体を
-    # 更新していることを確認する。
+def test_upload_video_reauthorizes_same_request_on_401_invalid_credentials(monkeypatch, tmp_path):
+    # 実機で確認した挙動の回帰テスト: videos.insertのnext_chunk()が401 Invalid
+    # Credentialsで失敗しても、新しいinsert()(=新しいレジューム可能アップロード
+    # セッション)は作らない。新しいセッションを作ってしまうと、サーバー側では
+    # 実はアップロードが既に完了していた場合に本当の重複動画を作ってしまう
+    # ため(README「ハマった罠」39番、実機で複数件確認)。同じrequestの
+    # httpだけ新しい認証情報のものに差し替えて再試行することを確認する。
     video_path = tmp_path / "video.mp4"
     video_path.write_bytes(b"fake video bytes")
 
-    expired_request = MagicMock()
-    expired_request.next_chunk.side_effect = _http_error(401)
-    fresh_request = MagicMock()
-    fresh_request.next_chunk.return_value = (None, {"id": "abc123"})
+    request = MagicMock()
+    request.next_chunk.side_effect = [_http_error(401), (None, {"id": "abc123"})]
 
     stale_youtube = MagicMock()
-    stale_youtube.videos.return_value.insert.return_value = expired_request
+    stale_youtube.videos.return_value.insert.return_value = request
     fresh_youtube = MagicMock()
-    fresh_youtube.videos.return_value.insert.return_value = fresh_request
+    fresh_youtube._http = "fresh-http-object"
 
     get_client_calls = []
     clients = iter([stale_youtube, fresh_youtube])
@@ -689,7 +689,38 @@ def test_upload_video_retries_with_fresh_credentials_on_401_invalid_credentials(
     url = youtube_upload.upload_video(str(video_path), title="t", description="d")
 
     assert url == "https://youtu.be/abc123"
+    # insert()(=新しいアップロードセッション)は1回しか呼ばれていないこと
+    # (同じrequestを使い回したこと)の確認
+    assert stale_youtube.videos.return_value.insert.call_count == 1
+    assert fresh_youtube.videos.return_value.insert.call_count == 0
     assert len(get_client_calls) == 2
+    assert request.http == "fresh-http-object"
+    assert request.next_chunk.call_count == 2
+
+
+def test_upload_video_raises_after_exhausting_retries_on_persistent_401(monkeypatch, tmp_path):
+    video_path = tmp_path / "video.mp4"
+    video_path.write_bytes(b"fake video bytes")
+
+    request = MagicMock()
+    request.next_chunk.side_effect = _http_error(401)
+
+    youtube = MagicMock()
+    youtube.videos.return_value.insert.return_value = request
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+    monkeypatch.setattr(youtube_upload.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(youtube_upload, "_MAX_RETRIES", 2)
+
+    from googleapiclient.errors import HttpError
+    with pytest.raises(HttpError):
+        youtube_upload.upload_video(str(video_path), title="t", description="d")
+
+    # 新しいセッション(insert())は作られず、同じrequestのhttpだけ差し替えて
+    # 再試行し続けること(_MAX_RETRIES回の再試行後に諦める)の確認
+    assert youtube.videos.return_value.insert.call_count == 1
+    assert request.next_chunk.call_count == 3
 
 
 def test_upload_video_raises_after_exhausting_retries_on_persistent_410(monkeypatch, tmp_path):
