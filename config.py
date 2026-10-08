@@ -348,6 +348,17 @@ DEFAULT_FADE = 0.4            # 末尾のフェードアウトの長さ(秒)
 # この長さまで引き伸ばす。
 TTS_EXTREME_MIN_DURATION_SECONDS = 0.6
 
+# 上記はtts_extreme限定・repeat(2回読み上げ)より前の「1回分」の音声に
+# かかる最低尺だが、短い単語は他のモード(tts/reverse/robot_voice/morse/
+# chorus等)でも2回繰り返した最終的な動画全体が1〜2秒程度にしかならず、
+# 「発音」として成立していないように見えるケースが実際にあった
+# (README「ハマった罠」参照)。そのため、モードを問わず「2回繰り返し+
+# 無音ギャップを挟んだ最終的な音声」がこの長さを下回った場合、
+# generate.py generate_one()がaudio_utils._stretch_to_min_duration()で
+# さらに引き伸ばす(tts_extreme側の最低尺チェックとは独立に、常に最後に
+# もう一段チェックが入る形)。
+MIN_FINAL_VIDEO_DURATION_SECONDS = 3.0
+
 # --- YouTube SEO(カテゴリ・字幕・説明文キーワード) ----------------------------
 #
 # YouTubeの動画カテゴリID一覧(公式にリストAPIはあるが固定値として広く知られて

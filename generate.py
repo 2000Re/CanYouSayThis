@@ -72,7 +72,7 @@ import random
 import sys
 
 import config
-from audio_utils import finalize_audio, repeat_audio, wav_to_mp3
+from audio_utils import _stretch_to_min_duration, finalize_audio, repeat_audio, wav_to_mp3
 from frame_builder import build_frame, close_browser
 from glitch_synth import synthesize_glitch_chunk
 from morse_synth import synthesize_morse
@@ -443,6 +443,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     txt_path = base + "_word.txt"
     raw_wav = base + "_raw.wav"
     rep_wav = base + "_rep.wav"
+    str_wav = base + "_str.wav"
     fin_wav = base + ".wav"
     mp3_path = base + ".mp3"
     frame_path = base + "_frame.png"
@@ -475,11 +476,18 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         )
 
     repeat_audio(raw_wav, rep_wav, times=repeat, gap=repeat_gap)
+    # 短い単語はモードを問わず(tts_extreme専用のTTS_EXTREME_MIN_DURATION_
+    # SECONDSとは別に)繰り返し後の最終的な尺が1〜2秒程度にしかならず、
+    # 「発音」として成立していないように見えることがあったため、
+    # MIN_FINAL_VIDEO_DURATION_SECONDSを下回る場合はここでさらに引き伸ばす
+    # (config.py参照)。
+    _stretch_to_min_duration(rep_wav, str_wav, config.MIN_FINAL_VIDEO_DURATION_SECONDS)
     # 無音パディングはしない。中身の実際の長さのまま、末尾だけ短くフェード
     # し、動画の尺もそれに合わせる(build_videoが -shortest で音声側に合わせる)
-    finalize_audio(rep_wav, fin_wav, fade=fade)
+    finalize_audio(str_wav, fin_wav, fade=fade)
     os.remove(raw_wav)
     os.remove(rep_wav)
+    os.remove(str_wav)
 
     wav_to_mp3(fin_wav, mp3_path)
     build_frame(label, frame_path, mode=actual_mode, display_word=frame_word,
