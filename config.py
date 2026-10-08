@@ -48,12 +48,18 @@ MODE_LABELS = {
 # 下げず、他のモード(tts/tts_extreme/robot_voice/morse)と同じ重み1の
 # ままにしている(reverse/chorusはまだ各8本と実測サンプルが少なく、強く
 # 振り切るにはデータ不足のため)。追加データが貯まったら再調整する。
+#
+# さらに2026-10-08時点の実測(過去28日間、対象185本)で「1日あたり再生数
+# ×視聴維持率」(YouTube収益化条件の総再生時間に効く指標、README「ハマった
+# 罠」40番参照)を見たところ、chorus(約189)が全モード中最大で、2位の
+# reverse(約120)より明確に優勢だった。総再生時間を伸ばす狙いから、chorus
+# の重みだけ3に引き上げる。
 MODE_WEIGHTS = {
     "tts": 1,
     "tts_extreme": 1,
     "glitch": 2,
     "reverse": 2,
-    "chorus": 2,
+    "chorus": 3,
 }
 
 # --voice random が「実在の文字体系」の言語を選んだ場合、単語自体をその
@@ -335,7 +341,10 @@ DEFAULT_MODE = "tts"
 DEFAULT_VOICE = "en"
 DEFAULT_SPEED = 150
 DEFAULT_UNIT_DURATION = 2.0   # [glitchモード] 「答え」1回分の長さ(秒)
-DEFAULT_REPEAT = 2            # 「答え」を何回繰り返すか
+DEFAULT_REPEAT = 3            # 「答え」を何回繰り返すか(2026-10-08、総再生時間を
+                               # 伸ばす狙いで2から引き上げ。再生数を増やさずに
+                               # 1本あたりの実時間を直接伸ばせるため、README
+                               # 「ハマった罠」40番の視聴時間ルート狙いに合致する)
 DEFAULT_REPEAT_GAP = 0.4      # 繰り返し間の無音の長さ(秒)
 DEFAULT_FADE = 0.15           # 末尾のフェードアウトの長さ(秒)。Shorts自動ループ時の
                                # 「無音区間」を短くし視聴維持率を落とさないよう、
