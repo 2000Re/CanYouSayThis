@@ -2726,5 +2726,15 @@
     "uploaded_at": "2026-10-07T22:04:00.340583+00:00",
     "voice_label": null,
     "lang_code": null
+  },
+  {
+    "word": "שששתתתתכ",
+    "label": "שששתתתתכ",
+    "video_id": "5zWBtz5-5Nc",
+    "mode": "tts_extreme",
+    "run_id": "37706584604",
+    "uploaded_at": "2026-10-08T00:14:14.519226+00:00",
+    "voice_label": "Hebrew (Female)",
+    "lang_code": "he"
   }
 ]
