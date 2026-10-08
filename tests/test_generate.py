@@ -11,11 +11,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import config
 from generate import (
     _SINGLE_VOICE_MODES,
+    _TITLE_TEMPLATES,
     _lang_code_for_voice,
     _native_script_for_voice,
     _pictograph_word_generator,
     _random_unique_word,
     _resolve_mode,
+    _resolve_title_template,
     _resolve_voice,
     _voice_pitch_for,
     _word_generator_for,
@@ -333,9 +335,12 @@ def test_youtube_metadata_omits_native_hashtag_for_languages_without_one():
 
 def test_youtube_metadata_title_includes_language_name_when_lang_code_given():
     # 「french pronunciation」のような言語名込みの検索クエリにタイトル
-    # レベルでマッチしやすくするための施策(README参照)。
+    # レベルでマッチしやすくするための施策(README参照)。title_templateを
+    # 明示的に固定し、ランダムなタイトル言い回し(try_to_sayは"?"を
+    # 付けない等)によるテストのflakyさを避ける。
     title, _description, _tags, _caption, _localizations = _youtube_metadata(
-        "v́oOn", "voOn", "tts", voice_label="French (Female)", lang_code="fr"
+        "v́oOn", "voOn", "tts", voice_label="French (Female)", lang_code="fr",
+        title_template="how_to_pronounce",
     )
     assert "in French?" in title
 
@@ -356,6 +361,91 @@ def test_youtube_metadata_tags_include_english_language_pronunciation_tag():
         "v́oOn", "voOn", "tts", voice_label="French (Female)", lang_code="fr"
     )
     assert "french pronunciation" in tags
+
+
+def test_resolve_title_template_passes_through_explicit_value():
+    assert _resolve_title_template("can_you_say") == "can_you_say"
+
+
+def test_resolve_title_template_random_always_picks_a_configured_template():
+    random.seed(0)
+    for _ in range(50):
+        assert _resolve_title_template("random") in config.TITLE_TEMPLATE_WEIGHTS
+
+
+def test_resolve_title_template_random_weighting_matches_title_template_weights():
+    # 統計的な検証: 十分な試行回数で、各言い回しが選ばれる比率が
+    # config.TITLE_TEMPLATE_WEIGHTSの相対的な重みに近いことを確認する
+    # (test_resolve_mode_random_weighting_matches_mode_weights()と同じ方式)。
+    random.seed(0)
+    trials = 6000
+    counts = {template: 0 for template in config.TITLE_TEMPLATE_WEIGHTS}
+    for _ in range(trials):
+        counts[_resolve_title_template("random")] += 1
+
+    total_weight = sum(config.TITLE_TEMPLATE_WEIGHTS.values())
+    for template, weight in config.TITLE_TEMPLATE_WEIGHTS.items():
+        expected_ratio = weight / total_weight
+        actual_ratio = counts[template] / trials
+        assert abs(actual_ratio - expected_ratio) < 0.03, template
+
+
+def test_youtube_metadata_title_template_how_to_pronounce():
+    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+        "v́oOn", "voOn", "tts", title_template="how_to_pronounce",
+    )
+    assert title == 'How to Pronounce "voOn" #Shorts'
+
+
+def test_youtube_metadata_title_template_can_you_say():
+    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+        "v́oOn", "voOn", "tts", title_template="can_you_say",
+    )
+    assert title == 'Can You Say "voOn" #Shorts'
+
+
+def test_youtube_metadata_title_template_can_you_pronounce():
+    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+        "v́oOn", "voOn", "tts", title_template="can_you_pronounce",
+    )
+    assert title == 'Can You Pronounce "voOn" #Shorts'
+
+
+def test_youtube_metadata_title_template_try_to_say_omits_question_mark():
+    # Try to Sayは命令形であり、How to Pronounce等と違い"?"は付けない
+    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+        "v́oOn", "voOn", "tts", title_template="try_to_say",
+    )
+    assert title == 'Try to Say "voOn" #Shorts'
+
+
+def test_youtube_metadata_title_template_is_pronounceable():
+    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+        "v́oOn", "voOn", "tts", title_template="is_pronounceable",
+    )
+    assert title == 'Is "voOn" Pronounceable? #Shorts'
+
+
+def test_youtube_metadata_title_templates_include_language_name_when_given():
+    # try_to_sayは疑問形ではないため"?"を付けないが、lang_labelは他の
+    # テンプレートと同様に挿入されることの確認。
+    for template_name, expected in [
+        ("how_to_pronounce", 'How to Pronounce "voOn" in French? #Shorts'),
+        ("can_you_say", 'Can You Say "voOn" in French? #Shorts'),
+        ("can_you_pronounce", 'Can You Pronounce "voOn" in French? #Shorts'),
+        ("try_to_say", 'Try to Say "voOn" in French #Shorts'),
+        ("is_pronounceable", 'Is "voOn" Pronounceable in French? #Shorts'),
+    ]:
+        title, _description, _tags, _caption, _localizations = _youtube_metadata(
+            "v́oOn", "voOn", "tts", lang_code="fr", title_template=template_name,
+        )
+        assert title == expected, template_name
+
+
+def test_title_templates_keys_match_config_weights():
+    # _TITLE_TEMPLATES(実装)とconfig.TITLE_TEMPLATE_WEIGHTS(重み設定)の
+    # キーがずれていないことの回帰防止(片方だけ更新して不整合になる事故を防ぐ)。
+    assert set(_TITLE_TEMPLATES) == set(config.TITLE_TEMPLATE_WEIGHTS)
 
 
 def test_youtube_metadata_tags_omit_language_pronunciation_tag_when_not_given():

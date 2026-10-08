@@ -62,6 +62,22 @@ MODE_WEIGHTS = {
     "chorus": 3,
 }
 
+# タイトルの言い回しパターンの重み(generate.py _resolve_title_template()
+# 参照)。毎回「How to Pronounce "X"?」固定だと、YouTube収益化審査の
+# 「reused content(使い回しコンテンツ)」判定で画一的と見なされるリスクが
+# あるという懸念から、言い回しに数パターン持たせてランダムに選ぶようにした。
+# ただし「how to pronounce <単語>」という検索クエリとのタイトルレベルでの
+# 一致は実証済みの強み(repost_shorts.pyの設計変更の経緯参照)なので、
+# how_to_pronounceの比率を6割に保ったまま、残り4パターンに1割ずつ振る
+# (ユーザーの要望に基づく配分)。
+TITLE_TEMPLATE_WEIGHTS = {
+    "how_to_pronounce": 6,
+    "can_you_say": 1,
+    "can_you_pronounce": 1,
+    "try_to_say": 1,
+    "is_pronounceable": 1,
+}
+
 # --voice random が「実在の文字体系」の言語を選んだ場合、単語自体をその
 # 言語の文字からランダムに組み立てる(word_generator.random_script_word() /
 # random_abugida_word())。BASE_CHARSを流用したZalgo単語と違い、装飾記号・

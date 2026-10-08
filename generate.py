@@ -101,8 +101,41 @@ from word_generator import (
 _SINGLE_VOICE_MODES = ("tts", "tts_extreme", "reverse", "robot_voice")
 
 
+def _lang_suffixed(base, lang_label):
+    """base(末尾に"?"を付けない状態の文)に、lang_labelがあれば
+    " in {lang_label}?" を付けて返す(無ければbaseのまま、"?"も付けない)。
+    how_to_pronounce等、質問形で終わるタイトルテンプレートの共通処理。"""
+    return base + (f" in {lang_label}?" if lang_label else "")
+
+
+# タイトルの言い回しパターン(config.TITLE_TEMPLATE_WEIGHTS参照)。各関数は
+# (label, lang_label) -> タイトル文字列(末尾の" #Shorts"を除く)を返す。
+# 文の形によって疑問形か否か・lang_labelの挿入位置が異なるため、共通の
+# フォーマット文字列1つではなくテンプレートごとに関数を分けている。
+_TITLE_TEMPLATES = {
+    "how_to_pronounce": lambda label, lang_label: _lang_suffixed(f'How to Pronounce "{label}"', lang_label),
+    "can_you_say": lambda label, lang_label: _lang_suffixed(f'Can You Say "{label}"', lang_label),
+    "can_you_pronounce": lambda label, lang_label: _lang_suffixed(f'Can You Pronounce "{label}"', lang_label),
+    "try_to_say": lambda label, lang_label: f'Try to Say "{label}"' + (f" in {lang_label}" if lang_label else ""),
+    "is_pronounceable": lambda label, lang_label: (
+        f'Is "{label}" Pronounceable' + (f" in {lang_label}" if lang_label else "") + "?"
+    ),
+}
+
+
+def _resolve_title_template(title_template):
+    """title_template="random"の場合、config.TITLE_TEMPLATE_WEIGHTSの重みに
+    従って1本ごとにランダムに選ぶ(_resolve_mode()と同じ方式)。それ以外
+    (テストでの固定指定用)はそのまま返す。"""
+    if title_template == "random":
+        templates = list(config.TITLE_TEMPLATE_WEIGHTS)
+        weights = [config.TITLE_TEMPLATE_WEIGHTS[t] for t in templates]
+        return random.choices(templates, weights=weights)[0]
+    return title_template
+
+
 def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_native_script=False,
-                       lang_code=None):
+                       lang_code=None, title_template="random"):
     """生成した単語からYouTubeアップロード用のtitle/description/tagsを組み立てる。
 
     label は readable_label() で結合文字を落とし最大12文字に丸め済みの
@@ -162,16 +195,25 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
         "hashtag_word")を英語ハッシュタグに追加する。英語圏の視聴者向けの
         #Pronunciation等と違い、その言語の話者が母語のまま検索した際に
         見つけてもらいやすくするための施策。該当する語が用意されていない
-        言語(英語自身、チェロキー語)では何も追加しない。"""
+        言語(英語自身、チェロキー語)では何も追加しない。
+
+    title_template を省略(デフォルト"random")すると、config.
+    TITLE_TEMPLATE_WEIGHTSの重みに従ってタイトルの言い回しをランダムに
+    選ぶ(_resolve_title_template()参照)。「How to Pronounce "X"?」固定だと
+    YouTube収益化審査の「reused content」判定で画一的と見なされるリスクが
+    あるという懸念から導入した。"how to pronounce"の検索クエリ一致という
+    実証済みの強みは保つため、既定の言い回し(how_to_pronounce)を6割の
+    比重で残しつつ、"Can You Say", "Can You Pronounce", "Try to Say",
+    "Is ... Pronounceable"の4パターンに1割ずつ振る。テストでは
+    _TITLE_TEMPLATESの特定のキーを明示的に渡して固定できる。"""
     lang_entry = config.VOICE_LANGUAGES.get(lang_code)
     # 英語はこのチャンネルの既定言語なので、タイトル・タグへの言語名追加は
     # 対象外にする("in English?"は冗長なため)。
     lang_label = lang_entry["label"] if lang_entry and lang_code != "en" else None
 
     mode_label = config.MODE_LABELS.get(mode, mode)
-    title = f'How to Pronounce "{label}"'
-    if lang_label:
-        title += f" in {lang_label}?"
+    actual_title_template = _resolve_title_template(title_template)
+    title = _TITLE_TEMPLATES[actual_title_template](label, lang_label)
     title += " #Shorts"
     description = (
         "Can you pronounce this? \U0001F440\n\n"
