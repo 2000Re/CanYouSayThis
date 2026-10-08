@@ -493,7 +493,15 @@ REPOST_VIDEO_HEIGHT = 1080
 # upload_history.jsonの記録順(=古い順)でこの件数ぶん処理する。
 # YouTube側の「1日あたりアップロード本数」上限(アカウント単位、未認証
 # チャンネルほど低い)に配慮し控えめにしている。
-REPOST_BACKLOG_PER_RUN = 1
+#
+# 2026-10-08時点でバックログが251本(全343本中92本のみ変換済み)まで
+# 溜まっており、収益化条件(総再生時間)達成を早めるため、通常動画を
+# もっと早く出揃わせたい。クォータ消費はrepost 1本あたり約126units
+# (実測、README「ハマった罠」34番の実行ログ参照)で、1実行あたり
+# generate.pyの本編(約251units)+repost 3本(約378units)=約629units、
+# 1日8回実行でも約5,032units(日次上限10,000unitsの約50%)に収まる見込み
+# のため、1から2に引き上げる(1回の実行で現在分+バックログ2本=計3本)。
+REPOST_BACKLOG_PER_RUN = 2
 # GitHub ActionsのIPがYouTube側に「Sign in to confirm you're not a bot」で
 # ボット判定される問題(player_client変更・cookie認証のいずれでも解決しない)
 # を根本的に回避するため、動画本体はYouTubeからyt-dlpで再ダウンロードせず、
