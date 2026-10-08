@@ -599,14 +599,19 @@ def fetch_video_stats(video_ids):
 def fetch_video_status(video_ids):
     """video_ids(リスト)のアップロード・処理状況を
     video_id -> {"uploadStatus", "failureReason", "rejectionReason",
-    "privacyStatus", "processingStatus", "processingFailureReason"} の
-    dictで返す(値が無いキーはNone)。
+    "privacyStatus", "processingStatus", "processingFailureReason",
+    "title", "publishedAt"} の dictで返す(値が無いキーはNone)。
 
     [背景] 「保留中」のまま長時間変わらない動画など、YouTube側の処理が
     止まっている疑いがある動画を診断するための軽量ツール
     (youtube_video_status.py参照)。processingDetailsパートは動画の
     所有者(自チャンネル)のみ取得できる。videos.listが返さなかったID
     (動画が削除済み・存在しない等)は結果のdictに含めない。
+
+    title/publishedAt(snippetパート)は、upload_history.json/
+    repost_state.jsonのどちらにも記録が無いvideo_id(URLだけ分かっている
+    「出所不明」な動画)の正体を特定するために追加した。タイトルが
+    "How to Pronounce ..."形式ならこのチャンネルの生成物と判断できる。
 
     fetch_video_stats()と同じくvideos.listは1回のリクエストにつき1 unit
     (IDを何件まとめて渡しても同じ)なので、同じバッチサイズで分割する。"""
@@ -616,11 +621,12 @@ def fetch_video_status(video_ids):
         batch = video_ids[i:i + config.ANALYTICS_VIDEO_BATCH_SIZE]
         _api_call_counts["videos.list"] += 1
         response = youtube.videos().list(
-            part="status,processingDetails", id=",".join(batch)
+            part="status,processingDetails,snippet", id=",".join(batch)
         ).execute()
         for item in response.get("items", []):
             status = item.get("status", {})
             processing = item.get("processingDetails", {})
+            snippet = item.get("snippet", {})
             status_by_id[item["id"]] = {
                 "uploadStatus": status.get("uploadStatus"),
                 "failureReason": status.get("failureReason"),
@@ -628,5 +634,7 @@ def fetch_video_status(video_ids):
                 "privacyStatus": status.get("privacyStatus"),
                 "processingStatus": processing.get("processingStatus"),
                 "processingFailureReason": processing.get("processingFailureReason"),
+                "title": snippet.get("title"),
+                "publishedAt": snippet.get("publishedAt"),
             }
     return status_by_id

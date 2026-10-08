@@ -442,6 +442,7 @@ def test_fetch_video_status_parses_status_and_processing_details(monkeypatch):
                     "uploadStatus": "processed", "privacyStatus": "public",
                 },
                 "processingDetails": {"processingStatus": "succeeded"},
+                "snippet": {"title": 'How to Pronounce "foo"', "publishedAt": "2026-10-08T00:00:00Z"},
             },
             {
                 "id": "v2",
@@ -467,16 +468,18 @@ def test_fetch_video_status_parses_status_and_processing_details(monkeypatch):
             "uploadStatus": "processed", "failureReason": None,
             "rejectionReason": None, "privacyStatus": "public",
             "processingStatus": "succeeded", "processingFailureReason": None,
+            "title": 'How to Pronounce "foo"', "publishedAt": "2026-10-08T00:00:00Z",
         },
         "v2": {
             "uploadStatus": "rejected", "failureReason": None,
             "rejectionReason": "duplicate", "privacyStatus": "private",
             "processingStatus": "failed",
             "processingFailureReason": "transcodeError",
+            "title": None, "publishedAt": None,
         },
     }
     _, kwargs = youtube.videos.return_value.list.call_args
-    assert kwargs["part"] == "status,processingDetails"
+    assert kwargs["part"] == "status,processingDetails,snippet"
     assert youtube_upload._api_call_counts["videos.list"] == 1
 
 
