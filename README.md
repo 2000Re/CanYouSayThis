@@ -633,6 +633,19 @@ assets/
     ステータスコードを指数バックオフで再試行するようにした
     (`videos.insert`のレジューム可能アップロードはセッションの作り直しが
     必要なため、こちらとは別扱いのまま)。
+36. **短い単語は`tts_extreme`以外のモードでも最終的な動画が1〜2秒しかなく
+    「発音」として成立していないように見えることがあった**: 「ハマった罠」
+    17番の`TTS_EXTREME_MIN_DURATION_SECONDS`は`tts_extreme`限定・2回読み
+    上げる前の「1回分」にしかかからないため、他のモード(`tts`/`reverse`/
+    `robot_voice`/`morse`/`chorus`等)の短い単語や、`tts_extreme`でも
+    最低尺ぎりぎり(0.6秒)×2回+ギャップではまだ短すぎるケースを救えて
+    いなかった。`_atempo_chain_for_factor()`/`_stretch_to_min_duration()`を
+    `tts_synth.py`から`audio_utils.py`へ移し(モード非依存の汎用ユーティリ
+    ティのため)、`generate.py`の`generate_one()`で「2回繰り返し+ギャップ
+    を挟んだ最終的な音声」が`config.MIN_FINAL_VIDEO_DURATION_SECONDS`
+    (3.0秒)を下回る場合は`finalize_audio()`(フェードアウト)の直前に
+    さらに引き伸ばすようにした。モードを問わず最後に必ずもう一段チェック
+    が入る形。
 
 ## プロジェクト構成
 

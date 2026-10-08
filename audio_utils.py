@@ -9,8 +9,13 @@
 - wav_to_mp3        : mp3へのエンコード
 - extract_audio_track: 動画ファイルから音声トラックだけを取り出す
                        (repost_shorts.py参照)
+- _stretch_to_min_duration: 短すぎる音声をatempoで引き伸ばす(元々
+                       tts_synth.synthesize_tts_extreme()専用だったが、
+                       generate.pyが全モード共通の最終尺チェックにも使う
+                       ため、ここに置いている)
 """
 
+import os
 import subprocess
 
 
@@ -20,6 +25,52 @@ def _probe_duration(wav_path):
         check=True, capture_output=True, text=True,
     ).stdout.strip()
     return float(out)
+
+
+def _atempo_chain_for_factor(factor):
+    """任意の倍率をffmpegの`atempo`フィルタ文字列(カンマ区切りでチェーン
+    可能)に変換する。`atempo`は1回あたり0.5〜2.0倍の範囲しか指定できない
+    仕様のため、範囲外の倍率はその上限/下限を複数回チェーンして表現する。"""
+    parts = []
+    remaining = factor
+    while remaining < 0.5:
+        parts.append("atempo=0.5")
+        remaining /= 0.5
+    while remaining > 2.0:
+        parts.append("atempo=2.0")
+        remaining /= 2.0
+    parts.append(f"atempo={round(remaining, 3)}")
+    return ",".join(parts)
+
+
+def _stretch_to_min_duration(src_path, dst_path, min_duration, max_passes=3):
+    """src_pathの長さがmin_duration未満であれば、atempoで再生速度を落として
+    引き伸ばす。1回のatempo適用だけだと(特に0.2秒未満のような極端に短い
+    音声で)狙った長さにきっちり収まらないことが実機で確認できたため、
+    再生成後の長さを都度測り直して収束するまで(最大max_passes回)繰り返す。
+    元々min_duration以上あれば何もせずそのままdst_pathにコピーする。"""
+    current = src_path
+    for pass_index in range(max_passes):
+        duration = _probe_duration(current)
+        if duration >= min_duration:
+            break
+        factor = duration / min_duration
+        # ffmpegはinput/outputに同じファイルを指定できないため、パスごとに
+        # 別名にする(同名を使い回すと直前の出力を読みながら同時に上書き
+        # しようとして壊れる)。
+        next_path = f"{dst_path}.stretch_tmp{pass_index}.wav"
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", current, "-af", _atempo_chain_for_factor(factor), next_path],
+            check=True,
+            capture_output=True,
+        )
+        if current != src_path:
+            os.remove(current)
+        current = next_path
+    if current == src_path:
+        subprocess.run(["ffmpeg", "-y", "-i", current, dst_path], check=True, capture_output=True)
+    else:
+        os.replace(current, dst_path)
 
 
 def repeat_audio(src_wav, dst_wav, times=2, gap=0.4, sr=44100):
