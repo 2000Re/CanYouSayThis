@@ -105,14 +105,25 @@ def repeat_audio(src_wav, dst_wav, times=2, gap=0.4, sr=44100):
     subprocess.run(cmd, check=True, capture_output=True)
 
 
-def finalize_audio(src_wav, dst_wav, fade=0.4):
+def finalize_audio(src_wav, dst_wav, fade=0.4, fade_in=0.0):
     """無音パディングは行わず、中身の実際の長さそのままで、末尾だけ短く
-    フェードアウトする(動画の長さは音声の実際の長さに合わせる)。"""
+    フェードアウトする(動画の長さは音声の実際の長さに合わせる)。
+
+    fade_in(秒)を指定すると、冒頭にも短いフェードインをかける。Shorts側の
+    自動ループ再生で「末尾の無音→いきなりフルボリュームで単語が始まる」と
+    いう段差がループの継ぎ目にでき、そこで視聴者がスワイプしやすいのでは
+    という狙いから追加(README「ハマった罠」参照)。デフォルト0.0(フェード
+    インなし、従来通りの挙動)で、呼び出し側が明示的に指定した場合のみ
+    かかる。"""
     duration = _probe_duration(src_wav)
     fade = min(fade, duration)  # フェード時間が中身より長くならないように
+    fade_in = min(fade_in, duration)
     fade_start = max(0.0, duration - fade)
+    filters = [f"afade=t=out:st={fade_start}:d={fade}"]
+    if fade_in > 0:
+        filters.insert(0, f"afade=t=in:st=0:d={fade_in}")
     subprocess.run(
-        ["ffmpeg", "-y", "-i", src_wav, "-af", f"afade=t=out:st={fade_start}:d={fade}", dst_wav],
+        ["ffmpeg", "-y", "-i", src_wav, "-af", ",".join(filters), dst_wav],
         check=True,
         capture_output=True,
     )

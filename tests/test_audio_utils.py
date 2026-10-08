@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pytest
 
 import audio_utils
-from audio_utils import _atempo_chain_for_factor, _stretch_to_min_duration
+from audio_utils import _atempo_chain_for_factor, _stretch_to_min_duration, finalize_audio
 
 
 def test_atempo_chain_for_factor_within_range_needs_no_chaining():
@@ -92,4 +92,48 @@ def test_stretch_to_min_duration_stops_after_max_passes_without_infinite_loop(mo
 
     _stretch_to_min_duration(str(src), str(dst), min_duration=0.6, max_passes=2)
 
+    assert dst.exists()
+
+
+def _capture_run_cmd(monkeypatch):
+    """subprocess.run呼び出しのcmdを記録しつつ、出力先(cmd[-1])に空ファイル
+    を作るフェイクに差し替える。最後に呼ばれたcmdを返すlistを返す。"""
+    calls = []
+
+    def fake_run(cmd, check, capture_output):
+        calls.append(cmd)
+        Path(cmd[-1]).touch()
+
+    monkeypatch.setattr(audio_utils.subprocess, "run", fake_run)
+    return calls
+
+
+def test_finalize_audio_omits_fade_in_by_default(monkeypatch, tmp_path):
+    # fade_in未指定(デフォルト0.0)では従来通りフェードアウトのみ。
+    src = tmp_path / "src.wav"
+    src.touch()
+    dst = tmp_path / "dst.wav"
+    monkeypatch.setattr(audio_utils, "_probe_duration", lambda path: 2.0)
+    calls = _capture_run_cmd(monkeypatch)
+
+    finalize_audio(str(src), str(dst), fade=0.4)
+
+    af = calls[-1][calls[-1].index("-af") + 1]
+    assert af == "afade=t=out:st=1.6:d=0.4"
+    assert dst.exists()
+
+
+def test_finalize_audio_adds_fade_in_when_requested(monkeypatch, tmp_path):
+    # ループの継ぎ目を滑らかにするため、fade_inを指定すると冒頭にも
+    # フェードインがかかる(afade=t=out より前に並ぶこと)。
+    src = tmp_path / "src.wav"
+    src.touch()
+    dst = tmp_path / "dst.wav"
+    monkeypatch.setattr(audio_utils, "_probe_duration", lambda path: 5.0)
+    calls = _capture_run_cmd(monkeypatch)
+
+    finalize_audio(str(src), str(dst), fade=0.15, fade_in=0.08)
+
+    af = calls[-1][calls[-1].index("-af") + 1]
+    assert af == "afade=t=in:st=0:d=0.08,afade=t=out:st=4.85:d=0.15"
     assert dst.exists()

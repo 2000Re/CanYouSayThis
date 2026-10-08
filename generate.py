@@ -484,7 +484,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     _stretch_to_min_duration(rep_wav, str_wav, config.MIN_FINAL_VIDEO_DURATION_SECONDS)
     # 無音パディングはしない。中身の実際の長さのまま、末尾だけ短くフェード
     # し、動画の尺もそれに合わせる(build_videoが -shortest で音声側に合わせる)
-    finalize_audio(str_wav, fin_wav, fade=fade)
+    finalize_audio(str_wav, fin_wav, fade=fade, fade_in=config.DEFAULT_FADE_IN)
     os.remove(raw_wav)
     os.remove(rep_wav)
     os.remove(str_wav)
