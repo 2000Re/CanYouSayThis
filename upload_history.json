@@ -2756,5 +2756,15 @@
     "uploaded_at": "2026-10-08T08:55:07.330052+00:00",
     "voice_label": "Indonesian (Male)",
     "lang_code": "id"
+  },
+  {
+    "word": "𓊋𓈶𓄦𓄼𓀫𓇕",
+    "label": "𓊋𓈶𓄦𓄼𓀫𓇕",
+    "video_id": "_VTsK4PRWlw",
+    "mode": "glitch",
+    "run_id": "37755113178",
+    "uploaded_at": "2026-10-08T09:14:26.648931+00:00",
+    "voice_label": null,
+    "lang_code": null
   }
 ]
