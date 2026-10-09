@@ -2816,5 +2816,15 @@
     "uploaded_at": "2026-10-09T00:14:37.439693+00:00",
     "voice_label": "Portuguese (Portugal) (Male)",
     "lang_code": "pt"
+  },
+  {
+    "word": "𓉯𓃏𓄎𓆘𓇃",
+    "label": "𓉯𓃏𓄎𓆘𓇃",
+    "video_id": "M4HSFcc1OTo",
+    "mode": "glitch",
+    "run_id": "37878254085",
+    "uploaded_at": "2026-10-09T03:14:08.867930+00:00",
+    "voice_label": null,
+    "lang_code": null
   }
 ]
