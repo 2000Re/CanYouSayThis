@@ -2826,5 +2826,15 @@
     "uploaded_at": "2026-10-09T03:14:08.867930+00:00",
     "voice_label": null,
     "lang_code": null
+  },
+  {
+    "word": "דסללללראגג",
+    "label": "דסללללראגג",
+    "video_id": "EPVesmAKNaI",
+    "mode": "tts",
+    "run_id": "37892393576",
+    "uploaded_at": "2026-10-09T06:14:18.342276+00:00",
+    "voice_label": "Hebrew (Female)",
+    "lang_code": "he"
   }
 ]
