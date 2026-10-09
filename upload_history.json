@@ -2836,5 +2836,15 @@
     "uploaded_at": "2026-10-09T06:14:18.342276+00:00",
     "voice_label": "Hebrew (Female)",
     "lang_code": "he"
+  },
+  {
+    "word": "(A̩͏̃aaavvvo֤֖֢֢֙֬֩֙֩֕o᷎᷹᷊ᷢᷗ᷵᷇ᷛ᷋ᷞe҉҇҈҈҄҈҆҄a( ◙ ⊀",
+    "label": "(A͏aaavvvooe...",
+    "video_id": "dIImDD84jJw",
+    "mode": "robot_voice",
+    "run_id": "37909845583",
+    "uploaded_at": "2026-10-09T09:14:10.698168+00:00",
+    "voice_label": "Cantonese (Female)",
+    "lang_code": "yue"
   }
 ]
