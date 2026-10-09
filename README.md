@@ -10,7 +10,7 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
 
 1. **単語生成**: 母音などの土台文字にUnicodeの結合文字(Zalgoテキスト)や
    記号を大量に重ねた、見た目からして発音不能な単語をランダムに作ります。
-2. **音声生成**: 7つの方式、またはそれらをランダムに混ぜる方式を選べます。
+2. **音声生成**: 13種類の方式、またはそれらをランダムに混ぜる方式を選べます。
    - `tts`(デフォルト): [espeak-ng](https://github.com/espeak-ng/espeak-ng)に単語そのものを読ませる。
    - `tts_extreme`: 奇妙な声バリエーション+極端なピッチ・速度で読ませ、ffmpegでさらに歪ませる。
    - `glitch`: 単語の音とは無関係な合成効果音を当てる。単語自体も一定確率(`config.PICTOGRAPH_VISUAL_CHANCE`、デフォルト0.4)で楔形文字・エジプト/アナトリア象形文字・線文字B表意文字を組み合わせた「絵のように見える」単語になる(`glitch`限定、「ハマった罠」27番)。
@@ -18,9 +18,15 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
    - `robot_voice`: 読み上げ音声に搬送波とのリング変調(ffmpegの`amultiply`)をかけロボット風の声にする。
    - `chorus`: 同じ単語を複数言語(3〜4言語、`config.CHORUS_VOICE_LANGUAGE_CODES`)のボイスで同時に読み上げて重ねる(「ハマった罠」28番)。
    - `morse`: espeak-ngは使わず、単語の文字を国際モールス符号のビープ音列に変換する(結合文字・装飾記号は無視)。
-   - `random`: `config.MODE_WEIGHTS`の重みで上記からランダムに選ぶ。実測で`reverse`/`glitch`/`chorus`の優位が確認され、この3つの重みを2に引き上げている(「ハマった罠」20番・32番)。
-3. **多言語・声色のランダム化**(任意): `--voice random`(tts/tts_extreme/reverse/robot_voice専用)で、英語を含む19言語・男性/女性ボイスをランダムに選ぶ。詳しくは「多言語ボイス」を参照。
-4. **繰り返し**: 音声をデフォルトで2回繰り返す("word... word..."形式)。
+   - `telephone`: 電話回線(300〜3400Hz)相当のバンドパスフィルタと軽いビットクラッシュをかける。
+   - `slowed_reverb`: ゆっくり再生(atempo)+残響(aecho)の「slowed + reverb」ジャンル風に加工する。
+   - `nightcore`: サンプルレートを上げてピッチとテンポを同時に上げる「nightcore」ジャンル風に加工する(slowed_reverbと対になる高速化方向)。
+   - `underwater`: 強めのローパスフィルタ+揺らぎ(ffmpegの`chorus`フィルタ)で水中のような質感にする。
+   - `8d_audio`: ステレオ化して左右に音像をゆっくり回転させる(ffmpegの`apulsator`)。ヘッドホン推奨の「8D audio」ジャンル風。
+   - `echo_cave`: 複数タップのエコー(aecho)を重ね、洞窟や大聖堂のような深い反響を作る。
+   - `random`: `config.MODE_WEIGHTS`の重みで上記からランダムに選ぶ。実測で`reverse`/`glitch`/`chorus`の優位が確認され、この3つとchorus(さらに+1)の重みを引き上げている(「ハマった罠」20番・32番・40番)。`telephone`等の新規6方式は実績データが無いため、デフォルトの重み1のまま。
+3. **多言語・声色のランダム化**(任意): `--voice random`(tts/tts_extreme/reverse/robot_voice/telephone/slowed_reverb/nightcore/underwater/8d_audio/echo_cave専用)で、英語を含む19言語・男性/女性ボイスをランダムに選ぶ。詳しくは「多言語ボイス」を参照。
+4. **繰り返し**: 音声をデフォルトで3回繰り返す("word... word... word..."形式)。
 5. **動画合成**: [Playwright](https://playwright.dev/)経由のChromiumでフレームを描画し音声と合成(縦型9:16、Shorts向け)。動画尺は音声の実際の長さに追従(固定尺パディング無し)。
 6. **YouTubeへの自動アップロード**(任意): `--upload`でYouTube Data API v3経由でチャンネルにアップロード。
 7. **カスタムサムネイル**(`config.CUSTOM_THUMBNAIL_ENABLED`): 単語だけを大きく表示したミニマルな16:9画像を生成・アップロード。Shorts・変換後の通常動画の両方に設定(「カスタムサムネイル」参照)。
@@ -67,11 +73,11 @@ python3 generate.py --count 3 --upload --privacy-status unlisted     # YouTube�
 |---|---|---|
 | `--count` | 生成する本数 | `3` |
 | `--outdir` | 出力ディレクトリ | `./out` |
-| `--mode` | `tts` / `tts_extreme` / `glitch` / `reverse` / `robot_voice` / `chorus` / `morse` / `random` | `tts` |
-| `--voice` | [tts/tts_extreme/reverse/robot_voice専用] espeak-ngの声(`en`, `en-us` 等 / `random`=言語・性別ランダム) | `en` |
+| `--mode` | `tts` / `tts_extreme` / `glitch` / `reverse` / `robot_voice` / `chorus` / `morse` / `telephone` / `slowed_reverb` / `nightcore` / `underwater` / `8d_audio` / `echo_cave` / `random` | `tts` |
+| `--voice` | [tts/tts_extreme/reverse/robot_voice/telephone/slowed_reverb/nightcore/underwater/8d_audio/echo_cave専用] espeak-ngの声(`en`, `en-us` 等 / `random`=言語・性別ランダム) | `en` |
 | `--speed` | [tts専用] 読み上げ速度(words/min) | `150` |
 | `--unit-duration` | [glitch専用] 「答え」1回分の長さ(秒) | `2.0` |
-| `--repeat` | 「答え」を何回繰り返すか | `2` |
+| `--repeat` | 「答え」を何回繰り返すか | `3` |
 | `--repeat-gap` | 繰り返し間の無音の長さ(秒) | `0.4` |
 | `--fade` | 末尾のフェードアウトの長さ(秒) | `0.4` |
 | `--seed` | 乱数シード(再現したい場合) | なし |
@@ -724,6 +730,21 @@ assets/
     `_resolve_title_template()`、MODE_WEIGHTSと同じ重み付き抽選方式)。
     説明文・字幕・日本語ローカライズタイトルは今回のスコープ外とし、
     視聴者に最も見える英語タイトルのみ対象にした。
+42. **新しい6方式(telephone/slowed_reverb/nightcore/underwater/8d_audio/
+    echo_cave)追加時、`repeat_audio()`がステレオ音声をモノラルに潰して
+    いた**: `8d_audio`モード(`pan=stereo|c0=c0|c1=c0`でステレオ化した上で
+    `apulsator`により左右の音量を交互に揺らし、音像が回転しているように
+    聞こえる効果)を実機の`generate_one()`エンドツーエンドで確認したところ、
+    最終的なmp4の音声トラックがモノラル(1ch)になっており、左右に回転する
+    はずの効果が完全に消えていた。原因は`audio_utils.repeat_audio()`
+    (「答え」をN回繰り返す共通処理)が、無音(`anullsrc`)・本体の両方に
+    `channel_layouts=mono`を固定でかけていたこと(それまで全モードが
+    モノラルだったため問題にならなかった)。`_probe_channels()`
+    (ffprobeで`stream=channels`を見る)を新設し、`repeat_audio()`が
+    実際のチャンネル数(モノラル/ステレオ)を検出してから無音生成・
+    `aformat`の両方をそれに合わせるように修正。実機で、修正前は
+    `8d_audio`のmp4が`channels=1`、修正後は`channels=2`になることを
+    確認した。
 
 ## プロジェクト構成
 
@@ -731,7 +752,9 @@ assets/
 config.py                    全モジュール共通の設定・定数
 word_generator.py            Zalgo風「発音不能な単語」の生成
 tts_synth.py                  TTS(espeak-ng)による音声合成 [--mode tts / tts_extreme /
-                               reverse / robot_voice / chorus]
+                               reverse / robot_voice / chorus / telephone /
+                               slowed_reverb / nightcore / underwater / 8d_audio /
+                               echo_cave]
 glitch_synth.py               合成グリッチ音による音声生成 [--mode glitch]
 morse_synth.py                モールス信号のビープ音による音声生成 [--mode morse]
 audio_utils.py                繰り返し・パディング無しフェード・mp3変換・音声トラック抽出

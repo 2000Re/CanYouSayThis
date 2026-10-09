@@ -31,6 +31,12 @@ MODE_LABELS = {
     "robot_voice": "Robot Voice",
     "chorus": "Multilingual Chorus",
     "morse": "Morse Code",
+    "telephone": "Telephone Filter",
+    "slowed_reverb": "Slowed + Reverb",
+    "nightcore": "Nightcore",
+    "underwater": "Underwater",
+    "8d_audio": "8D Audio",
+    "echo_cave": "Cave Echo",
 }
 
 # --mode random で各モードが選ばれる相対的な重み(generate.py

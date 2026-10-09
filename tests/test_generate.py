@@ -25,14 +25,20 @@ from generate import (
 )
 from word_generator import random_zalgo_word
 
-REAL_MODES = ("tts", "tts_extreme", "glitch", "reverse", "robot_voice", "chorus", "morse")
+REAL_MODES = (
+    "tts", "tts_extreme", "glitch", "reverse", "robot_voice", "chorus", "morse",
+    "telephone", "slowed_reverb", "nightcore", "underwater", "8d_audio", "echo_cave",
+)
 
 
 def test_single_voice_modes_excludes_multi_or_no_voice_modes():
     # default_audio_language・upload_history.jsonのvoice_label/lang_code
     # 記録の対象になるのは「単一の言語・ボイスで実際に発音を読み上げる」
     # モードのみ(generate_one()参照)。
-    assert set(_SINGLE_VOICE_MODES) == {"tts", "tts_extreme", "reverse", "robot_voice"}
+    assert set(_SINGLE_VOICE_MODES) == {
+        "tts", "tts_extreme", "reverse", "robot_voice",
+        "telephone", "slowed_reverb", "nightcore", "underwater", "8d_audio", "echo_cave",
+    }
     assert "glitch" not in _SINGLE_VOICE_MODES
     assert "chorus" not in _SINGLE_VOICE_MODES
     assert "morse" not in _SINGLE_VOICE_MODES
@@ -53,8 +59,11 @@ def test_resolve_mode_random_always_picks_a_real_mode():
 
 
 def test_resolve_mode_random_can_pick_all_modes():
+    # モード数が増えた分、低い重み(1)のモードも十分な確率で拾えるよう
+    # 試行回数に余裕を持たせている(300回なら各モード最低1回選ばれる
+    # 確率が十分高い)。
     random.seed(0)
-    picks = {_resolve_mode("random") for _ in range(100)}
+    picks = {_resolve_mode("random") for _ in range(300)}
     assert picks == set(config.MODE_LABELS)
 
 

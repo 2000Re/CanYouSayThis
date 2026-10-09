@@ -16,9 +16,15 @@ from tts_synth import (
     EXTREME_VOICE_VARIANTS,
     _random_extreme_filter_chain,
     synthesize_tts,
+    synthesize_tts_8d_audio,
     synthesize_tts_chorus,
+    synthesize_tts_echo_cave,
+    synthesize_tts_nightcore,
     synthesize_tts_reverse,
     synthesize_tts_robot,
+    synthesize_tts_slowed_reverb,
+    synthesize_tts_telephone,
+    synthesize_tts_underwater,
 )
 
 
@@ -183,3 +189,97 @@ def test_synthesize_tts_chorus_never_uses_hebrew_voice(monkeypatch, tmp_path):
         voices_used = {c[c.index("-v") + 1] for c in espeak_calls}
         assert voices_used.isdisjoint(hebrew_voices)
         calls.clear()
+
+
+def test_synthesize_tts_telephone_applies_bandpass_filter(monkeypatch, tmp_path):
+    calls = _capture_all_run_calls(monkeypatch)
+    out = tmp_path / "out.wav"
+
+    synthesize_tts_telephone("word", str(out), voice="fr-fr", speed=180, pitch=60)
+
+    espeak_call = calls[0]
+    assert "fr-fr" in espeak_call
+    assert "180" in espeak_call
+    assert espeak_call[espeak_call.index("-p") + 1] == "60"
+
+    ffmpeg_call = calls[1]
+    filter_str = ffmpeg_call[ffmpeg_call.index("-af") + 1]
+    assert "highpass=f=300" in filter_str
+    assert "lowpass=f=3400" in filter_str
+    assert out.exists()
+
+
+def test_synthesize_tts_slowed_reverb_applies_atempo_and_echo(monkeypatch, tmp_path):
+    calls = _capture_all_run_calls(monkeypatch)
+    random.seed(1)
+    out = tmp_path / "out.wav"
+
+    synthesize_tts_slowed_reverb("word", str(out))
+
+    filter_str = calls[-1][calls[-1].index("-af") + 1]
+    m = re.search(r"atempo=([\d.]+)", filter_str)
+    assert m
+    assert 0.6 <= float(m.group(1)) <= 0.8
+    assert "aecho=" in filter_str
+    assert out.exists()
+
+
+def test_synthesize_tts_nightcore_speeds_up_and_raises_pitch(monkeypatch, tmp_path):
+    calls = _capture_all_run_calls(monkeypatch)
+    random.seed(1)
+    out = tmp_path / "out.wav"
+
+    synthesize_tts_nightcore("word", str(out))
+
+    filter_str = calls[-1][calls[-1].index("-af") + 1]
+    m = re.search(r"asetrate=44100\*([\d.]+)", filter_str)
+    assert m
+    assert 1.25 <= float(m.group(1)) <= 1.5
+    assert "aresample=44100" in filter_str
+    assert out.exists()
+
+
+def test_synthesize_tts_underwater_applies_lowpass_and_chorus(monkeypatch, tmp_path):
+    calls = _capture_all_run_calls(monkeypatch)
+    out = tmp_path / "out.wav"
+
+    synthesize_tts_underwater("word", str(out))
+
+    filter_str = calls[-1][calls[-1].index("-af") + 1]
+    assert "lowpass=f=600" in filter_str
+    assert "chorus=" in filter_str
+    assert out.exists()
+
+
+def test_synthesize_tts_8d_audio_converts_to_stereo_with_apulsator(monkeypatch, tmp_path):
+    calls = _capture_all_run_calls(monkeypatch)
+    random.seed(1)
+    out = tmp_path / "out.wav"
+
+    synthesize_tts_8d_audio("word", str(out))
+
+    filter_str = calls[-1][calls[-1].index("-af") + 1]
+    # モノラルのままだと左右の移動感が出ないため、先にpanでステレオ化する
+    assert "pan=stereo" in filter_str
+    assert "apulsator=" in filter_str
+    m = re.search(r"apulsator=mode=sine:hz=([\d.]+)", filter_str)
+    assert m
+    assert 0.15 <= float(m.group(1)) <= 0.3
+    assert out.exists()
+
+
+def test_synthesize_tts_echo_cave_applies_multi_tap_echo(monkeypatch, tmp_path):
+    calls = _capture_all_run_calls(monkeypatch)
+    out = tmp_path / "out.wav"
+
+    synthesize_tts_echo_cave("word", str(out))
+
+    filter_str = calls[-1][calls[-1].index("-af") + 1]
+    # 洞窟のような深い反響を出すため、単発ではなく複数タップ(delays/decays
+    # がそれぞれ"|"区切りで3段)のaechoになっていること
+    assert filter_str.startswith("aecho=")
+    delays = filter_str.split(":")[2]
+    decays = filter_str.split(":")[3]
+    assert len(delays.split("|")) == 3
+    assert len(decays.split("|")) == 3
+    assert out.exists()

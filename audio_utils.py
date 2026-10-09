@@ -27,6 +27,18 @@ def _probe_duration(wav_path):
     return float(out)
 
 
+def _probe_channels(wav_path):
+    """wav_pathの音声チャンネル数を返す(1=モノラル、2=ステレオ)。
+    repeat_audio()がチャンネル数を維持するために使う(8d_audioモードの
+    ステレオ音像をモノラル化で潰さないため、README「ハマった罠」参照)。"""
+    out = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-select_streams", "a:0", "-show_entries",
+         "stream=channels", "-of", "csv=p=0", wav_path],
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+    return int(out)
+
+
 def _atempo_chain_for_factor(factor):
     """任意の倍率をffmpegの`atempo`フィルタ文字列(カンマ区切りでチェーン
     可能)に変換する。`atempo`は1回あたり0.5〜2.0倍の範囲しか指定できない
@@ -74,19 +86,27 @@ def _stretch_to_min_duration(src_path, dst_path, min_duration, max_passes=3):
 
 
 def repeat_audio(src_wav, dst_wav, times=2, gap=0.4, sr=44100):
-    """src_wav を短い無音(gap秒)を挟んで times 回繰り返す"""
+    """src_wav を短い無音(gap秒)を挟んで times 回繰り返す。
+
+    src_wavのチャンネル数(モノラル/ステレオ)はそのまま維持する。以前は
+    常にchannel_layouts=monoに固定していたが、8d_audioモード(ステレオ化
+    して左右に音像を回転させる)の効果がここでモノラルに潰されてしまう
+    バグがあったため、_probe_channels()で実際のチャンネル数を見てから
+    無音(anullsrc)・aformatの両方をそれに合わせるようにした。"""
     if times <= 1:
         subprocess.run(["ffmpeg", "-y", "-i", src_wav, dst_wav], check=True, capture_output=True)
         return
 
+    channel_layout = "stereo" if _probe_channels(src_wav) >= 2 else "mono"
+
     n_gaps = times - 1
     cmd = ["ffmpeg", "-y", "-i", src_wav]
     for _ in range(n_gaps):
-        cmd += ["-f", "lavfi", "-i", f"anullsrc=r={sr}:cl=mono:d={gap}"]
+        cmd += ["-f", "lavfi", "-i", f"anullsrc=r={sr}:cl={channel_layout}:d={gap}"]
 
     split_labels = "".join(f"[s{i}]" for i in range(times))
     filter_parts = [
-        f"[0:a]aformat=sample_rates={sr}:channel_layouts=mono,asplit={times}{split_labels}"
+        f"[0:a]aformat=sample_rates={sr}:channel_layouts={channel_layout},asplit={times}{split_labels}"
     ]
     concat_labels = []
     for i in range(times):
@@ -94,7 +114,7 @@ def repeat_audio(src_wav, dst_wav, times=2, gap=0.4, sr=44100):
         if i < n_gaps:
             gap_input_idx = i + 1  # 0番はsrc_wav、1..n_gapsが無音入力
             filter_parts.append(
-                f"[{gap_input_idx}:a]aformat=sample_rates={sr}:channel_layouts=mono[g{i}]"
+                f"[{gap_input_idx}:a]aformat=sample_rates={sr}:channel_layouts={channel_layout}[g{i}]"
             )
             concat_labels.append(f"[g{i}]")
 

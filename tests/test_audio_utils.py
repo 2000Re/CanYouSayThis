@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pytest
 
 import audio_utils
-from audio_utils import _atempo_chain_for_factor, _stretch_to_min_duration, finalize_audio
+from audio_utils import _atempo_chain_for_factor, _stretch_to_min_duration, finalize_audio, repeat_audio
 
 
 def test_atempo_chain_for_factor_within_range_needs_no_chaining():
@@ -136,4 +136,59 @@ def test_finalize_audio_adds_fade_in_when_requested(monkeypatch, tmp_path):
 
     af = calls[-1][calls[-1].index("-af") + 1]
     assert af == "afade=t=in:st=0:d=0.08,afade=t=out:st=4.85:d=0.15"
+    assert dst.exists()
+
+
+def test_repeat_audio_preserves_mono_channel_layout(monkeypatch, tmp_path):
+    src = tmp_path / "src.wav"
+    src.touch()
+    dst = tmp_path / "dst.wav"
+    monkeypatch.setattr(audio_utils, "_probe_channels", lambda path: 1)
+    calls = _capture_run_cmd(monkeypatch)
+
+    repeat_audio(str(src), str(dst), times=2, gap=0.4)
+
+    cmd = calls[-1]
+    filter_complex = cmd[cmd.index("-filter_complex") + 1]
+    assert "channel_layouts=mono" in filter_complex
+    assert "channel_layouts=stereo" not in filter_complex
+    assert "cl=mono" in " ".join(cmd)
+    assert dst.exists()
+
+
+def test_repeat_audio_preserves_stereo_channel_layout(monkeypatch, tmp_path):
+    # 8d_audioモード(ステレオ化して左右に音像を回転させる)の効果が、
+    # 以前はrepeat_audio()で常にmonoへ固定されていたせいで潰れていた
+    # バグの回帰防止(README「ハマった罠」参照)。
+    src = tmp_path / "src.wav"
+    src.touch()
+    dst = tmp_path / "dst.wav"
+    monkeypatch.setattr(audio_utils, "_probe_channels", lambda path: 2)
+    calls = _capture_run_cmd(monkeypatch)
+
+    repeat_audio(str(src), str(dst), times=2, gap=0.4)
+
+    cmd = calls[-1]
+    filter_complex = cmd[cmd.index("-filter_complex") + 1]
+    assert "channel_layouts=stereo" in filter_complex
+    assert "channel_layouts=mono" not in filter_complex
+    assert "cl=stereo" in " ".join(cmd)
+    assert dst.exists()
+
+
+def test_repeat_audio_skips_channel_probe_when_times_is_one(monkeypatch, tmp_path):
+    # times<=1はffmpegでそのままコピーするだけの経路のため、
+    # _probe_channels()(ffprobe呼び出し)自体が不要なことの確認。
+    src = tmp_path / "src.wav"
+    src.touch()
+    dst = tmp_path / "dst.wav"
+
+    def fail_probe(path):
+        raise AssertionError("times<=1ではチャンネル数を調べる必要は無いはず")
+
+    monkeypatch.setattr(audio_utils, "_probe_channels", fail_probe)
+    _capture_run_cmd(monkeypatch)
+
+    repeat_audio(str(src), str(dst), times=1)
+
     assert dst.exists()
