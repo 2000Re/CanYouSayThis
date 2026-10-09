@@ -78,10 +78,16 @@ from glitch_synth import synthesize_glitch_chunk
 from morse_synth import synthesize_morse
 from tts_synth import (
     synthesize_tts,
+    synthesize_tts_8d_audio,
     synthesize_tts_chorus,
+    synthesize_tts_echo_cave,
     synthesize_tts_extreme,
+    synthesize_tts_nightcore,
     synthesize_tts_reverse,
     synthesize_tts_robot,
+    synthesize_tts_slowed_reverb,
+    synthesize_tts_telephone,
+    synthesize_tts_underwater,
 )
 from video_builder import build_video
 from word_generator import (
@@ -98,7 +104,10 @@ from word_generator import (
 # 由来だったりするモードは含まない)。この集合に入っているモードのみ、
 # YouTube側のdefault_audio_language・upload_history.jsonのvoice_label/
 # lang_codeへ実際のボイス言語を記録する(generate_one()参照)。
-_SINGLE_VOICE_MODES = ("tts", "tts_extreme", "reverse", "robot_voice")
+_SINGLE_VOICE_MODES = (
+    "tts", "tts_extreme", "reverse", "robot_voice",
+    "telephone", "slowed_reverb", "nightcore", "underwater", "8d_audio", "echo_cave",
+)
 
 
 def _lang_suffixed(base, lang_label):
@@ -511,10 +520,23 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         synthesize_tts_chorus(word, raw_wav)
     elif actual_mode == "morse":
         synthesize_morse(word, raw_wav)
+    elif actual_mode == "telephone":
+        synthesize_tts_telephone(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+    elif actual_mode == "slowed_reverb":
+        synthesize_tts_slowed_reverb(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+    elif actual_mode == "nightcore":
+        synthesize_tts_nightcore(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+    elif actual_mode == "underwater":
+        synthesize_tts_underwater(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+    elif actual_mode == "8d_audio":
+        synthesize_tts_8d_audio(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+    elif actual_mode == "echo_cave":
+        synthesize_tts_echo_cave(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     else:
         raise ValueError(
             f"unknown mode: {actual_mode!r} "
-            "(tts / tts_extreme / glitch / reverse / robot_voice / chorus / morse)"
+            "(tts / tts_extreme / glitch / reverse / robot_voice / chorus / morse / "
+            "telephone / slowed_reverb / nightcore / underwater / 8d_audio / echo_cave)"
         )
 
     repeat_audio(raw_wav, rep_wav, times=repeat, gap=repeat_gap)
@@ -669,7 +691,8 @@ def main():
     ap.add_argument("--outdir", type=str, default="./out", help="出力ディレクトリ")
     ap.add_argument("--mode", type=str,
                      choices=["tts", "tts_extreme", "glitch", "reverse", "robot_voice",
-                              "chorus", "morse", "random"],
+                              "chorus", "morse", "telephone", "slowed_reverb", "nightcore",
+                              "underwater", "8d_audio", "echo_cave", "random"],
                      default=config.DEFAULT_MODE,
                      help="音声の作り方: tts=espeak-ngに単語を読ませる(デフォルト) / "
                           "tts_extreme=奇妙な声+極端なピッチ・速度+ffmpegの歪みフィルタで読ませる / "
@@ -678,9 +701,16 @@ def main():
                           "robot_voice=espeak-ngで読ませた音声に搬送波とのリング変調をかける / "
                           "chorus=複数言語のボイスで同時に読み上げて重ねる / "
                           "morse=単語をモールス信号のビープ音に変換する / "
+                          "telephone=電話回線のような帯域制限をかける / "
+                          "slowed_reverb=ゆっくり再生+残響の「slowed + reverb」風にする / "
+                          "nightcore=高速化+ピッチアップの「nightcore」風にする / "
+                          "underwater=ローパス+揺らぎで水中のような質感にする / "
+                          "8d_audio=ステレオ化して左右に音像を回転させる / "
+                          "echo_cave=複数タップのエコーで洞窟のような反響を作る / "
                           "random=1本ごとに上記いずれかからランダムに選ぶ")
     ap.add_argument("--voice", type=str, default=config.DEFAULT_VOICE,
-                     help="[tts/tts_extreme/reverse/robot_voice専用] espeak-ngの声"
+                     help="[tts/tts_extreme/reverse/robot_voice/telephone/slowed_reverb/"
+                          "nightcore/underwater/8d_audio/echo_cave専用] espeak-ngの声"
                           "(例: en, en-us, ja)。random=1本ごとにconfig.VOICE_LANGUAGESから"
                           "言語・性別をランダムに選ぶ(発音の違いで聞こえ方が変わる)")
     ap.add_argument("--speed", type=int, default=config.DEFAULT_SPEED,

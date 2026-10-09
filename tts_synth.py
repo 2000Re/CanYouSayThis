@@ -1,9 +1,15 @@
 """TTS (espeak-ng) で単語をそのまま読ませる方式 [--mode tts / デフォルト]
-および、それを別々の角度で加工する3方式:
+および、それを別々の角度で加工する9方式:
   - 奇妙な声質・極端なピッチ+ffmpegの歪みフィルタで壊す [--mode tts_extreme]
   - そのまま逆再生する [--mode reverse]
   - 搬送波とのリング変調でロボット風の声にする [--mode robot_voice]
   - 複数言語のボイスで同時に読み上げて重ねる [--mode chorus]
+  - 電話越しのような帯域制限をかける [--mode telephone]
+  - ゆっくり再生+残響の「slowed + reverb」風にする [--mode slowed_reverb]
+  - 高速化+ピッチアップの「nightcore」風にする [--mode nightcore]
+  - ローパス+揺らぎで水中のような質感にする [--mode underwater]
+  - ステレオ化して左右に音像を回転させる「8D audio」風にする [--mode 8d_audio]
+  - 複数タップのエコーで洞窟のような反響を作る [--mode echo_cave]
 いずれも単語自体はespeak-ngに読ませており(chorusのみ複数ボイス)、
 単語の内容とは無関係な合成音を当てるglitch_synth.py/morse_synth.pyとは
 性質が異なる。"""
@@ -219,3 +225,113 @@ def synthesize_tts_chorus(word, wav_path, n_voices=(3, 4)):
 
     for path in raw_paths:
         os.remove(path)
+
+
+def synthesize_tts_telephone(word, wav_path, voice="en", speed=150, pitch=None):
+    """espeak-ngで単語を読ませた音声に、電話回線(300〜3400Hz)相当の
+    バンドパスフィルタと軽いビットクラッシュをかけ、「電話越しに聞こえる」
+    質感にする [--mode telephone]。帯域を狭めるぶんRMS音量が下がるため、
+    volumeで底上げする(synthesize_tts_robot()と同じ理由)。"""
+    raw_wav = wav_path + ".raw.wav"
+    synthesize_tts(word, raw_wav, voice=voice, speed=speed, pitch=pitch)
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", raw_wav, "-af",
+         "highpass=f=300,lowpass=f=3400,acrusher=bits=8:mode=lin:aa=0,volume=1.5",
+         wav_path],
+        check=True,
+        capture_output=True,
+    )
+    os.remove(raw_wav)
+
+
+def synthesize_tts_slowed_reverb(word, wav_path, voice="en", speed=150, pitch=None):
+    """espeak-ngで単語を読ませた音声をゆっくり再生(atempo)したうえで
+    残響(aecho)を重ね、音楽/音声ミームで定番の「slowed + reverb」ジャンル
+    風に加工する [--mode slowed_reverb]。atempoは減速方向のみなので単一の
+    atempoフィルタで足りる(0.5〜2.0倍の範囲内、audio_utils._atempo_chain_for_factor()
+    のようなチェーンは不要)。"""
+    raw_wav = wav_path + ".raw.wav"
+    synthesize_tts(word, raw_wav, voice=voice, speed=speed, pitch=pitch)
+    tempo = round(random.uniform(0.6, 0.8), 2)
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", raw_wav, "-af",
+         f"atempo={tempo},aecho=0.8:0.9:60|120:0.4|0.3",
+         wav_path],
+        check=True,
+        capture_output=True,
+    )
+    os.remove(raw_wav)
+
+
+def synthesize_tts_nightcore(word, wav_path, voice="en", speed=150, pitch=None):
+    """espeak-ngで単語を読ませた音声を、サンプルレートを上げてから元の
+    レートへ戻すことでピッチとテンポを同時に上げる(悪魔声と逆方向の
+    「甲高く速く」)、「nightcore」ジャンル風に加工する [--mode nightcore]。
+    slowed_reverbと対になる、高速化方向のジャンル。"""
+    raw_wav = wav_path + ".raw.wav"
+    synthesize_tts(word, raw_wav, voice=voice, speed=speed, pitch=pitch)
+    factor = round(random.uniform(1.25, 1.5), 2)
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", raw_wav, "-af",
+         f"asetrate=44100*{factor},aresample=44100",
+         wav_path],
+        check=True,
+        capture_output=True,
+    )
+    os.remove(raw_wav)
+
+
+def synthesize_tts_underwater(word, wav_path, voice="en", speed=150, pitch=None):
+    """espeak-ngで単語を読ませた音声に強めのローパスフィルタ+揺らぎ
+    (ffmpegの`chorus`)をかけ、水中で喋っているような質感にする
+    [--mode underwater]。ローパスでこもらせるぶんRMS音量が下がるため、
+    volumeで底上げする。"""
+    raw_wav = wav_path + ".raw.wav"
+    synthesize_tts(word, raw_wav, voice=voice, speed=speed, pitch=pitch)
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", raw_wav, "-af",
+         "lowpass=f=600,chorus=0.7:0.9:55:0.4:0.25:2,volume=1.8",
+         wav_path],
+        check=True,
+        capture_output=True,
+    )
+    os.remove(raw_wav)
+
+
+def synthesize_tts_8d_audio(word, wav_path, voice="en", speed=150, pitch=None):
+    """espeak-ngで単語を読ませた音声(モノラル)を、`pan`で左右両チャンネル
+    に複製してステレオ化したうえで、`apulsator`で左右の音量を交互に
+    揺らし、音像がゆっくり回転しているように聞こえる「8D audio」ジャンル風
+    に加工する [--mode 8d_audio]。ヘッドホンで聴くことを前提にしたジャンル。
+    モノラルのままapulsatorをかけても単一チャンネルの音量が揺れるだけで
+    左右の移動感は出ないため、先にステレオ化するのが肝。"""
+    raw_wav = wav_path + ".raw.wav"
+    synthesize_tts(word, raw_wav, voice=voice, speed=speed, pitch=pitch)
+    hz = round(random.uniform(0.15, 0.3), 2)
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", raw_wav, "-af",
+         f"pan=stereo|c0=c0|c1=c0,apulsator=mode=sine:hz={hz}",
+         wav_path],
+        check=True,
+        capture_output=True,
+    )
+    os.remove(raw_wav)
+
+
+def synthesize_tts_echo_cave(word, wav_path, voice="en", speed=150, pitch=None):
+    """espeak-ngで単語を読ませた音声に、複数タップ(遅延/減衰をそれぞれ
+    3段)のエコー(aecho)を重ね、洞窟や大聖堂のような深い反響を作る
+    [--mode echo_cave]。tts_extremeのランダム歪みフィルタ内でも軽いaecho
+    単発が候補に入ることがあるが(_random_extreme_filter_chain()参照)、
+    こちらは反響そのものを主役にした専用モードとして、複数タップでより
+    深く・意図的な残響にしている。"""
+    raw_wav = wav_path + ".raw.wav"
+    synthesize_tts(word, raw_wav, voice=voice, speed=speed, pitch=pitch)
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", raw_wav, "-af",
+         "aecho=0.8:0.9:60|150|280:0.5|0.35|0.2",
+         wav_path],
+        check=True,
+        capture_output=True,
+    )
+    os.remove(raw_wav)
