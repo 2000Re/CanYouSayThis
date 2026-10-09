@@ -710,6 +710,20 @@ assets/
     generate.py本編(約251units)+repost 3本(約378units)=約629units、
     1日8回実行でも約5,032units(日次上限10,000unitsの約50%)に収まる
     見込みのため安全と判断した。
+41. **タイトルの言い回しをランダム化し、「reused content」判定リスクに
+    備えた**: 40番の施策で投稿頻度・複製(Shorts→通常動画変換)を増やした
+    ことで、YouTube収益化審査の「reused content(使い回しコンテンツ)」
+    判定への懸念が出た。本数や複製の仕組み自体は既に実証済みの効果が
+    あるため変えず、代わりに毎回固定だったタイトル(`How to Pronounce
+    "X"?`)の言い回しにバリエーションを持たせることにした。「how to
+    pronounce <単語>」という検索クエリとのタイトルレベルでの一致は実証済み
+    の強み(`repost_shorts.py`の設計変更の経緯参照)なので、既定の言い回し
+    (how_to_pronounce)を6割の比重で残しつつ、"Can You Say"/"Can You
+    Pronounce"/"Try to Say"/"Is ... Pronounceable"の4パターンに1割ずつ
+    振る(`config.TITLE_TEMPLATE_WEIGHTS`、`generate.py`
+    `_resolve_title_template()`、MODE_WEIGHTSと同じ重み付き抽選方式)。
+    説明文・字幕・日本語ローカライズタイトルは今回のスコープ外とし、
+    視聴者に最も見える英語タイトルのみ対象にした。
 
 ## プロジェクト構成
 
