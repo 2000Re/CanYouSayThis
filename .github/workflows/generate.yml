@@ -168,6 +168,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add upload_history.json repost_state.json
+          # quota_usage.json は upload=false の実行では作られないため、
+          # 存在する場合のみ追加する(存在しないパスをgit addすると
+          # このスクリプト全体が-eで即終了してしまう)。
+          if [ -f quota_usage.json ]; then
+            git add quota_usage.json
+          fi
           git diff --cached --quiet || git commit -m "chore: update upload history"
 
           # git push はGitHub側の一時的な障害で失敗することがある。この時点で

@@ -88,7 +88,12 @@ from repost_state import (
 )
 from upload_history import load_upload_history
 import youtube_upload
-from youtube_upload import add_to_playlist, append_video_description, log_api_usage_summary
+from youtube_upload import (
+    add_to_playlist,
+    append_video_description,
+    load_api_usage_from_disk,
+    log_api_usage_summary,
+)
 from video_builder import build_video
 from word_generator import zalgo_display_word
 
@@ -408,6 +413,7 @@ def main():
         if not newly_converted_ids and not newly_skipped_ids:
             print("今回変換できた動画はありませんでした。")
 
+        load_api_usage_from_disk()
         log_api_usage_summary()
 
     finally:

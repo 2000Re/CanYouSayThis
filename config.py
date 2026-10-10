@@ -549,6 +549,15 @@ REPOST_ARTIFACT_NAME = "generated-videos"
 DAILY_QUOTA_UNITS = 10000  # 日次クォータの目安(GCPコンソールのデフォルト)
 DAILY_UPLOAD_LIMIT = 100   # videos.insertとは別枠の「1日あたりの動画投稿数」上限
 
+# 1回のワークフロー実行内でgenerate.py(Shorts)→repost_shorts.py(通常動画)と
+# プロセスが分かれていても、さらに同じ日に複数回ワークフローを実行しても、
+# クォータ消費を累計で把握できるようにするための永続化先
+# (youtube_upload.load_api_usage_from_disk()/log_api_usage_summary()参照)。
+# 日付(UTC)が変わったら0から数え直す(YouTube側のクォータ自体も日次リセット
+# のため)。generate.ymlの「Commit updated upload history and repost state」
+# ステップでupload_history.json/repost_state.jsonと一緒にコミットする。
+QUOTA_USAGE_PATH = "quota_usage.json"
+
 # --- YouTubeリフレッシュトークンの有効期限監視 --------------------------------
 #
 # OAuth同意画面の公開ステータスが「テスト」のままだと、リフレッシュトークンは

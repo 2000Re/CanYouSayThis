@@ -768,8 +768,9 @@ def main():
     if args.upload and results:
         # 動画ごとにログを出すとN本分埋もれてしまうため、全本処理し終えた
         # このタイミングで1回だけ、実行全体のクォータ消費/残容量をまとめて出す
-        from youtube_upload import log_api_usage_summary
+        from youtube_upload import load_api_usage_from_disk, log_api_usage_summary
 
+        load_api_usage_from_disk()
         log_api_usage_summary()
 
     if failures:

@@ -220,10 +220,22 @@ OAuth同意画面が「テスト」ステータスの場合、リフレッシュ
 7日経過で警告をワークフローログに出します(`::warning::`、処理は止めない)。
 再発行時は`get_youtube_refresh_token.py`を再実行し両方を更新してください。
 
-### 6. APIクォータ使用量のログ
+### 6. APIクォータ使用量のログ(累計)
 
 `--upload`/`repost_shorts.py`実行後、消費クォータ概算と残容量目安を実行
 ログへ出力します(`youtube_upload.log_api_usage_summary()`)。
+
+`generate.py`(Shorts)→`repost_shorts.py`(通常動画への変換)は同じ
+ワークフロー実行内でもプロセスが分かれているため、何も対策しないと
+各プロセスが0から数え始めてしまい、片方だけの消費量しか分からない。
+これを避けるため`quota_usage.json`(日付+各API呼び出し回数)に消費量を
+永続化し、`load_api_usage_from_disk()`で前回までの消費量を読み込んで
+今回の分に加算してから表示・再保存する。これにより、Shorts+通常動画の
+合計はもちろん、同じ日に複数回ワークフローを実行した場合も含めて累計で
+確認できる。日付(UTC)が変わったら0から数え直す(YouTube側のクォータ
+自体も日次リセットのため)。`generate.yml`の「Commit updated upload
+history and repost state」ステップで`upload_history.json`/
+`repost_state.json`と一緒にコミットして次回実行に引き継ぐ。
 
 ### 7. 再生リストへの自動追加(任意)
 
