@@ -13,5 +13,6 @@ _JST = ZoneInfo("Asia/Tokyo")
 
 
 def jst_timestamp() -> str:
-    """"[HH:MM:SS]"形式(24時間表記、日本時間)のタイムスタンプ文字列を返す。"""
-    return datetime.now(_JST).strftime("[%H:%M:%S]")
+    """"[YYYY-MM-DD HH:MM:SS]"形式(24時間表記、日本時間)のタイムスタンプ
+    文字列を返す。"""
+    return datetime.now(_JST).strftime("[%Y-%m-%d %H:%M:%S]")
