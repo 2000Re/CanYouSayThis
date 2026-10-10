@@ -79,6 +79,7 @@ import requests
 import config
 from audio_utils import extract_audio_track
 from frame_builder import build_thumbnail
+from jst_time import jst_timestamp
 from repost_state import (
     extract_zip_member,
     find_artifact,
@@ -350,7 +351,7 @@ def main():
                     output_path, title=metadata["title"], description=metadata["description"],
                     tags=metadata["tags"], privacy_status=args.privacy_status,
                 )
-                print(f"[Repost] アップロード完了: {entry['label']} -> {repost_url}")
+                print(f"{jst_timestamp()} [Repost] アップロード完了: {entry['label']} -> {repost_url}")
                 repost_video_id = repost_url.rsplit("/", 1)[-1]
 
                 # カスタムサムネイル。動画のフレームとして使ったframe_pathを

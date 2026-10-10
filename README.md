@@ -241,6 +241,14 @@ UTCではなくPacific Timeの日付を使う(`_quota_reset_date_today()`、
 history and repost state」ステップで`upload_history.json`/
 `repost_state.json`と一緒にコミットして次回実行に引き継ぐ。
 
+### 6.5. ログの日本時間タイムスタンプ
+
+GitHub Actions上のログはUTC(または閲覧者のブラウザのタイムゾーン)表示
+のため、ログの文字列だけを見ても日本時間でいつ起きたか分かりにくい。
+動画の生成完了・YouTubeへのアップロード完了(`generate.py`)、通常動画への
+変換完了(`repost_shorts.py`)の各ログ行の先頭に、日本時間・24時間表記の
+タイムスタンプ(`jst_time.jst_timestamp()`、例: `[16:23:05]`)を付けている。
+
 ### 7. 再生リストへの自動追加(任意)
 
 `YOUTUBE_SHORTS_PLAYLIST_ID`/`YOUTUBE_REPOST_PLAYLIST_ID`を設定する
