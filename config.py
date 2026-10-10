@@ -72,16 +72,17 @@ MODE_WEIGHTS = {
 # 参照)。毎回「How to Pronounce "X"?」固定だと、YouTube収益化審査の
 # 「reused content(使い回しコンテンツ)」判定で画一的と見なされるリスクが
 # あるという懸念から、言い回しに数パターン持たせてランダムに選ぶようにした。
-# ただし「how to pronounce <単語>」という検索クエリとのタイトルレベルでの
-# 一致は実証済みの強み(repost_shorts.pyの設計変更の経緯参照)なので、
-# how_to_pronounceの比率を6割に保ったまま、残り4パターンに1割ずつ振る
-# (ユーザーの要望に基づく配分)。
+# 「how to pronounce <単語>」という検索クエリとのタイトルレベルでの一致は
+# 実証済みの強み(repost_shorts.pyの設計変更の経緯参照)なので最多のまま
+# 残すが、当初の6割配分では直近の実際の投稿がhow_to_pronounceに偏って見える
+# という指摘があったため4割に下げ、残り4パターンへの配分を1割から1.5割に
+# 引き上げた(how_to_pronounce以外が選ばれる割合を合計4割→6割に拡大)。
 TITLE_TEMPLATE_WEIGHTS = {
-    "how_to_pronounce": 6,
-    "can_you_say": 1,
-    "can_you_pronounce": 1,
-    "try_to_say": 1,
-    "is_pronounceable": 1,
+    "how_to_pronounce": 8,
+    "can_you_say": 3,
+    "can_you_pronounce": 3,
+    "try_to_say": 3,
+    "is_pronounceable": 3,
 }
 
 # --voice random が「実在の文字体系」の言語を選んだ場合、単語自体をその
