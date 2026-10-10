@@ -129,11 +129,19 @@ def test_load_persisted_quota_counts_handles_broken_json(tmp_path, capsys):
     assert "警告" in capsys.readouterr().out
 
 
+def test_quota_reset_date_today_uses_pacific_time_not_utc():
+    # YouTube側のクォータリセットはUTCではなくPacific Time基準のため、
+    # UTCの日付とずれていても構わないが、Pacific Timeの「今」の日付と
+    # 一致していることを確認する(日本時間朝9時台だとUTC日付とは1日ずれる)。
+    expected = datetime.datetime.now(youtube_upload.ZoneInfo("America/Los_Angeles")).date().isoformat()
+    assert youtube_upload._quota_reset_date_today() == expected
+
+
 def test_load_api_usage_from_disk_merges_into_current_counts(tmp_path, monkeypatch):
     # generate.py→repost_shorts.pyのようにプロセスが分かれても、前のプロセスが
     # 永続化した消費量に今回プロセスの消費量を正しく加算できることを確認する。
     path = tmp_path / "quota_usage.json"
-    today = datetime.date.today().isoformat()
+    today = youtube_upload._quota_reset_date_today()
     persisted = {name: 0 for name in QUOTA_COST_PER_CALL}
     persisted["videos.insert"] = 2
     youtube_upload._save_persisted_quota_counts(persisted, path=str(path), today=today)
@@ -159,7 +167,7 @@ def test_log_api_usage_summary_persists_counts_to_disk(tmp_path, monkeypatch):
 
     youtube_upload.log_api_usage_summary()
 
-    today = datetime.date.today().isoformat()
+    today = youtube_upload._quota_reset_date_today()
     reloaded = youtube_upload._load_persisted_quota_counts(path=str(path), today=today)
     assert reloaded["videos.insert"] == 4
 

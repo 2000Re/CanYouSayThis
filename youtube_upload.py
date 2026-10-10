@@ -39,6 +39,7 @@ import json
 import os
 import random
 import time
+from zoneinfo import ZoneInfo
 
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
@@ -159,15 +160,29 @@ def _quota_summary_lines(api_call_counts, quota_cost_per_call,
     return lines
 
 
-def _load_persisted_quota_counts(path=None, today=None):
-    """config.QUOTA_USAGE_PATHに永続化された、本日分のAPI呼び出し回数を読み込む。
+def _quota_reset_date_today():
+    """YouTube Data API(Google Cloud)の日次クォータがリセットされる基準の
+    「今日」の日付を返す。
 
-    記録されている日付(UTC)が今日と異なる場合は、YouTube側のクォータ自体も
+    クォータはUTCではなくPacific Time基準の0時にリセットされる(日本時間
+    では夏時間中16時台、冬時間中17時台)。GitHub Actionsランナーのシステム
+    時刻はUTCのため、datetime.date.today()をそのまま使うとUTC0時(日本時間
+    朝9時)でリセットしてしまい、実際のリセットとの間に最大8時間弱のズレが
+    生じる。ZoneInfo("America/Los_Angeles")は夏時間/冬時間の切り替えも
+    自動で反映するため、常にPacific Timeの「その時点の今日」の日付になる。"""
+    return datetime.datetime.now(ZoneInfo("America/Los_Angeles")).date().isoformat()
+
+
+def _load_persisted_quota_counts(path=None, today=None):
+    """config.QUOTA_USAGE_PATHに永続化された、本日(Pacific Time基準)分の
+    API呼び出し回数を読み込む。
+
+    記録されている日付が今日と異なる場合は、YouTube側のクォータ自体も
     日次でリセットされるのに合わせて0から数え直す。ファイルが無い/空/壊れて
     いる場合も同様に0から数え直す(手動編集や異常終了で壊れたケースでも
     処理を止めない)。"""
     path = path or config.QUOTA_USAGE_PATH
-    today = today or datetime.date.today().isoformat()
+    today = today or _quota_reset_date_today()
     zero_counts = {name: 0 for name in QUOTA_COST_PER_CALL}
     if not os.path.exists(path):
         return zero_counts
@@ -188,7 +203,7 @@ def _load_persisted_quota_counts(path=None, today=None):
 
 def _save_persisted_quota_counts(api_call_counts, path=None, today=None):
     path = path or config.QUOTA_USAGE_PATH
-    today = today or datetime.date.today().isoformat()
+    today = today or _quota_reset_date_today()
     with open(path, "w", encoding="utf-8") as f:
         json.dump({"date": today, "api_call_counts": api_call_counts}, f, ensure_ascii=False, indent=2)
 

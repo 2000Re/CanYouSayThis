@@ -554,9 +554,12 @@ DAILY_UPLOAD_LIMIT = 100   # videos.insertとは別枠の「1日あたりの動�
 # プロセスが分かれていても、さらに同じ日に複数回ワークフローを実行しても、
 # クォータ消費を累計で把握できるようにするための永続化先
 # (youtube_upload.load_api_usage_from_disk()/log_api_usage_summary()参照)。
-# 日付(UTC)が変わったら0から数え直す(YouTube側のクォータ自体も日次リセット
-# のため)。generate.ymlの「Commit updated upload history and repost state」
-# ステップでupload_history.json/repost_state.jsonと一緒にコミットする。
+# 日付が変わったら0から数え直す(YouTube側のクォータ自体も日次リセットの
+# ため)。このリセットはUTCではなくPacific Time基準で起きるため、日付の
+# 判定にはUTCの日付ではなくPacific Timeの日付を使う
+# (youtube_upload._quota_reset_date_today()参照)。generate.ymlの
+# 「Commit updated upload history and repost state」ステップで
+# upload_history.json/repost_state.jsonと一緒にコミットする。
 QUOTA_USAGE_PATH = "quota_usage.json"
 
 # --- YouTubeリフレッシュトークンの有効期限監視 --------------------------------
