@@ -232,8 +232,12 @@ OAuth同意画面が「テスト」ステータスの場合、リフレッシュ
 永続化し、`load_api_usage_from_disk()`で前回までの消費量を読み込んで
 今回の分に加算してから表示・再保存する。これにより、Shorts+通常動画の
 合計はもちろん、同じ日に複数回ワークフローを実行した場合も含めて累計で
-確認できる。日付(UTC)が変わったら0から数え直す(YouTube側のクォータ
-自体も日次リセットのため)。`generate.yml`の「Commit updated upload
+確認できる。日付が変わったら0から数え直す(YouTube側のクォータ自体も
+日次リセットのため)。このリセットはUTCではなくPacific Time基準で起きる
+(日本時間では夏時間中16時台/冬時間中17時台)ため、日付の判定には
+UTCではなくPacific Timeの日付を使う(`_quota_reset_date_today()`、
+`ZoneInfo("America/Los_Angeles")`で夏時間/冬時間の切り替えも自動追従)。
+`generate.yml`の「Commit updated upload
 history and repost state」ステップで`upload_history.json`/
 `repost_state.json`と一緒にコミットして次回実行に引き継ぐ。
 
