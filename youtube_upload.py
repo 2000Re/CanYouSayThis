@@ -35,6 +35,7 @@ OAuth同意フロー(InstalledAppFlow)は使わない。代わりに、あらか
 """
 
 import datetime
+import json
 import os
 import random
 import time
@@ -158,12 +159,61 @@ def _quota_summary_lines(api_call_counts, quota_cost_per_call,
     return lines
 
 
-def log_api_usage_summary():
-    """この実行(プロセス)で消費したYouTube Data APIのクォータ概算をログに出す。
+def _load_persisted_quota_counts(path=None, today=None):
+    """config.QUOTA_USAGE_PATHに永続化された、本日分のAPI呼び出し回数を読み込む。
 
-    generate.py が --upload 使用時に全動画の生成後、1回だけ呼び出す想定。"""
+    記録されている日付(UTC)が今日と異なる場合は、YouTube側のクォータ自体も
+    日次でリセットされるのに合わせて0から数え直す。ファイルが無い/空/壊れて
+    いる場合も同様に0から数え直す(手動編集や異常終了で壊れたケースでも
+    処理を止めない)。"""
+    path = path or config.QUOTA_USAGE_PATH
+    today = today or datetime.date.today().isoformat()
+    zero_counts = {name: 0 for name in QUOTA_COST_PER_CALL}
+    if not os.path.exists(path):
+        return zero_counts
+    with open(path, encoding="utf-8") as f:
+        content = f.read()
+    if not content.strip():
+        return zero_counts
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError as e:
+        print(f"警告: {path} の読み込みに失敗しました({e})。クォータ消費を0から数え直します。")
+        return zero_counts
+    if data.get("date") != today:
+        return zero_counts
+    counts = data.get("api_call_counts", {})
+    return {name: counts.get(name, 0) for name in QUOTA_COST_PER_CALL}
+
+
+def _save_persisted_quota_counts(api_call_counts, path=None, today=None):
+    path = path or config.QUOTA_USAGE_PATH
+    today = today or datetime.date.today().isoformat()
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump({"date": today, "api_call_counts": api_call_counts}, f, ensure_ascii=False, indent=2)
+
+
+def load_api_usage_from_disk():
+    """前回までに永続化された本日分のクォータ消費を、今回プロセスのカウンターに
+    取り込む(generate.py→repost_shorts.pyのように同じワークフロー内で複数
+    プロセスにまたがる場合や、同じ日に複数回ワークフローを実行した場合でも、
+    クォータ消費を累計で把握できるようにするため)。
+
+    log_api_usage_summary()を呼ぶ前に1回呼ぶ想定。"""
+    persisted = _load_persisted_quota_counts()
+    for name, count in persisted.items():
+        _api_call_counts[name] += count
+
+
+def log_api_usage_summary():
+    """この実行(プロセス)で消費したYouTube Data APIのクォータ概算をログに出し、
+    次のプロセス/次回のワークフロー実行でも引き続き累計できるよう永続化する。
+
+    generate.py が --upload 使用時に全動画の生成後、1回だけ呼び出す想定。
+    累計で把握するには、この前に load_api_usage_from_disk() を呼ぶこと。"""
     for line in _quota_summary_lines(_api_call_counts, QUOTA_COST_PER_CALL):
         print(line)
+    _save_persisted_quota_counts(_api_call_counts)
 
 
 _token_age_warned = False

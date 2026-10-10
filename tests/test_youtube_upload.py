@@ -92,6 +92,78 @@ def test_quota_cost_per_call_includes_videos_list_and_update():
     assert QUOTA_COST_PER_CALL["videos.update"] == 50
 
 
+def test_load_persisted_quota_counts_missing_file_returns_zero(tmp_path):
+    path = str(tmp_path / "quota_usage.json")
+    counts = youtube_upload._load_persisted_quota_counts(path=path, today="2026-10-10")
+    assert counts == {name: 0 for name in QUOTA_COST_PER_CALL}
+
+
+def test_save_and_load_persisted_quota_counts_roundtrip_same_day(tmp_path):
+    path = str(tmp_path / "quota_usage.json")
+    counts = {name: 0 for name in QUOTA_COST_PER_CALL}
+    counts["videos.insert"] = 3
+    counts["thumbnails.set"] = 2
+    youtube_upload._save_persisted_quota_counts(counts, path=path, today="2026-10-10")
+
+    loaded = youtube_upload._load_persisted_quota_counts(path=path, today="2026-10-10")
+    assert loaded == counts
+
+
+def test_load_persisted_quota_counts_resets_on_new_day(tmp_path):
+    # YouTube側のクォータ自体が日次でリセットされるため、永続化された日付が
+    # 今日と異なる場合は前日分を引き継がず0から数え直す。
+    path = str(tmp_path / "quota_usage.json")
+    counts = {name: 0 for name in QUOTA_COST_PER_CALL}
+    counts["videos.insert"] = 5
+    youtube_upload._save_persisted_quota_counts(counts, path=path, today="2026-10-09")
+
+    loaded = youtube_upload._load_persisted_quota_counts(path=path, today="2026-10-10")
+    assert loaded == {name: 0 for name in QUOTA_COST_PER_CALL}
+
+
+def test_load_persisted_quota_counts_handles_broken_json(tmp_path, capsys):
+    path = tmp_path / "quota_usage.json"
+    path.write_text("{not valid json")
+    loaded = youtube_upload._load_persisted_quota_counts(path=str(path), today="2026-10-10")
+    assert loaded == {name: 0 for name in QUOTA_COST_PER_CALL}
+    assert "警告" in capsys.readouterr().out
+
+
+def test_load_api_usage_from_disk_merges_into_current_counts(tmp_path, monkeypatch):
+    # generate.py→repost_shorts.pyのようにプロセスが分かれても、前のプロセスが
+    # 永続化した消費量に今回プロセスの消費量を正しく加算できることを確認する。
+    path = tmp_path / "quota_usage.json"
+    today = datetime.date.today().isoformat()
+    persisted = {name: 0 for name in QUOTA_COST_PER_CALL}
+    persisted["videos.insert"] = 2
+    youtube_upload._save_persisted_quota_counts(persisted, path=str(path), today=today)
+
+    monkeypatch.setattr(youtube_upload.config, "QUOTA_USAGE_PATH", str(path))
+    current = {name: 0 for name in QUOTA_COST_PER_CALL}
+    current["videos.insert"] = 1
+    current["thumbnails.set"] = 1
+    monkeypatch.setattr(youtube_upload, "_api_call_counts", current)
+
+    youtube_upload.load_api_usage_from_disk()
+
+    assert youtube_upload._api_call_counts["videos.insert"] == 3
+    assert youtube_upload._api_call_counts["thumbnails.set"] == 1
+
+
+def test_log_api_usage_summary_persists_counts_to_disk(tmp_path, monkeypatch):
+    path = tmp_path / "quota_usage.json"
+    monkeypatch.setattr(youtube_upload.config, "QUOTA_USAGE_PATH", str(path))
+    counts = {name: 0 for name in QUOTA_COST_PER_CALL}
+    counts["videos.insert"] = 4
+    monkeypatch.setattr(youtube_upload, "_api_call_counts", counts)
+
+    youtube_upload.log_api_usage_summary()
+
+    today = datetime.date.today().isoformat()
+    reloaded = youtube_upload._load_persisted_quota_counts(path=str(path), today=today)
+    assert reloaded["videos.insert"] == 4
+
+
 def _mock_youtube_client(existing_description):
     youtube = MagicMock()
     youtube.videos.return_value.list.return_value.execute.return_value = {
