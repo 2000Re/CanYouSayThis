@@ -75,6 +75,7 @@ import config
 from audio_utils import _stretch_to_min_duration, finalize_audio, repeat_audio, wav_to_mp3
 from frame_builder import build_frame, close_browser
 from glitch_synth import synthesize_glitch_chunk
+from jst_time import jst_timestamp
 from morse_synth import synthesize_morse
 from tts_synth import (
     synthesize_tts,
@@ -758,9 +759,9 @@ def main():
                 failures.append((i, e))
                 continue
             voice_suffix = f" [{r['voice_label']}]" if r["voice_label"] else ""
-            print(f"[{i}/{args.count}] ({r['mode']}){voice_suffix} {r['video']}  <-  {r['label']}")
+            print(f"{jst_timestamp()} [{i}/{args.count}] ({r['mode']}){voice_suffix} {r['video']}  <-  {r['label']}")
             if "youtube_url" in r:
-                print(f"    uploaded -> {r['youtube_url']}")
+                print(f"{jst_timestamp()}     uploaded -> {r['youtube_url']}")
             results.append(r)
     finally:
         close_browser()
