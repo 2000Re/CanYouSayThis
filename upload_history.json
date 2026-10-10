@@ -2936,5 +2936,15 @@
     "uploaded_at": "2026-10-10T12:14:29.672821+00:00",
     "voice_label": "Romanian (Female)",
     "lang_code": "ro"
+  },
+  {
+    "word": "𓎡𓎃𓊪𓀂",
+    "label": "𓎡𓎃𓊪𓀂",
+    "video_id": "ZgKELJxLAVs",
+    "mode": "glitch",
+    "run_id": "38062710186",
+    "uploaded_at": "2026-10-10T15:14:55.052107+00:00",
+    "voice_label": null,
+    "lang_code": null
   }
 ]
