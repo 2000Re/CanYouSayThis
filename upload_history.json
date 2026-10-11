@@ -2976,5 +2976,16 @@
     "uploaded_at": "2026-10-11T00:14:04.702843+00:00",
     "voice_label": "Romanian (Male)",
     "lang_code": "ro"
+  },
+  {
+    "word": "v҇҃҆҃҉҄҉҃҆IIIIII ◈ ❁",
+    "label": "v҉҉IIIIII ◈ ...",
+    "video_id": "fuDb9We51Yo",
+    "mode": "reverse",
+    "run_id": "38107671355",
+    "uploaded_at": "2026-10-11T03:15:02.352199+00:00",
+    "voice_label": "Vietnamese (Female)",
+    "lang_code": "vi",
+    "title_template": "try_to_say"
   }
 ]
