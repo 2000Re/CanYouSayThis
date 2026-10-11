@@ -23,17 +23,39 @@ generate.py _youtube_metadata()参照): 言語名がある場合は
 (video_idからlang_code等を復元する必要が無いため、upload_history.jsonに
 記録されていない情報にも依存しない)。
 
+[罠] lang_codeの記録自体が無かった初期の投稿分は、タイトルに言語名の
+`(言語名)`が最初から付いていない(`「{label}」の発音は? #Shorts`のみ)。
+このケースでもlabelが実在のヘブライ語・アラビア語文字そのものであれば
+同じ語順入れ替わりの不具合が起きるため、タイトルの言語名有無だけでなく
+label自体の文字体系(config.HEBREW_LETTERS/ARABIC_LETTERS)からも言語名を
+補って判定する。
+
 使い方:
     python3 youtube_fix_localization.py --video-ids ABC123,DEF456
 """
 import argparse
 import re
 
+from config import ARABIC_LETTERS, HEBREW_LETTERS
 from youtube_upload import get_youtube_client
 
 # 「」内のlabelは既にisolate文字(⁨⁩)で囲まれている場合とそうでない場合が
 # あるため、どちらも受け付ける。言語名の()は無い回もある。
 _OLD_TITLE_PATTERN = re.compile(r"^「(?P<label>.+?)」の発音は\?(?:\((?P<lang>.+?)\))? #Shorts$")
+
+
+def _detect_rtl_lang_label_ja(label):
+    """labelが実在のヘブライ語・アラビア語文字体系かどうかをconfig.py同梱
+    の文字集合から判定し、該当すれば日本語の言語名("ヘブライ語"/
+    "アラビア語")を返す。どちらでもなければNone。
+
+    lang_codeの記録が無い初期の投稿分(タイトルに言語名の注記自体が無い)
+    でも、labelの実際の文字から言語名を復元できるようにするための処理。"""
+    if any(c in HEBREW_LETTERS for c in label):
+        return "ヘブライ語"
+    if any(c in ARABIC_LETTERS for c in label):
+        return "アラビア語"
+    return None
 
 
 def _rebuild_title(title):
@@ -47,7 +69,7 @@ def _rebuild_title(title):
     # (二重に囲むのを避けるため)。
     label = m.group("label").strip("⁨⁩")
     isolated_label = f"⁨{label}⁩"
-    lang = m.group("lang")
+    lang = m.group("lang") or _detect_rtl_lang_label_ja(label)
     if lang:
         new_title = f"{lang}で「{isolated_label}」はどう発音する? #Shorts"
     else:
