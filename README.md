@@ -455,6 +455,29 @@ python3 youtube_traffic_source.py --video-id mFGTwTBPy7Q --days 7
 `traffic_source.yml`。なお実際の検索クエリ自体はAPIで取得できません
 (`insightTrafficSourceDetail`は`YT_SEARCH`非対応、「ハマった罠」25番)。
 
+## 通常動画のインプレッション数・クリック率の確認(`youtube_regular_video_impressions.py`)
+
+通常動画(`repost_shorts.py`が変換した横型動画)の再生数が伸びない原因が
+「表示機会(インプレッション)自体が少ないから」か「表示はされてもクリック
+されていないから(サムネイルの問題)」かを切り分けます。前者ならサムネイル
+を変えても効果が薄く、後者ならサムネイル改善が効きます。
+
+```bash
+python3 youtube_regular_video_impressions.py --days 28
+```
+
+```
+=== 通常動画 インプレッション数・クリック率(対象12本、データあり8本) ===
+  合計インプレッション数: 340 / 合計再生数: 9
+  abc123xyz00: インプレッション120回 / クリック率2.5% / 再生3回 - How to Pronounce "..."
+```
+
+通常動画のvideo_idはどこにも記録されていない(`upload_history.json`/
+`repost_state.json`は元ShortsのIDしか記録しない設計)ため、チャンネルの
+アップロード済み動画一覧(uploads再生リスト)から、タイトルに" #Shorts"を
+含まないものを通常動画とみなして抽出しています。環境変数は
+`youtube_analytics.py`と同じ。GitHub Actionsは`regular_video_impressions.yml`。
+
 ## 動画の処理状況の確認(`youtube_video_status.py`)
 
 YouTube Studioで「保留中」のまま長時間変わらない動画など、処理が
