@@ -2987,5 +2987,16 @@
     "voice_label": "Vietnamese (Female)",
     "lang_code": "vi",
     "title_template": "try_to_say"
+  },
+  {
+    "word": "-I̴͚̯ͩ̓llllm( ◗",
+    "label": "-Illllm( ◗",
+    "video_id": "Wnwt8Lrj57E",
+    "mode": "tts",
+    "run_id": "38117340533",
+    "uploaded_at": "2026-10-11T06:14:05.323624+00:00",
+    "voice_label": "Vietnamese (Female)",
+    "lang_code": "vi",
+    "title_template": "try_to_say"
   }
 ]
