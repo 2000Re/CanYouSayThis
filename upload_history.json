@@ -2998,5 +2998,16 @@
     "voice_label": "Vietnamese (Female)",
     "lang_code": "vi",
     "title_template": "try_to_say"
+  },
+  {
+    "word": "OOOOOv ◌",
+    "label": "OOOOOv ◌",
+    "video_id": "6s-cLnmAnX8",
+    "mode": "morse",
+    "run_id": "38127577266",
+    "uploaded_at": "2026-10-11T09:14:10.024503+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "can_you_pronounce"
   }
 ]
