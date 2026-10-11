@@ -3042,5 +3042,16 @@
     "voice_label": "German (Female)",
     "lang_code": "de",
     "title_template": "is_pronounceable"
+  },
+  {
+    "word": ":IIIn֧֡֫AAAAAA: ❂",
+    "label": ":IIInAAAAAA:...",
+    "video_id": "Rz-1Als6ixI",
+    "mode": "telephone",
+    "run_id": "38175444695",
+    "uploaded_at": "2026-10-11T21:14:28.473330+00:00",
+    "voice_label": "French (Female)",
+    "lang_code": "fr",
+    "title_template": "is_pronounceable"
   }
 ]
