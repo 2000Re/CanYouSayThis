@@ -2,6 +2,7 @@
 実際のChromium/Playwrightは起動せず、_get_browser()はsync_playwrightを
 モックして起動失敗時の後片付けだけを検証する(軽いテストのみ)。"""
 
+import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -105,3 +106,80 @@ def test_shrink_word_to_fit_evaluates_with_expected_args():
     assert "scrollWidth" in js_code
     assert "scrollHeight" in js_code
     assert eval_args == [1280, 720, 50, 0.9]
+
+
+_VALID_PNG_BYTES = frame_builder._PNG_SIGNATURE + b"\x00" * frame_builder._THUMBNAIL_MIN_VALID_SIZE_BYTES
+
+
+def test_is_valid_png_true_for_real_looking_png(tmp_path):
+    path = tmp_path / "ok.png"
+    path.write_bytes(_VALID_PNG_BYTES)
+    assert frame_builder._is_valid_png(str(path)) is True
+
+
+def test_is_valid_png_false_for_missing_file(tmp_path):
+    assert frame_builder._is_valid_png(str(tmp_path / "missing.png")) is False
+
+
+def test_is_valid_png_false_for_too_small_file(tmp_path):
+    path = tmp_path / "tiny.png"
+    path.write_bytes(frame_builder._PNG_SIGNATURE)  # シグネチャだけで中身が無い
+    assert frame_builder._is_valid_png(str(path)) is False
+
+
+def test_is_valid_png_false_for_wrong_signature(tmp_path):
+    path = tmp_path / "notpng.png"
+    path.write_bytes(b"not a png" + b"\x00" * frame_builder._THUMBNAIL_MIN_VALID_SIZE_BYTES)
+    assert frame_builder._is_valid_png(str(path)) is False
+
+
+def _mock_browser_with_screenshot_sequence(contents):
+    """page.screenshot(path=...)が呼ばれるたびにcontentsを順番に書き込む
+    モックbrowserを返す(壊れた画像→正常な画像、のような再試行シナリオの
+    再現用)。"""
+    contents_iter = iter(contents)
+
+    def fake_screenshot(path):
+        with open(path, "wb") as f:
+            f.write(next(contents_iter))
+
+    page = MagicMock()
+    page.screenshot.side_effect = fake_screenshot
+    browser = MagicMock()
+    browser.new_page.return_value = page
+    return browser, page
+
+
+def test_build_thumbnail_retries_once_after_corrupt_screenshot(tmp_path, monkeypatch):
+    browser, page = _mock_browser_with_screenshot_sequence([b"\x00" * 10, _VALID_PNG_BYTES])
+    monkeypatch.setattr(frame_builder, "_get_browser", lambda: browser)
+
+    out_path = tmp_path / "thumb.png"
+    frame_builder.build_thumbnail("abc", str(out_path))
+
+    assert page.screenshot.call_count == 2
+    assert frame_builder._is_valid_png(str(out_path))
+    # 一時HTMLファイルは成功後も残らない
+    assert not os.path.exists(str(out_path) + ".html")
+
+
+def test_build_thumbnail_succeeds_immediately_when_first_screenshot_is_valid(tmp_path, monkeypatch):
+    browser, page = _mock_browser_with_screenshot_sequence([_VALID_PNG_BYTES])
+    monkeypatch.setattr(frame_builder, "_get_browser", lambda: browser)
+
+    frame_builder.build_thumbnail("abc", str(tmp_path / "thumb.png"))
+
+    assert page.screenshot.call_count == 1
+
+
+def test_build_thumbnail_raises_after_max_attempts_all_corrupt(tmp_path, monkeypatch):
+    browser, page = _mock_browser_with_screenshot_sequence([b"\x00" * 10] * 3)
+    monkeypatch.setattr(frame_builder, "_get_browser", lambda: browser)
+
+    out_path = tmp_path / "thumb.png"
+    with pytest.raises(RuntimeError):
+        frame_builder.build_thumbnail("abc", str(out_path), max_attempts=3)
+
+    assert page.screenshot.call_count == 3
+    # 失敗してもHTMLの後片付けはされる(finally節)
+    assert not os.path.exists(str(out_path) + ".html")
