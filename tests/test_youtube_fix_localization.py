@@ -9,7 +9,7 @@ from unittest.mock import MagicMock
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import youtube_fix_localization
-from youtube_fix_localization import _rebuild_title, fix_video_localization
+from youtube_fix_localization import _detect_rtl_lang_label_ja, _rebuild_title, fix_video_localization
 
 
 def test_rebuild_title_moves_language_name_to_front():
@@ -39,6 +39,27 @@ def test_rebuild_title_works_without_language_name():
 def test_rebuild_title_returns_none_when_already_new_format():
     title = "ヘブライ語で「⁨קקעמדחפ⁩」はどう発音する? #Shorts"
     assert _rebuild_title(title) is None
+
+
+def test_detect_rtl_lang_label_ja_identifies_hebrew():
+    assert _detect_rtl_lang_label_ja("קקעמדחפ") == "ヘブライ語"
+
+
+def test_detect_rtl_lang_label_ja_identifies_arabic():
+    assert _detect_rtl_lang_label_ja("ططظظىف") == "アラビア語"
+
+
+def test_detect_rtl_lang_label_ja_none_for_non_rtl_label():
+    assert _detect_rtl_lang_label_ja("voOn") is None
+
+
+def test_rebuild_title_infers_language_name_when_missing_from_old_title():
+    # lang_codeの記録自体が無かった初期の投稿分は、タイトルに言語名の
+    # 注記が最初から無い(「ハマった罠」24番参照)。labelの実際の文字体系
+    # から言語名を復元し、新形式へ組み立て直せることを確認する。
+    title = "「קקעמדחפ」の発音は? #Shorts"
+    result = _rebuild_title(title)
+    assert result == "ヘブライ語で「⁨קקעמדחפ⁩」はどう発音する? #Shorts"
 
 
 def test_rebuild_title_returns_none_when_no_change_needed():

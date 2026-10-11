@@ -487,8 +487,11 @@ python3 youtube_fix_localization.py --video-ids ABC123,DEF456
 
 タイトルが旧形式(`「label」の発音は?(言語名) #Shorts`)に一致する場合、
 言語名を文頭に出した新形式(`{言語名}で「label」はどう発音する? #Shorts`)
-へ組み立て直して`videos.update`します。既に新形式・`localizations.ja`が
-無い動画はスキップ。追加スコープ不要。GitHub Actionsは`fix_localization.yml`。
+へ組み立て直して`videos.update`します。lang_codeの記録自体が無かった初期の
+投稿分(タイトルに言語名の注記が元から無い)でも、labelの実際の文字体系
+(`config.HEBREW_LETTERS`/`ARABIC_LETTERS`)から言語名を復元して同様に
+組み立て直します。既に新形式・`localizations.ja`が無い動画はスキップ。
+追加スコープ不要。GitHub Actionsは`fix_localization.yml`。
 
 ## YouTubeチャンネル用アセット(アイコン・バナー)
 
