@@ -19,7 +19,7 @@ def load_upload_history() -> list:
 
     各要素は {"word": str, "label": str, "video_id": str, "mode": str,
     "run_id": str|None, "uploaded_at": str|None, "voice_label": str|None,
-    "lang_code": str|None}。
+    "lang_code": str|None, "title_template": str|None}。
     run_idはrepost_shorts.pyが、この動画が生成された回のGitHub Actions
     アーティファクトを取得し直すために使う(GITHUB_RUN_IDはGitHub Actions
     が各実行に自動設定する環境変数。ローカル実行等でrunがない場合はNone)。
@@ -29,9 +29,13 @@ def load_upload_history() -> list:
     (config.VOICE_LANGUAGESのラベル/キー、例: "French (Female)"/"fr")。
     generate.py側でmodeがtts/tts_extreme以外(glitch。単語を読み上げない
     ため意味を持たない)の場合はNoneのまま記録する。
-    uploaded_at/voice_label/lang_codeはいずれもこの項目を追加する前に
-    記録された古いエントリには含まれない(キー自体が無い)ため、参照する
-    側は必ず entry.get(...) を使うこと。
+    title_templateは実際に使われたタイトルの言い回し(config.
+    TITLE_TEMPLATE_WEIGHTSのキー、例: "can_you_say")。repost_shorts.pyが
+    通常動画への変換時、Shorts側と同じ言い回しでタイトルを組み立て直す
+    ために使う。
+    uploaded_at/voice_label/lang_code/title_templateはいずれもこの項目を
+    追加する前に記録された古いエントリには含まれない(キー自体が無い)ため、
+    参照する側は必ず entry.get(...) を使うこと。
 
     ここへの記録は generate.py が youtube_upload.upload_video() の成功を
     確認した後にのみ行う。TTS/動画生成/アップロードのいずれかで失敗した
@@ -60,7 +64,8 @@ def save_upload_history(history: list) -> None:
 
 
 def append_upload(word: str, label: str, video_id: str, mode: str, run_id: str | None = None,
-                   voice_label: str | None = None, lang_code: str | None = None) -> None:
+                   voice_label: str | None = None, lang_code: str | None = None,
+                   title_template: str | None = None) -> None:
     """1件のアップロード成功を履歴に追記する。
 
     uploaded_atはこの呼び出し時点(YouTubeへのアップロード成功直後)の
@@ -69,6 +74,6 @@ def append_upload(word: str, label: str, video_id: str, mode: str, run_id: str |
     history.append({
         "word": word, "label": label, "video_id": video_id, "mode": mode, "run_id": run_id,
         "uploaded_at": datetime.now(timezone.utc).isoformat(),
-        "voice_label": voice_label, "lang_code": lang_code,
+        "voice_label": voice_label, "lang_code": lang_code, "title_template": title_template,
     })
     save_upload_history(history)

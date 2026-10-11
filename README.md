@@ -337,6 +337,12 @@ Shorts本体のフレーム(キッカー+単語+モード注記+アイコン)と
 ます(`repost_shorts.py`、取得元の経緯は「ハマった罠」8番)。生成した
 フレーム画像はそのままカスタムサムネイルにも使い回します。
 
+タイトルの言い回し(`config.TITLE_TEMPLATE_WEIGHTS`、「ハマった罠」41番)
+も元Shortsが実際に選んだもの(`upload_history.json`の`title_template`)と
+揃えます(`build_repost_metadata()`)。この項目が記録されていない古い
+エントリ(導入前にアップロードされた回)は既定の"how_to_pronounce"に
+フォールバックします。
+
 **優先順位**: 同じワークフロー実行で`generate.py`が今まさに作ったShorts
 (同じ`GITHUB_RUN_ID`で紐付け)は、件数に関わらず常に全て優先して変換し、
 「同じ単語がShorts・通常動画の両方に載る」ようにします。そのうえでまだ
@@ -783,6 +789,16 @@ assets/
     `aformat`の両方をそれに合わせるように修正。実機で、修正前は
     `8d_audio`のmp4が`channels=1`、修正後は`channels=2`になることを
     確認した。
+43. **41番でShorts側のタイトル言い回しをランダム化したのに、
+    `repost_shorts.py`が変換する通常動画は常に"How to Pronounce"固定の
+    ままだった**: `title_template`の抽選結果自体が`upload_history.json`に
+    記録されていなかったため、`repost_shorts.py`側は元Shortsがどの言い回し
+    だったか知りようがなかった(「元ShortsとタイトルHを完全に同じにする」
+    という設計意図に反していた)。`generate.py`の`generate_one()`で
+    `title_template`を`_youtube_metadata()`呼び出しより先に確定させて
+    `upload_history.append_upload()`にも記録し、`repost_shorts.py`の
+    `build_repost_metadata()`がそれを読んで`generate.py`の
+    `_TITLE_TEMPLATES`で同じ言い回しを組み立て直すように修正した。
 
 ## プロジェクト構成
 
