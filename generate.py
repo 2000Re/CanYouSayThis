@@ -298,13 +298,28 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     # labelを囲み、周囲のテキストの基準方向にlabelの向きが影響しないよう
     # 分離する(labelがLTRの場合も無害なので、言語ごとに分岐しない)。全ての
     # ローカライズ言語で共通して使うため、ここで一度だけ組み立てる。
+    #
+    # [罠] 上記の分離だけでは不十分だった: 本来はUAX #9準拠なら「」の直後の
+    # isolateはスキップされ、その次の強い文字(の=LTR)が基準方向を決める
+    # はずだが、実機ではこの対策後に投稿した動画でも同じ語順の入れ替わりが
+    # 再発した(2026-10-09アップロードのヘブライ語動画で確認)。YouTube側が
+    # 表示前にゼロ幅のisolate制御文字自体を取り除いている可能性が高く、
+    # 不可視文字に頼る対策はあてにできない。そのため、タイトル文字列の
+    # 「最初の1文字」自体を常に実在の強いLTR文字(かな/カナ/漢字)にする
+    # ことで、不可視文字が残るかどうかに関係なく基準方向をLTRに固定する
+    # (括弧・鉤括弧のような中立文字を先頭に置かない)。
     isolated_label = f"⁨{label}⁩"
 
     if config.JAPANESE_TITLE_LOCALIZATION_ENABLED:
         lang_label_ja = config.LANGUAGE_LABELS_JA.get(lang_code)
-        title_ja = f"「{isolated_label}」の発音は?"
         if lang_label_ja:
-            title_ja += f"({lang_label_ja})"
+            # 言語名(かな/カナ/漢字、常に強いLTR文字)を先頭に置き、鉤括弧
+            # 「」を文頭にしない。labelが実在のRTL文字体系になり得るのは
+            # lang_codeが設定されている場合に限られる(_word_generator_for()
+            # 参照)ため、このルートだけで足りる。
+            title_ja = f"{lang_label_ja}で「{isolated_label}」はどう発音する?"
+        else:
+            title_ja = f"「{isolated_label}」の発音は?"
         title_ja += " #Shorts"
         localizations["ja"] = {"title": title_ja, "description": description}
 

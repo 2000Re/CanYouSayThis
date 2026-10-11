@@ -541,6 +541,21 @@ def test_youtube_metadata_localizations_wraps_label_in_bidi_isolate():
     assert f"⁨{hebrew_label}⁩" in title_ja
 
 
+def test_youtube_metadata_localizations_japanese_title_starts_with_strong_ltr_char():
+    # bidi isolate(FSI/PDI)で囲むだけでは不十分だった: YouTube側が表示前に
+    # ゼロ幅のisolate制御文字を取り除いている可能性が高く、2026-10-09に
+    # アップロードされたヘブライ語動画で同じ語順の入れ替わりが実機再発した。
+    # 不可視文字が失われても壊れないよう、タイトル文字列の最初の1文字自体を
+    # 常に実在の強いLTR文字(ここでは言語名のかな/カナ)にし、鉤括弧「」の
+    # ような中立文字を先頭に置かないことを回帰確認する。
+    hebrew_label = "קקעמדחפ"
+    _title, _description, _tags, _caption, localizations = _youtube_metadata(
+        hebrew_label, hebrew_label, "tts", lang_code="he",
+    )
+    title_ja = localizations["ja"]["title"]
+    assert title_ja.startswith("ヘブライ語")
+
+
 def test_youtube_metadata_localizations_bidi_isolate_wraps_any_label():
     # RTL文字かどうかで分岐していない(常にlabelを囲む)ことの確認。
     _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
