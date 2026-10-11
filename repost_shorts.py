@@ -79,7 +79,7 @@ import requests
 import config
 from audio_utils import extract_audio_track
 from frame_builder import build_thumbnail
-from generate import _TITLE_TEMPLATES
+from generate import _TITLE_TEMPLATES, _mode_genre_suffix
 from jst_time import jst_timestamp
 from repost_state import (
     extract_zip_member,
@@ -217,7 +217,10 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
     タイトルの言い回し(generate.py _TITLE_TEMPLATES参照)も、元Shortsが
     実際に使ったもの(entry["title_template"])と揃える。これが記録されて
     いない古いエントリ(この項目を追加する前にアップロードされた回)は
-    "how_to_pronounce"にフォールバックする(generate.py側の既定の言い回し)。"""
+    "how_to_pronounce"にフォールバックする(generate.py側の既定の言い回し)。
+
+    nightcore/8d_audio/slowed_reverbのいずれかのモードの場合、タイトル末尾
+    のジャンル名も同様に揃える(generate.py _mode_genre_suffix()参照)。"""
     label = entry["label"]
     mode = entry.get("mode", "")
     mode_label = config.MODE_LABELS.get(mode, mode)
@@ -227,6 +230,7 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
 
     title_template = entry.get("title_template") or "how_to_pronounce"
     title = _TITLE_TEMPLATES[title_template](label, lang_label)
+    title += _mode_genre_suffix(mode)
 
     description = (
         "Can you pronounce this? \U0001F440\n\n"

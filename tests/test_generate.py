@@ -13,6 +13,7 @@ from generate import (
     _SINGLE_VOICE_MODES,
     _TITLE_TEMPLATES,
     _lang_code_for_voice,
+    _mode_genre_suffix,
     _native_script_for_voice,
     _pictograph_word_generator,
     _random_unique_word,
@@ -357,6 +358,36 @@ def test_youtube_metadata_title_includes_language_name_when_lang_code_given():
 def test_youtube_metadata_title_omits_language_name_when_lang_code_not_given():
     title, _description, _tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert " in " not in title
+
+
+def test_mode_genre_suffix_appends_label_for_search_genre_modes():
+    # nightcore/8d_audio/slowed_reverbは実際にYouTube上で検索される音楽系
+    # ジャンル名のため、タイトルに含めると検索流入が見込める(glitch/reverse
+    # 等は加工の技術名であって視聴者が検索する言葉ではないため対象外、
+    # 「ハマった罠」45番)。
+    assert _mode_genre_suffix("nightcore") == " (Nightcore)"
+    assert _mode_genre_suffix("8d_audio") == " (8D Audio)"
+    assert _mode_genre_suffix("slowed_reverb") == " (Slowed + Reverb)"
+
+
+def test_mode_genre_suffix_empty_for_non_genre_modes():
+    for mode in ("tts", "tts_extreme", "glitch", "reverse", "robot_voice",
+                 "chorus", "morse", "telephone", "underwater", "echo_cave"):
+        assert _mode_genre_suffix(mode) == ""
+
+
+def test_youtube_metadata_title_includes_genre_suffix_for_nightcore():
+    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+        "v́oOn", "voOn", "nightcore", title_template="how_to_pronounce",
+    )
+    assert title == 'How to Pronounce "voOn" (Nightcore) #Shorts'
+
+
+def test_youtube_metadata_title_omits_genre_suffix_for_non_genre_mode():
+    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+        "v́oOn", "voOn", "glitch", title_template="how_to_pronounce",
+    )
+    assert "(" not in title
 
 
 def test_youtube_metadata_title_omits_language_name_for_english():

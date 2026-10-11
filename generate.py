@@ -133,6 +133,21 @@ _TITLE_TEMPLATES = {
 }
 
 
+def _mode_genre_suffix(mode):
+    """modeがconfig.TITLE_GENRE_MODESに含まれる場合、タイトル末尾に付ける
+    " (ジャンル名)" を返す(該当しなければ空文字列)。
+
+    nightcore/8d_audio/slowed_reverbは実際にYouTube上で検索されるジャンル
+    名(音楽系のトレンド)のため、タイトルに含めると検索流入が見込める。
+    glitch/reverse等の他モードは音声加工の技術名であって視聴者が検索する
+    言葉ではないため対象外(「ハマった罠」45番)。repost_shorts.pyの
+    build_repost_metadata()も通常動画のタイトルに同じ接尾辞を付けるため
+    ここから流用する。"""
+    if mode in config.TITLE_GENRE_MODES:
+        return f" ({config.MODE_LABELS[mode]})"
+    return ""
+
+
 def _resolve_title_template(title_template):
     """title_template="random"の場合、config.TITLE_TEMPLATE_WEIGHTSの重みに
     従って1本ごとにランダムに選ぶ(_resolve_mode()と同じ方式)。それ以外
@@ -212,10 +227,16 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     選ぶ(_resolve_title_template()参照)。「How to Pronounce "X"?」固定だと
     YouTube収益化審査の「reused content」判定で画一的と見なされるリスクが
     あるという懸念から導入した。"how to pronounce"の検索クエリ一致という
-    実証済みの強みは保つため、既定の言い回し(how_to_pronounce)を6割の
+    実証済みの強みは保つため、既定の言い回し(how_to_pronounce)を最多の
     比重で残しつつ、"Can You Say", "Can You Pronounce", "Try to Say",
-    "Is ... Pronounceable"の4パターンに1割ずつ振る。テストでは
-    _TITLE_TEMPLATESの特定のキーを明示的に渡して固定できる。"""
+    "Is ... Pronounceable"の4パターンにも振る(config.TITLE_TEMPLATE_WEIGHTS
+    参照)。テストでは_TITLE_TEMPLATESの特定のキーを明示的に渡して固定できる。
+
+    modeがnightcore/8d_audio/slowed_reverbのいずれかの場合、タイトル末尾に
+    " (ジャンル名)" を付ける(_mode_genre_suffix()参照)。これらは実際に
+    YouTube上で検索される音楽系ジャンル名のため検索流入が見込めるが、
+    glitch/reverse等の他モードは加工の技術名であって視聴者が検索する
+    言葉ではないため対象外にしている。"""
     lang_entry = config.VOICE_LANGUAGES.get(lang_code)
     # 英語はこのチャンネルの既定言語なので、タイトル・タグへの言語名追加は
     # 対象外にする("in English?"は冗長なため)。
@@ -224,6 +245,7 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     mode_label = config.MODE_LABELS.get(mode, mode)
     actual_title_template = _resolve_title_template(title_template)
     title = _TITLE_TEMPLATES[actual_title_template](label, lang_label)
+    title += _mode_genre_suffix(mode)
     title += " #Shorts"
     description = (
         "Can you pronounce this? \U0001F440\n\n"
