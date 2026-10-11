@@ -592,10 +592,17 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # する処理はアップロード成功後(video_id確定後)に別途行う。
         shorts_playlist_id = os.environ.get("YOUTUBE_SHORTS_PLAYLIST_ID")
         lang_code = _lang_code_for_voice(actual_voice)
+        # ここで先に確定させ、_youtube_metadata()には確定済みの値を渡す
+        # (title_template="random"のままだと_youtube_metadata()内部でも
+        # 改めて抽選されてしまい、実際に使われたテンプレートが分からなく
+        # なる)。repost_shorts.pyが同じ言い回しで通常動画のタイトルを
+        # 組み立て直せるよう、upload_history.jsonにも記録する。
+        actual_title_template = _resolve_title_template("random")
 
         title, description, tags, caption_text, localizations = _youtube_metadata(
             word, label, actual_mode, playlist_id=shorts_playlist_id, voice_label=voice_label,
             is_native_script=used_native_script, lang_code=lang_code,
+            title_template=actual_title_template,
         )
         # glitch/chorus/morseは単一言語の音声読み上げではない(glitchは合成音
         # のみ、chorusは複数言語同時、morseはビープ音)ため、対応する音声言語
@@ -684,6 +691,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
             run_id=os.environ.get("GITHUB_RUN_ID"),
             voice_label=voice_label if actual_mode in _SINGLE_VOICE_MODES else None,
             lang_code=lang_code if actual_mode in _SINGLE_VOICE_MODES else None,
+            title_template=actual_title_template,
         )
 
         # 任意。設定されていれば、アップロードした動画をShorts用の再生リストに

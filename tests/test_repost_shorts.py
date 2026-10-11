@@ -86,7 +86,10 @@ def test_build_repost_metadata_mirrors_short_title_without_shorts_tag():
     }
     metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
 
-    assert metadata["title"] == 'How to Pronounce "abc123"?'
+    # title_templateが記録されていない(機能追加前の)エントリは
+    # "how_to_pronounce"にフォールバックする。lang_labelが無いこの
+    # テンプレートは"?"を付けない(generate.py _lang_suffixed()参照)。
+    assert metadata["title"] == 'How to Pronounce "abc123"'
     assert "#Shorts" not in metadata["title"]
     assert "#Shorts" not in metadata["description"]
     assert "https://youtu.be/xyz" in metadata["description"]
@@ -112,6 +115,26 @@ def test_build_repost_metadata_skips_language_suffix_for_english():
     entry = {"word": "abc", "label": "abc", "mode": "tts", "voice_label": None, "lang_code": "en"}
     metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
     assert "in English" not in metadata["title"]
+
+
+def test_build_repost_metadata_uses_recorded_title_template():
+    # Shortsが実際に使った言い回し(title_template)と揃える(ユーザーからの
+    # 「通常動画もhow to pronounce以外になるか」という問いへの対応)。
+    entry = {
+        "word": "abc123", "label": "abc123", "mode": "glitch",
+        "voice_label": None, "lang_code": None, "title_template": "can_you_say",
+    }
+    metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
+    assert metadata["title"] == 'Can You Say "abc123"'
+
+
+def test_build_repost_metadata_uses_recorded_title_template_with_language():
+    entry = {
+        "word": "bonjour123", "label": "bonjour123", "mode": "tts",
+        "voice_label": "French (Male)", "lang_code": "fr", "title_template": "try_to_say",
+    }
+    metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
+    assert metadata["title"] == 'Try to Say "bonjour123" in French'
 
 
 def _entry(video_id, run_id):

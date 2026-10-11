@@ -41,16 +41,16 @@ def test_append_upload_adds_entry_to_existing_history(tmp_path, monkeypatch):
     upload_history.append_upload(word="Á", label="A", video_id="v1", mode="tts")
     upload_history.append_upload(
         word="B́", label="B", video_id="v2", mode="tts_extreme", run_id="12345",
-        voice_label="French (Female)", lang_code="fr",
+        voice_label="French (Female)", lang_code="fr", title_template="can_you_say",
     )
     history = upload_history.load_upload_history()
     # uploaded_atは呼び出し時刻で毎回変わるため、それ以外のフィールドだけ
     # 厳密比較し、uploaded_atは別途フォーマットを検証する。
     assert [{k: v for k, v in entry.items() if k != "uploaded_at"} for entry in history] == [
         {"word": "Á", "label": "A", "video_id": "v1", "mode": "tts", "run_id": None,
-         "voice_label": None, "lang_code": None},
+         "voice_label": None, "lang_code": None, "title_template": None},
         {"word": "B́", "label": "B", "video_id": "v2", "mode": "tts_extreme", "run_id": "12345",
-         "voice_label": "French (Female)", "lang_code": "fr"},
+         "voice_label": "French (Female)", "lang_code": "fr", "title_template": "can_you_say"},
     ]
     for entry in history:
         assert entry["uploaded_at"] is not None
