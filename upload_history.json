@@ -3031,5 +3031,16 @@
     "voice_label": "Thai (Female)",
     "lang_code": "th",
     "title_template": "can_you_say"
+  },
+  {
+    "word": ")u᷸ᷠᷜeeoooo: ❈ ◝ ❑",
+    "label": ")ueeoooo: ❈ ...",
+    "video_id": "uNtp2Sg4_q4",
+    "mode": "echo_cave",
+    "run_id": "38162882363",
+    "uploaded_at": "2026-10-11T18:14:15.346055+00:00",
+    "voice_label": "German (Female)",
+    "lang_code": "de",
+    "title_template": "is_pronounceable"
   }
 ]
