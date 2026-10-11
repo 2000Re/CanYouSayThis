@@ -199,7 +199,24 @@ def build_frame(word_label, frame_path, mode="tts", size=FRAME_SIZE, display_wor
     os.remove(html_path)
 
 
-def build_thumbnail(word_label, thumbnail_path, size=THUMBNAIL_SIZE, display_word=None):
+# PNGファイルシグネチャ(先頭8バイト)。_is_valid_png()参照。
+_PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+# 本物のサムネイル(単色背景+テキスト程度でも)は最低でも数KBにはなる。
+# 壊れた/極端に短く切れたファイルを弾くための粗いしきい値。
+_THUMBNAIL_MIN_VALID_SIZE_BYTES = 2048
+
+
+def _is_valid_png(path):
+    """pathがゼロバイト/極端に小さい/PNGシグネチャが無い、壊れたファイルで
+    ないことを確認する(_is_valid_png()==Falseならアップロードしない)。"""
+    if not os.path.exists(path) or os.path.getsize(path) < _THUMBNAIL_MIN_VALID_SIZE_BYTES:
+        return False
+    with open(path, "rb") as f:
+        return f.read(len(_PNG_SIGNATURE)) == _PNG_SIGNATURE
+
+
+def build_thumbnail(word_label, thumbnail_path, size=THUMBNAIL_SIZE, display_word=None,
+                     max_attempts=3):
     """"絵だけ"のミニマルなカスタムサムネイル画像を生成する(--upload時、
     config.CUSTOM_THUMBNAIL_ENABLED有効時にyoutube_upload.upload_thumbnail()
     へ渡す用)。
@@ -212,7 +229,18 @@ def build_thumbnail(word_label, thumbnail_path, size=THUMBNAIL_SIZE, display_wor
     を使える(README「ハマった罠」参照)。
 
     word_label/display_wordの意味はbuild_frame()と同じ(前者はフォント
-    サイズ算出用、後者は実際に描画する文字列)。"""
+    サイズ算出用、後者は実際に描画する文字列)。
+
+    [罠] page.screenshot()は例外を投げずに、ゼロバイトや極端に短く切れた
+    壊れたPNGを書き出すことが実機で稀に確認された(YouTube Studio上で
+    サムネイルが灰色の壊れたアイコンとして表示される不具合として2回
+    報告された、原因はレンダリング中のタイミング起因とみられるが未特定)。
+    毎回_is_valid_png()で検証し、壊れていればページを作り直して
+    max_attempts回まで再試行する。それでも壊れた画像しか得られない場合は
+    例外を送出し、呼び出し側(generate.py)で警告に留めてアップロードを
+    スキップさせる(壊れた画像をそのままアップロードするよりは、カスタム
+    サムネイル無し=YouTube側の自動生成サムネイルにフォールバックする方が
+    安全なため)。"""
     display_word = word_label if display_word is None else display_word
     width, height = size
     html_content = THUMBNAIL_HTML_TEMPLATE.format(
@@ -227,13 +255,23 @@ def build_thumbnail(word_label, thumbnail_path, size=THUMBNAIL_SIZE, display_wor
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    browser = _get_browser()
-    page = browser.new_page(viewport={"width": width, "height": height})
-    page.goto(f"file://{os.path.abspath(html_path)}")
-    _shrink_word_to_fit(page, width, height)
-    page.screenshot(path=thumbnail_path)
-    page.close()
-    os.remove(html_path)
+    try:
+        browser = _get_browser()
+        for attempt in range(1, max_attempts + 1):
+            page = browser.new_page(viewport={"width": width, "height": height})
+            page.goto(f"file://{os.path.abspath(html_path)}")
+            _shrink_word_to_fit(page, width, height)
+            page.screenshot(path=thumbnail_path)
+            page.close()
+            if _is_valid_png(thumbnail_path):
+                return
+            print(f"[Warning] サムネイル生成が壊れた画像になりました"
+                  f"({attempt}/{max_attempts}回目): {thumbnail_path}")
+        raise RuntimeError(
+            f"サムネイル画像の生成に{max_attempts}回とも失敗しました(壊れた画像): {thumbnail_path}"
+        )
+    finally:
+        os.remove(html_path)
 
 
 def _shrink_word_to_fit(page, max_width, max_height, min_font_size=48, shrink_factor=0.92):
