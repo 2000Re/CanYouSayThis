@@ -137,6 +137,26 @@ def test_build_repost_metadata_uses_recorded_title_template_with_language():
     assert metadata["title"] == 'Try to Say "bonjour123" in French'
 
 
+def test_build_repost_metadata_appends_genre_suffix_for_nightcore():
+    # Shorts側(generate.py _mode_genre_suffix())と同じく、実際にYouTube上
+    # で検索されるジャンル名を持つモードはタイトル末尾に付ける。
+    entry = {
+        "word": "abc123", "label": "abc123", "mode": "nightcore",
+        "voice_label": None, "lang_code": None, "title_template": "how_to_pronounce",
+    }
+    metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
+    assert metadata["title"] == 'How to Pronounce "abc123" (Nightcore)'
+
+
+def test_build_repost_metadata_omits_genre_suffix_for_non_genre_mode():
+    entry = {
+        "word": "abc123", "label": "abc123", "mode": "glitch",
+        "voice_label": None, "lang_code": None, "title_template": "how_to_pronounce",
+    }
+    metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
+    assert "(" not in metadata["title"]
+
+
 def _entry(video_id, run_id):
     return {"video_id": video_id, "run_id": run_id, "label": video_id}
 

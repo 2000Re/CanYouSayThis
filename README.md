@@ -343,6 +343,13 @@ Shorts本体のフレーム(キッカー+単語+モード注記+アイコン)と
 エントリ(導入前にアップロードされた回)は既定の"how_to_pronounce"に
 フォールバックします。
 
+`mode`が`nightcore`/`8d_audio`/`slowed_reverb`のいずれかの場合は、タイトル
+末尾に`(Nightcore)`等のジャンル名も付きます(`generate.py`
+`_mode_genre_suffix()`、「ハマった罠」45番)。これらは実際にYouTube上で
+検索される音楽系ジャンル名のため検索流入が見込めますが、`glitch`/`reverse`
+等の他モードは加工の技術名であって視聴者が検索する言葉ではないため対象外
+にしています。
+
 **優先順位**: 同じワークフロー実行で`generate.py`が今まさに作ったShorts
 (同じ`GITHUB_RUN_ID`で紐付け)は、件数に関わらず常に全て優先して変換し、
 「同じ単語がShorts・通常動画の両方に載る」ようにします。そのうえでまだ
@@ -810,6 +817,14 @@ assets/
     別の仕組みでのみ提供)、プログラムでの自動取得は不可能と判断し、
     該当ツールを削除した。確認したい場合はYouTube Studioで該当動画の
     「アナリティクス」→「リーチ」を手動で見る必要がある。
+45. **nightcore/8d_audio/slowed_reverbのタイトルに、実際にYouTube上で
+    検索されるジャンル名を末尾に付けた**: `glitch`/`reverse`のようなモード
+    名をタイトルに入れても、視聴者が検索する言葉ではない(加工の技術名)
+    ため効果が薄いと判断。一方`Nightcore`/`8D Audio`/`Slowed + Reverb`は
+    音楽系で実際に検索されるジャンル名のため、対象の3モードに限って
+    タイトル末尾に`(ジャンル名)`を付けるようにした(`generate.py`
+    `_mode_genre_suffix()`、`config.TITLE_GENRE_MODES`)。通常動画
+    (`repost_shorts.py`)も同じ接尾辞を付けてShortsと揃える。
 
 ## プロジェクト構成
 

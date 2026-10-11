@@ -85,6 +85,14 @@ TITLE_TEMPLATE_WEIGHTS = {
     "is_pronounceable": 3,
 }
 
+# タイトル末尾にモード名を付けると検索流入が見込める、実際にYouTube上で
+# 検索されるジャンル名を持つモードだけを挙げる(generate.py
+# _mode_genre_suffix()参照、「ハマった罠」45番)。nightcore/8D audio/
+# slowed + reverbはいずれも音楽系で実際に検索されるジャンルだが、
+# glitch/reverse/robot_voice等は音声加工の技術名であって視聴者が検索する
+# 言葉ではないため対象外にする。
+TITLE_GENRE_MODES = {"nightcore", "8d_audio", "slowed_reverb"}
+
 # --voice random が「実在の文字体系」の言語を選んだ場合、単語自体をその
 # 言語の文字からランダムに組み立てる(word_generator.random_script_word() /
 # random_abugida_word())。BASE_CHARSを流用したZalgo単語と違い、装飾記号・
