@@ -3020,5 +3020,16 @@
     "voice_label": "Malay (Male)",
     "lang_code": "ms",
     "title_template": "how_to_pronounce"
+  },
+  {
+    "word": "งะฝณทิ",
+    "label": "งะฝณทิ",
+    "video_id": "yH-5DIdELPo",
+    "mode": "tts",
+    "run_id": "38150352630",
+    "uploaded_at": "2026-10-11T15:14:18.498103+00:00",
+    "voice_label": "Thai (Female)",
+    "lang_code": "th",
+    "title_template": "can_you_say"
   }
 ]
