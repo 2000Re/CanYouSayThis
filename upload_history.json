@@ -3053,5 +3053,16 @@
     "voice_label": "French (Female)",
     "lang_code": "fr",
     "title_template": "is_pronounceable"
+  },
+  {
+    "word": "-V̛̗̇̈͒u᷽᷊᷸ᷓ᷑ᷡᷕᷔvvvnn( ❑",
+    "label": "-Vuvvvnn( ❑",
+    "video_id": "4C1RjbaZsos",
+    "mode": "tts_extreme",
+    "run_id": "38187161948",
+    "uploaded_at": "2026-10-12T00:14:32.785364+00:00",
+    "voice_label": "English (Male)",
+    "lang_code": "en",
+    "title_template": "how_to_pronounce"
   }
 ]
