@@ -170,24 +170,28 @@ def test_synthesize_tts_chorus_picks_multiple_distinct_languages(monkeypatch, tm
     assert out.exists()
 
 
-def test_chorus_voice_language_codes_excludes_hebrew_only():
+def test_chorus_voice_language_codes_excludes_hebrew_and_japanese():
     assert "he" not in config.CHORUS_VOICE_LANGUAGE_CODES
-    assert set(config.CHORUS_VOICE_LANGUAGE_CODES) == set(config.VOICE_LANGUAGES) - {"he"}
+    assert "ja" not in config.CHORUS_VOICE_LANGUAGE_CODES
+    assert set(config.CHORUS_VOICE_LANGUAGE_CODES) == set(config.VOICE_LANGUAGES) - {"he", "ja"}
 
 
-def test_synthesize_tts_chorus_never_uses_hebrew_voice(monkeypatch, tmp_path):
-    # ヘブライ語ボイスはZalgo単語で他言語の3倍近い長さになることを実機で
-    # 確認したため、config.CHORUS_VOICE_LANGUAGE_CODESから除外済み
-    # (config.py参照)。chorusが実際にヘブライ語を選ばないことの回帰防止。
+def test_synthesize_tts_chorus_never_uses_hebrew_or_japanese_voice(monkeypatch, tmp_path):
+    # ヘブライ語・日本語ボイスはZalgo単語で他言語の3倍近い長さになることを
+    # 実機で確認したため、config.CHORUS_VOICE_LANGUAGE_CODESから除外済み
+    # (config.py参照)。chorusが実際にこれらを選ばないことの回帰防止。
     calls = _capture_all_run_calls(monkeypatch)
     random.seed(2)
-    hebrew_voices = {config.VOICE_LANGUAGES["he"]["male"], config.VOICE_LANGUAGES["he"]["female"]}
+    excluded_voices = {
+        config.VOICE_LANGUAGES["he"]["male"], config.VOICE_LANGUAGES["he"]["female"],
+        config.VOICE_LANGUAGES["ja"]["male"], config.VOICE_LANGUAGES["ja"]["female"],
+    }
 
     for _ in range(30):
         synthesize_tts_chorus("word", str(tmp_path / "out.wav"))
         espeak_calls = calls[:-1]
         voices_used = {c[c.index("-v") + 1] for c in espeak_calls}
-        assert voices_used.isdisjoint(hebrew_voices)
+        assert voices_used.isdisjoint(excluded_voices)
         calls.clear()
 
 
