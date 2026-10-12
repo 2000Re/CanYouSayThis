@@ -314,6 +314,16 @@ def test_youtube_metadata_includes_native_script_note_when_flagged():
     assert "not a real word" in description
 
 
+def test_youtube_metadata_includes_fake_word_note_for_spanish_despite_latin_script():
+    # スペイン語(config.VOICE_LANGUAGES["es"]["fake_word_note"])はZalgo単語
+    # (is_native_script=False)だが、トルコ語撤去の経緯(README「ハマった罠」
+    # 26番)を踏まえ例外的に実在単語ではない旨の注記を出す。
+    _title, description, _tags, _caption, _localizations = _youtube_metadata(
+        "v́oOn", "voOn", "tts", voice_label="Spanish (Male)", lang_code="es"
+    )
+    assert "not a real word" in description
+
+
 def test_youtube_metadata_omits_native_hashtag_when_lang_code_not_given():
     _title, description, tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert description.count("#") == 8

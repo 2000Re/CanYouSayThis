@@ -247,6 +247,14 @@ VOICE_LANGUAGES = {
     "ja":  {"label": "Japanese",   "male": "ja",    "female": "ja+f3", "script": "cluster", "chars": JAPANESE_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "発音"},
     "ko":  {"label": "Korean",     "male": "ko",    "female": "ko+f3", "script": "cluster", "chars": KOREAN_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "발음"},
     "hi":  {"label": "Hindi",      "male": "hi",    "female": "hi+f3", "script": "cluster", "chars": HINDI_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "उच्चारण"},
+    # スペイン語はトルコ語(README「ハマった罠」26番で話者から「本物のトルコ語
+    # ではない」という指摘が繰り返され撤去)より話者数・視聴規模がさらに大きく、
+    # 同様の指摘が起きるリスクも高いと判断。"fake_word_note"で、本来は実在
+    # 文字体系の言語(is_native_script)専用だった「これは実在の単語ではない」
+    # という説明文中の注記を、Zalgo単語系のこの言語にも追加で出す
+    # (generate.py _youtube_metadata()参照)。トルコ語除去後の経過を見て
+    # 様子見する。
+    "es":  {"label": "Spanish",    "male": "es",    "female": "mb-es3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Pronunciación", "fake_word_note": True},
 }
 
 # --mode chorus専用: 複数言語のボイスで同時に読み上げる際の候補言語プール。
@@ -276,7 +284,7 @@ LANGUAGE_LABELS_JA = {
     "vi": "ベトナム語", "id": "インドネシア語", "ms": "マレー語",
     "pt-br": "ポルトガル語(ブラジル)", "pt": "ポルトガル語(ポルトガル)",
     "ro": "ルーマニア語", "ru": "ロシア語", "th": "タイ語", "ar": "アラビア語", "he": "ヘブライ語",
-    "ja": "日本語", "ko": "韓国語", "hi": "ヒンディー語",
+    "ja": "日本語", "ko": "韓国語", "hi": "ヒンディー語", "es": "スペイン語",
 }
 
 # --voice random で女性ボイスが選ばれた場合に使うespeak-ngのピッチ(-p、
@@ -288,14 +296,13 @@ LANGUAGE_LABELS_JA = {
 FEMALE_VOICE_PITCH = 75
 
 # --voice random で「実在の文字体系を使う言語」が選ばれる確率。
-# 実在文字体系の言語(ロシア語・タイ語・アラビア語・ヘブライ語の4言語)は、
-# 視聴地域データの裏付けが無い言語(アルメニア語・アムハラ語・グルジア語・
-# チェロキー語・ミャンマー語・シンハラ語・タミル語・テルグ語・ベンガル語の
-# 9言語)を削除したことで、ラテン文字(Zalgo)系の言語(16言語)に対して
-# 少数派に戻っている(20言語中4)。それでも均等抽選(4/20=20%)よりやや
-# 高めの0.3に据え置いているのは、これらの言語が持つ「見た目のインパクト」
-# (視覚的なnoveltyがこのチャンネルの売りの一部)を一定の頻度で保つ狙い
-# (generate.py _resolve_voice()参照)。
+# 実在文字体系の言語(ロシア語・タイ語・アラビア語・ヘブライ語・日本語・
+# 韓国語・ヒンディー語の7言語)は、ラテン文字(Zalgo)系の言語(スペイン語
+# 追加で16言語)に対して少数派(23言語中7、均等抽選なら7/23≒0.30)。
+# これらの言語が持つ「見た目のインパクト」(視覚的なnoveltyがこのチャンネル
+# の売りの一部)を一定の頻度で保つ狙いで0.3に設定している(偶然均等抽選に
+# 近い値になっているだけで、意図的に高めに寄せているわけではない。
+# generate.py _resolve_voice()参照)。
 NATIVE_SCRIPT_VOICE_CHANCE = 0.3
 
 # --- 単語ジェネレータ設定 ----------------------------------------------------

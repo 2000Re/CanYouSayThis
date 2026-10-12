@@ -25,7 +25,7 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
    - `8d_audio`: ステレオ化して左右に音像をゆっくり回転させる(ffmpegの`apulsator`)。ヘッドホン推奨の「8D audio」ジャンル風。
    - `echo_cave`: 複数タップのエコー(aecho)を重ね、洞窟や大聖堂のような深い反響を作る。
    - `random`: `config.MODE_WEIGHTS`の重みで上記からランダムに選ぶ。実測で`reverse`/`glitch`/`chorus`の優位が確認され、この3つとchorus(さらに+1)の重みを引き上げている(「ハマった罠」20番・32番・40番)。`telephone`等の新規6方式は実績データが無いため、デフォルトの重み1のまま。
-3. **多言語・声色のランダム化**(任意): `--voice random`(tts/tts_extreme/reverse/robot_voice/telephone/slowed_reverb/nightcore/underwater/8d_audio/echo_cave専用)で、英語を含む19言語・男性/女性ボイスをランダムに選ぶ。詳しくは「多言語ボイス」を参照。
+3. **多言語・声色のランダム化**(任意): `--voice random`(tts/tts_extreme/reverse/robot_voice/telephone/slowed_reverb/nightcore/underwater/8d_audio/echo_cave専用)で、英語を含む23言語・男性/女性ボイスをランダムに選ぶ。詳しくは「多言語ボイス」を参照。
 4. **繰り返し**: 音声をデフォルトで3回繰り返す("word... word... word..."形式)。
 5. **動画合成**: [Playwright](https://playwright.dev/)経由のChromiumでフレームを描画し音声と合成(縦型9:16、Shorts向け)。動画尺は音声の実際の長さに追従(固定尺パディング無し)。
 6. **YouTubeへの自動アップロード**(任意): `--upload`でYouTube Data API v3経由でチャンネルにアップロード。
@@ -42,10 +42,11 @@ sudo apt-get install -y fonts-noto-core fonts-noto-extra fonts-noto-ui-core font
 sudo apt-get install -y fonts-noto-cjk
 
 # --voice random で英語・フランス語・ドイツ語・ハンガリー語・スウェーデン語・
-# ポルトガル語(ブラジル/ポルトガル)・トルコ語相当のMBROLA女性ボイスを使う
+# ポルトガル語(ブラジル/ポルトガル)・スペイン語相当のMBROLA女性ボイスを使う
 # 場合のみ必要。未インストールでも男性ボイス・他言語の女性ボイス(espeak-ng
 # 内蔵のフォルマントバリアントで代替)は動作する(「多言語ボイス」参照)
-sudo apt-get install -y mbrola mbrola-us1 mbrola-fr4 mbrola-de1 mbrola-hu1 mbrola-sw2
+sudo apt-get install -y mbrola mbrola-us1 mbrola-fr4 mbrola-de1 mbrola-hu1 mbrola-sw2 \
+    mbrola-br4 mbrola-pt1 mbrola-es3
 
 # Python依存
 pip install -r requirements.txt
@@ -104,7 +105,7 @@ Actionsアーティファクト内の該当ファイルを特定するためで�
 
 土台の文字(母音中心)は変えず、espeak-ngが読み上げる**言語・性別**だけを
 ランダムに変える機能です(`config.VOICE_LANGUAGES`)。`--voice random`で
-以下22言語・男性/女性からランダムに選ばれます。
+以下23言語・男性/女性からランダムに選ばれます。
 
 | 言語 | 男性 | 女性 | 単語の文字体系 |
 |---|---|---|---|
@@ -115,6 +116,7 @@ Actionsアーティファクト内の該当ファイルを特定するためで�
 | スウェーデン語 | ○ | ○(MBROLA) | ラテン文字(Zalgo) |
 | ポルトガル語(ブラジル) | ○ | ○(MBROLA) | ラテン文字(Zalgo) |
 | ポルトガル語(ポルトガル) | ○ | ○(MBROLA) | ラテン文字(Zalgo) |
+| スペイン語 | ○ | ○(MBROLA) | ラテン文字(Zalgo) |
 | 中国語(標準語) | ○ | ○(フォルマント) | ラテン文字(Zalgo) |
 | 広東語 | ○ | ○(フォルマント) | ラテン文字(Zalgo) |
 | フィンランド語 | ○ | ○(フォルマント) | ラテン文字(Zalgo) |
@@ -131,14 +133,14 @@ Actionsアーティファクト内の該当ファイルを特定するためで�
 | 韓国語 | ○ | ○(フォルマント) | **ハングル** |
 | ヒンディー語 | ○ | ○(フォルマント) | **デーヴァナーガリー** |
 
-女性ボイスは2種類。**MBROLA**(上記7言語のみ、`mbrola-*`パッケージが必要。
+女性ボイスは2種類。**MBROLA**(上記8言語のみ、`mbrola-*`パッケージが必要。
 素の声よりやや低いため`-p`で補正、`config.FEMALE_VOICE_PITCH`)と、**フォル
 マントバリアント**(残り15言語、`<voice>+f3`で追加パッケージ不要。f0が
 108Hz→194Hzに上昇、MBROLA用ピッチ補正は重ねない。中国語のみ`cmn+f3`が必要、
 「ハマった罠」11・13番)。
 
 実在文字体系(ロシア語・タイ語・アラビア語・ヘブライ語・日本語・韓国語・
-ヒンディー語)は少数派(7/22)のため、`--voice random`はまず
+ヒンディー語)は少数派(7/23)のため、`--voice random`はまず
 `config.NATIVE_SCRIPT_VOICE_CHANCE`(デフォルト30%)の確率で「実在文字体系
 or ラテン文字」を決め、その中で言語を均等抽選します(`generate.py
 _resolve_voice()`)。`generate.py`自体のデフォルトは`en`固定ですが、
@@ -868,6 +870,18 @@ assets/
       見落としだった。`generate.yml`に`fonts-noto-cjk`を追加して解決
       (デーヴァナーガリーは`fonts-noto-core`で既にカバーされており追加
       パッケージ不要だった)。
+48. **スペイン語追加時、トルコ語撤去(26番)の教訓から説明文の注記を
+    Zalgo単語の言語にも拡張した**: トルコ語は話者から「本物のトルコ語では
+    ない」という指摘が繰り返されて言語プールから撤去したが、スペイン語は
+    話者数・視聴規模がさらに大きく同種の指摘リスクも高いと判断。元々は
+    実在文字体系の言語(`is_native_script`)専用だった「これは実在の単語
+    ではない」という説明文中の注記を、`config.VOICE_LANGUAGES["es"]`に
+    `"fake_word_note": True`を立てることで例外的に出すようにした
+    (`generate.py _youtube_metadata()`参照)。女性ボイスはMBROLA
+    (`mb-es3`、`mbrola-es3`パッケージ、`generate.yml`に追加)。音声の尺
+    (chorus用Zalgo単語で平均1.44秒)・フォント(既存のラテン文字用フォント
+    で描画可能)は実機検証で問題無かった。指摘が多く出た場合は撤去も検討
+    (トルコ語の件がそのまま再発するかは未知数のため経過観察)。
 
 ## プロジェクト構成
 
