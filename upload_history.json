@@ -3108,5 +3108,16 @@
     "voice_label": "Korean (Male)",
     "lang_code": "ko",
     "title_template": "can_you_say"
+  },
+  {
+    "word": "vvvvvvmmmvv ✶",
+    "label": "vvvvvvmmmvv ...",
+    "video_id": "t1sc4ZotkzI",
+    "mode": "chorus",
+    "run_id": "38268605684",
+    "uploaded_at": "2026-10-12T15:14:28.014772+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "can_you_pronounce"
   }
 ]
