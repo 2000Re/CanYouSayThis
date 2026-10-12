@@ -9,7 +9,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import config
-import generate
 import upload_history
 from generate import (
     _SINGLE_VOICE_MODES,
