@@ -3119,5 +3119,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "can_you_pronounce"
+  },
+  {
+    "word": "(uuuuuun֧֬֘aaU᷿᷽᷸ᷘ᷋uᷗᷣ᷌᷼( ✷",
+    "label": "(uuuuuunaaUu...",
+    "video_id": "sClBG_xeDjI",
+    "mode": "8d_audio",
+    "run_id": "38289417011",
+    "uploaded_at": "2026-10-12T18:14:18.903667+00:00",
+    "voice_label": "Spanish (Female)",
+    "lang_code": "es",
+    "title_template": "how_to_pronounce"
   }
 ]
