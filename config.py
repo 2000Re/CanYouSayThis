@@ -127,6 +127,18 @@ THAI_VOWEL_MARKS = list("ะาิีึืุูเแโใไ")
 ARABIC_LETTERS = _assigned_chars([(0x0621, 0x064A)])
 HEBREW_LETTERS = _assigned_chars([(0x05D0, 0x05EA)])
 
+# [罠] ひらがなブロック全体(U+3040〜U+309F)のうち、濁点/半濁点(゛゜)・
+# 結合用濁点/半濁点(゙゚、U+3099〜U+309A)・踊り字(ゝゞ、U+309D〜U+309E)の
+# 6文字は単独では発音を持たず、espeak-ngに読ませると"Japanese letter"と
+# 英語で読み上げてしまう(実機確認、README「ハマった罠」参照)。そのため
+# 単独でも発音を持つ範囲(ぁ〜ゖ、U+3041〜U+3096)だけに絞っている。
+JAPANESE_LETTERS = _assigned_chars([(0x3041, 0x3096)])
+# ハングルは結合済み音節(U+AC00〜U+D7A3、11,172字)全てが実際の発音を
+# 持つため、日本語のような範囲の絞り込みは不要(実機確認済み)。
+KOREAN_LETTERS = _assigned_chars([(0xAC00, 0xD7A3)])
+# デーヴァナーガリーも母音記号を含む全128文字が実機確認で問題無かった。
+HINDI_LETTERS = _assigned_chars([(0x0900, 0x097F)])
+
 # glitchモード専用の「絵のように見える」単語生成(word_generator.
 # random_pictograph_word()参照)向けの文字プール。単一の文字でも「絵」の
 # ように見える表現をヒントに、複数文字を組み合わせたら「絵」のように
@@ -232,17 +244,25 @@ VOICE_LANGUAGES = {
     "th":  {"label": "Thai",       "male": "th",    "female": "th+f3", "script": "abugida", "chars": None, "consonants": THAI_CONSONANTS, "vowels": THAI_VOWEL_MARKS, "hashtag_word": "การออกเสียง"},
     "ar":  {"label": "Arabic",     "male": "ar",    "female": "ar+f3", "script": "cluster", "chars": ARABIC_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "نطق"},
     "he":  {"label": "Hebrew",     "male": "he",    "female": "he+f3", "script": "cluster", "chars": HEBREW_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "הגייה"},
+    "ja":  {"label": "Japanese",   "male": "ja",    "female": "ja+f3", "script": "cluster", "chars": JAPANESE_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "発音"},
+    "ko":  {"label": "Korean",     "male": "ko",    "female": "ko+f3", "script": "cluster", "chars": KOREAN_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "발음"},
+    "hi":  {"label": "Hindi",      "male": "hi",    "female": "hi+f3", "script": "cluster", "chars": HINDI_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "उच्चारण"},
 }
 
 # --mode chorus専用: 複数言語のボイスで同時に読み上げる際の候補言語プール。
 # 実機で検証したところ、ヘブライ語ボイス(he)でZalgo単語(結合文字混じり)
-# を読ませると、他の18言語(1.4〜2.6秒)の3倍近い7.6秒台まで長くなることを
+# を読ませると、他の言語(1.4〜2.6秒)の3倍近い7.6秒台まで長くなることを
 # 確認した(ヘブライ語の音声エンジンが結合文字を処理する際の挙動が他言語と
 # 大きく異なるためと見られる。他の実在文字体系言語(ロシア語・タイ語・
-# アラビア語)は同じ検証で問題無かったため、ヘブライ語のみ除外している)。
+# アラビア語)は同じ検証で問題無かったため、ヘブライ語のみ除外していた)。
 # chorusはamix(duration=longest)で一番長いボイスに全体の尺が引っ張られる
 # ため、この差が致命的に響く(README「ハマった罠」参照)。
-CHORUS_VOICE_LANGUAGE_CODES = [code for code in VOICE_LANGUAGES if code != "he"]
+#
+# 日本語(ja)追加時の実機検証で、日本語ボイスにも同様の問題(Zalgo単語で
+# 平均6.16秒・最大13.45秒、英語ボイスは平均1.65秒・最大2.37秒)が見つかった
+# ため、heと同様に除外する。韓国語(ko)・ヒンディー語(hi)は同じ検証で
+# 問題無かった。
+CHORUS_VOICE_LANGUAGE_CODES = [code for code in VOICE_LANGUAGES if code not in ("he", "ja")]
 
 # タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド、
 # generate.py _youtube_metadata()参照)で、VOICE_LANGUAGESの"label"に対応する
@@ -256,6 +276,7 @@ LANGUAGE_LABELS_JA = {
     "vi": "ベトナム語", "id": "インドネシア語", "ms": "マレー語",
     "pt-br": "ポルトガル語(ブラジル)", "pt": "ポルトガル語(ポルトガル)",
     "ro": "ルーマニア語", "ru": "ロシア語", "th": "タイ語", "ar": "アラビア語", "he": "ヘブライ語",
+    "ja": "日本語", "ko": "韓国語", "hi": "ヒンディー語",
 }
 
 # --voice random で女性ボイスが選ばれた場合に使うespeak-ngのピッチ(-p、
@@ -359,7 +380,7 @@ DECORATIVE_SYMBOLS = list(
 # 1つのフォントに全部入っていないことが多いので、複数のNoto系フォントを並べ
 # てブラウザのfontconfigフォールバックに解決を任せる。
 FRAME_CSS_FONT_STACK = (
-    "'Noto Sans','Noto Sans CJK JP','Noto Sans Symbols','Noto Sans Symbols2',"
+    "'Noto Sans','Noto Sans CJK JP','Noto Sans CJK KR','Noto Sans Symbols','Noto Sans Symbols2',"
     "'Noto Sans Thai','Noto Sans Devanagari','Noto Sans Hebrew','Noto Sans Arabic',"
     "'Noto Sans Tibetan','Noto Sans Yi','Noto Sans Mongolian',"
     "'Noto Sans Cuneiform','Noto Sans Egyptian Hieroglyphs','Noto Sans Anatolian Hieroglyphs',"

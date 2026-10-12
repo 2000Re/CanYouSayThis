@@ -121,7 +121,7 @@ def test_native_script_for_voice_returns_none_for_latin_languages():
 def test_native_script_for_voice_returns_generator_for_cluster_languages():
     # 文字をランダムに並べるだけの言語はrandom_script_word()ベースの
     # 生成関数が返る
-    for lang in ("ru", "ar", "he"):
+    for lang in ("ru", "ar", "he", "ja", "ko", "hi"):
         generator = _native_script_for_voice(config.VOICE_LANGUAGES[lang]["male"])
         assert generator is not None
         word = generator()
