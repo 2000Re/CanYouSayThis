@@ -3097,5 +3097,16 @@
     "voice_label": "French (Female)",
     "lang_code": "fr",
     "title_template": "can_you_say"
+  },
+  {
+    "word": "쨀튱슣묭묭묭",
+    "label": "쨀튱슣묭묭묭",
+    "video_id": "RXyFPi3YrDw",
+    "mode": "echo_cave",
+    "run_id": "38247643740",
+    "uploaded_at": "2026-10-12T12:14:25.920180+00:00",
+    "voice_label": "Korean (Male)",
+    "lang_code": "ko",
+    "title_template": "can_you_say"
   }
 ]
