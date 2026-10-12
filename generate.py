@@ -180,7 +180,12 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     is_native_script=Trueの場合(アラビア文字・キリル文字等、実在の文字体系
     で単語を生成した回)、実在するその言語の単語ではなくランダムな造語である
     旨を説明文に明記する。Zalgo単語(ラテン文字+結合文字)は見た目からして
-    実在の単語でないことが明らかなので対象外。
+    実在の単語でないことが明らかなので対象外だが、lang_codeの
+    config.VOICE_LANGUAGESエントリに"fake_word_note": Trueが立っている場合は
+    例外的にこちらも明記する(スペイン語。README「ハマった罠」26番で話者数の
+    少ないトルコ語でも「本物のトルコ語ではない」という指摘が繰り返されて
+    言語プールから撤去した経緯があり、話者数がさらに多いスペイン語は同種の
+    指摘リスクがより高いと判断したため)。
 
     説明文には「tongue twister」「language learners」という、上記のタイト
     ル・タグの言語名追加とは違う切り口の検索キーワードを含む一文も常に
@@ -254,7 +259,7 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     )
     if voice_label:
         description += f"Voice: {voice_label}\n"
-    if is_native_script:
+    if is_native_script or (lang_entry and lang_entry.get("fake_word_note")):
         description += (
             "(This is a randomly generated sequence of letters, not a real word "
             "in that language!)\n"
