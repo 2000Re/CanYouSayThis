@@ -9,6 +9,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import config
+import generate
+import upload_history
 from generate import (
     _SINGLE_VOICE_MODES,
     _TITLE_TEMPLATES,
@@ -20,11 +22,18 @@ from generate import (
     _resolve_mode,
     _resolve_title_template,
     _resolve_voice,
+    _unposted_lang_codes,
     _voice_pitch_for,
     _word_generator_for,
     _youtube_metadata,
 )
 from word_generator import random_zalgo_word
+
+
+def _use_empty_upload_history(tmp_path, monkeypatch):
+    """_unposted_lang_codes()が実際のupload_history.json(本番の投稿履歴)を
+    読んでテスト結果が実行時の履歴に左右されないよう、空の履歴に差し替える。"""
+    monkeypatch.setattr(upload_history, "UPLOAD_HISTORY_PATH", str(tmp_path / "upload_history.json"))
 
 REAL_MODES = (
     "tts", "tts_extreme", "glitch", "reverse", "robot_voice", "chorus", "morse",
@@ -715,9 +724,12 @@ def test_all_voice_languages_have_both_genders():
         assert entry["female"], code
 
 
-def test_resolve_voice_random_picks_from_native_script_pool_below_threshold(monkeypatch):
+def test_resolve_voice_random_picks_from_native_script_pool_below_threshold(monkeypatch, tmp_path):
     # random.random() が NATIVE_SCRIPT_VOICE_CHANCE 未満のときは、実在の
     # 文字体系を使う言語のプールから選ばれる(config._resolve_voice()参照)。
+    # 投稿済み言語の優先ロジック(_unposted_lang_codes())は本テストの対象
+    # 外なので、空の履歴にして無効化する。
+    _use_empty_upload_history(tmp_path, monkeypatch)
     native_codes = [c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is not None]
 
     def fake_choice(seq):
@@ -734,9 +746,10 @@ def test_resolve_voice_random_picks_from_native_script_pool_below_threshold(monk
     assert label.startswith("Arabic")
 
 
-def test_resolve_voice_random_picks_from_latin_pool_above_threshold(monkeypatch):
+def test_resolve_voice_random_picks_from_latin_pool_above_threshold(monkeypatch, tmp_path):
     # random.random() が NATIVE_SCRIPT_VOICE_CHANCE 以上のときは、ラテン文字
     # (Zalgo)系の言語のプールから選ばれる。
+    _use_empty_upload_history(tmp_path, monkeypatch)
     latin_codes = [c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is None]
 
     def fake_choice(seq):
@@ -753,7 +766,8 @@ def test_resolve_voice_random_picks_from_latin_pool_above_threshold(monkeypatch)
     assert label.startswith("French")
 
 
-def test_resolve_voice_random_can_pick_female_when_available(monkeypatch):
+def test_resolve_voice_random_can_pick_female_when_available(monkeypatch, tmp_path):
+    _use_empty_upload_history(tmp_path, monkeypatch)
     latin_codes = [c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is None]
 
     def fake_choice(seq):
@@ -771,9 +785,12 @@ def test_resolve_voice_random_can_pick_female_when_available(monkeypatch):
     assert "Female" in label
 
 
-def test_resolve_voice_random_weighting_matches_native_script_chance():
+def test_resolve_voice_random_weighting_matches_native_script_chance(monkeypatch, tmp_path):
     # 統計的な検証: 十分な試行回数で、実在文字体系言語が選ばれる比率が
-    # config.NATIVE_SCRIPT_VOICE_CHANCEに近いことを確認する。
+    # config.NATIVE_SCRIPT_VOICE_CHANCEに近いことを確認する。プール内の
+    # 言語選択(投稿済み優先ロジック)は対象外なので、空の履歴にして無効化
+    # する(実行時点の本番投稿履歴に結果が左右されないようにする意味もある)。
+    _use_empty_upload_history(tmp_path, monkeypatch)
     random.seed(0)
     native_codes = {c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is not None}
     trials = 3000
@@ -787,6 +804,62 @@ def test_resolve_voice_random_weighting_matches_native_script_chance():
             hits += 1
     ratio = hits / trials
     assert abs(ratio - config.NATIVE_SCRIPT_VOICE_CHANCE) < 0.05
+
+
+def test_unposted_lang_codes_filters_out_already_posted_codes(monkeypatch, tmp_path):
+    monkeypatch.setattr(upload_history, "UPLOAD_HISTORY_PATH", str(tmp_path / "upload_history.json"))
+    upload_history.save_upload_history([
+        {"word": "a", "label": "a", "video_id": "v1", "mode": "tts", "lang_code": "fr"},
+        {"word": "b", "label": "b", "video_id": "v2", "mode": "tts", "lang_code": "de"},
+        # lang_codeキー自体が無い古い形式のエントリも、Noneとして安全に扱う
+        {"word": "c", "label": "c", "video_id": "v3", "mode": "glitch"},
+    ])
+    assert _unposted_lang_codes(["fr", "de", "ja"]) == ["ja"]
+
+
+def test_unposted_lang_codes_returns_all_when_history_empty(monkeypatch, tmp_path):
+    _use_empty_upload_history(tmp_path, monkeypatch)
+    assert _unposted_lang_codes(["fr", "de", "ja"]) == ["fr", "de", "ja"]
+
+
+def test_resolve_voice_random_prioritizes_unposted_language_in_pool(monkeypatch, tmp_path):
+    # いままで一度も投稿されていない言語(ここでは"ja")がプール内にあれば、
+    # 均等抽選ではなく必ずそちらが選ばれる(ユーザー要望: 新規追加言語が
+    # なかなか抽選されない問題への対策)。
+    monkeypatch.setattr(upload_history, "UPLOAD_HISTORY_PATH", str(tmp_path / "upload_history.json"))
+    native_codes = [c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is not None]
+    # "ja"以外の実在文字体系言語は全て投稿済みにしておく
+    upload_history.save_upload_history([
+        {"word": "x", "label": "x", "video_id": f"v{i}", "mode": "tts", "lang_code": code}
+        for i, code in enumerate(c for c in native_codes if c != "ja")
+    ])
+    monkeypatch.setattr(random, "random", lambda: 0.0)  # 必ず実在文字体系プールを選ぶ
+
+    for _ in range(20):
+        code, label, _gender = _resolve_voice("random")
+        assert code in (config.VOICE_LANGUAGES["ja"]["male"], config.VOICE_LANGUAGES["ja"]["female"])
+        assert label.startswith("Japanese")
+
+
+def test_resolve_voice_random_falls_back_to_full_pool_once_all_posted(monkeypatch, tmp_path):
+    # プール内の全言語が投稿済みになれば、通常の均等抽選に戻る
+    # (_unposted_lang_codes()が空リストを返すため)。
+    monkeypatch.setattr(upload_history, "UPLOAD_HISTORY_PATH", str(tmp_path / "upload_history.json"))
+    native_codes = [c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is not None]
+    upload_history.save_upload_history([
+        {"word": "x", "label": "x", "video_id": f"v{i}", "mode": "tts", "lang_code": code}
+        for i, code in enumerate(native_codes)
+    ])
+    monkeypatch.setattr(random, "random", lambda: 0.0)
+
+    random.seed(0)
+    seen_codes = set()
+    for _ in range(200):
+        code, _label, _gender = _resolve_voice("random")
+        seen_codes.add(code)
+    # 投稿済み優先ロジックが無効化されていれば、実在文字体系プールの複数の
+    # 言語が選ばれるはず(1言語に固定されない)。
+    assert len(seen_codes) > 1
 
 
 def test_voice_pitch_for_boosts_only_mbrola_female_voices():

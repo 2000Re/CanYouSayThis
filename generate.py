@@ -373,6 +373,24 @@ def _resolve_mode(mode):
     return mode
 
 
+def _unposted_lang_codes(codes):
+    """渡されたlang_codeのうち、upload_history.json(アップロード成功履歴)に
+    一度もlang_codeとして記録されていないものだけを返す。
+
+    lang_codeはgenerate.py側がmodeが単一ボイス(config._SINGLE_VOICE_MODES)
+    の回の--upload成功時のみ記録する(upload_history.append_upload()参照)。
+    そのためglitch/chorus/morseの回や、アップロードしていないローカル実行は
+    「投稿済み」に数えない。
+
+    upload_historyはgoogle-api-python-client等の重い依存を持たないため、
+    ここでの遅延importは依存関係を避ける目的ではなく、他の箇所
+    (generate_one()の重複単語チェック等)と同じ呼び出し方に揃える目的。"""
+    from upload_history import load_upload_history
+
+    posted = {entry.get("lang_code") for entry in load_upload_history()}
+    return [c for c in codes if c not in posted]
+
+
 def _resolve_voice(voice):
     """--voice random の場合、config.VOICE_LANGUAGESから言語と性別を
     ランダムに選び、(実際のespeak-ngボイスコード, 表示用ラベル, 性別)を
@@ -396,7 +414,11 @@ def _resolve_voice(voice):
     native_script_codes = [c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is not None]
     latin_codes = [c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is None]
     pool = native_script_codes if random.random() < config.NATIVE_SCRIPT_VOICE_CHANCE else latin_codes
-    lang_code = random.choice(pool)
+    # 選んだプール内に一度も投稿されていない言語があれば、必ずそちらから
+    # 選ぶ(新しく追加した言語がなかなか抽選されない問題への対策。ユーザー
+    # 要望)。プール内の全言語が投稿済みになれば通常の均等抽選に戻る。
+    unposted = _unposted_lang_codes(pool)
+    lang_code = random.choice(unposted if unposted else pool)
     entry = config.VOICE_LANGUAGES[lang_code]
     genders = ["male"] + (["female"] if entry["female"] else [])
     gender = random.choice(genders)
