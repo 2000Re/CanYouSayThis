@@ -127,14 +127,8 @@ THAI_VOWEL_MARKS = list("ะาิีึืุูเแโใไ")
 ARABIC_LETTERS = _assigned_chars([(0x0621, 0x064A)])
 HEBREW_LETTERS = _assigned_chars([(0x05D0, 0x05EA)])
 
-# [罠] ひらがなブロック全体(U+3040〜U+309F)のうち、濁点/半濁点(゛゜)・
-# 結合用濁点/半濁点(゙゚、U+3099〜U+309A)・踊り字(ゝゞ、U+309D〜U+309E)の
-# 6文字は単独では発音を持たず、espeak-ngに読ませると"Japanese letter"と
-# 英語で読み上げてしまう(実機確認、README「ハマった罠」参照)。そのため
-# 単独でも発音を持つ範囲(ぁ〜ゖ、U+3041〜U+3096)だけに絞っている。
-JAPANESE_LETTERS = _assigned_chars([(0x3041, 0x3096)])
 # ハングルは結合済み音節(U+AC00〜U+D7A3、11,172字)全てが実際の発音を
-# 持つため、日本語のような範囲の絞り込みは不要(実機確認済み)。
+# 持つため、絞り込みは不要(実機確認済み)。
 KOREAN_LETTERS = _assigned_chars([(0xAC00, 0xD7A3)])
 # デーヴァナーガリーも母音記号を含む全128文字が実機確認で問題無かった。
 HINDI_LETTERS = _assigned_chars([(0x0900, 0x097F)])
@@ -266,7 +260,6 @@ VOICE_LANGUAGES = {
     "th":  {"label": "Thai",       "male": "th",    "female": "th+f3", "script": "abugida", "chars": None, "consonants": THAI_CONSONANTS, "vowels": THAI_VOWEL_MARKS, "hashtag_word": "การออกเสียง"},
     "ar":  {"label": "Arabic",     "male": "ar",    "female": "ar+f3", "script": "cluster", "chars": ARABIC_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "نطق"},
     "he":  {"label": "Hebrew",     "male": "he",    "female": "he+f3", "script": "cluster", "chars": HEBREW_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "הגייה"},
-    "ja":  {"label": "Japanese",   "male": "ja",    "female": "ja+f3", "script": "cluster", "chars": JAPANESE_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "発音"},
     "ko":  {"label": "Korean",     "male": "ko",    "female": "ko+f3", "script": "cluster", "chars": KOREAN_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "발음"},
     "hi":  {"label": "Hindi",      "male": "hi",    "female": "hi+f3", "script": "cluster", "chars": HINDI_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "उच्चारण"},
     # スペイン語はトルコ語(README「ハマった罠」26番で話者から「本物のトルコ語
@@ -291,12 +284,13 @@ VOICE_LANGUAGES = {
 # chorusはamix(duration=longest)で一番長いボイスに全体の尺が引っ張られる
 # ため、この差が致命的に響く(README「ハマった罠」参照)。
 #
-# 日本語(ja)追加時の実機検証で、日本語ボイスにも同様の問題(Zalgo単語で
-# 平均6.16秒・最大13.45秒、英語ボイスは平均1.65秒・最大2.37秒)が見つかった
-# ため、heと同様に除外する。韓国語(ko)・ヒンディー語(hi)は同じ検証で
-# 問題無かった。ポーランド語(pl)・ウイグル語(ug)・アムハラ語(am)追加時も
-# 同じ検証を行い、いずれも平均1.4〜1.6秒程度で問題無かった。
-CHORUS_VOICE_LANGUAGE_CODES = [code for code in VOICE_LANGUAGES if code not in ("he", "ja")]
+# 日本語(ja)追加時の実機検証でも同様の問題(Zalgo単語で平均6.16秒・
+# 最大13.45秒、英語ボイスは平均1.65秒・最大2.37秒)が見つかりheと同様に
+# 除外していたが、日本語ボイス自体を後に言語プールから撤去したため
+# この除外は現在不要(「ハマった罠」参照)。韓国語(ko)・ヒンディー語(hi)は
+# 同じ検証で問題無かった。ポーランド語(pl)・ウイグル語(ug)・アムハラ語(am)
+# 追加時も同じ検証を行い、いずれも平均1.4〜1.6秒程度で問題無かった。
+CHORUS_VOICE_LANGUAGE_CODES = [code for code in VOICE_LANGUAGES if code != "he"]
 
 # タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド、
 # generate.py _youtube_metadata()参照)で、VOICE_LANGUAGESの"label"に対応する
@@ -310,7 +304,7 @@ LANGUAGE_LABELS_JA = {
     "vi": "ベトナム語", "id": "インドネシア語", "ms": "マレー語",
     "pt-br": "ポルトガル語(ブラジル)", "pt": "ポルトガル語(ポルトガル)",
     "ro": "ルーマニア語", "ru": "ロシア語", "th": "タイ語", "ar": "アラビア語", "he": "ヘブライ語",
-    "ja": "日本語", "ko": "韓国語", "hi": "ヒンディー語", "es": "スペイン語",
+    "ko": "韓国語", "hi": "ヒンディー語", "es": "スペイン語",
     "pl": "ポーランド語", "ug": "ウイグル語", "am": "アムハラ語",
 }
 
@@ -323,12 +317,13 @@ LANGUAGE_LABELS_JA = {
 FEMALE_VOICE_PITCH = 75
 
 # --voice random で「実在の文字体系を使う言語」が選ばれる確率。
-# 実在文字体系の言語(ロシア語・タイ語・アラビア語・ヘブライ語・日本語・
-# 韓国語・ヒンディー語・ウイグル語・アムハラ語の9言語)は、ラテン文字
-# (Zalgo)系の言語(ポーランド語追加で17言語)に対して少数派
-# (26言語中9、均等抽選なら9/26≒0.35)。これらの言語が持つ「見た目の
-# インパクト」(視覚的なnoveltyがこのチャンネルの売りの一部)を一定の
-# 頻度で保つ狙いで0.3に設定している(generate.py _resolve_voice()参照)。
+# 実在文字体系の言語(ロシア語・タイ語・アラビア語・ヘブライ語・韓国語・
+# ヒンディー語・ウイグル語・アムハラ語の8言語。日本語は撤去済み、
+# 「ハマった罠」参照)は、ラテン文字(Zalgo)系の言語(17言語)に対して
+# 少数派(25言語中8、均等抽選なら8/25=0.32)。これらの言語が持つ
+# 「見た目のインパクト」(視覚的なnoveltyがこのチャンネルの売りの一部)を
+# 一定の頻度で保つ狙いで0.3に設定している(generate.py _resolve_voice()
+# 参照)。
 NATIVE_SCRIPT_VOICE_CHANCE = 0.3
 
 # --- 単語ジェネレータ設定 ----------------------------------------------------
