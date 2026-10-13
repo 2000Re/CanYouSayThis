@@ -11,6 +11,7 @@ import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import generate
 import repost_shorts
 
 
@@ -93,9 +94,10 @@ def test_build_repost_metadata_mirrors_short_title_without_shorts_tag():
     assert "#Shorts" not in metadata["title"]
     assert "#Shorts" not in metadata["description"]
     assert "https://youtu.be/xyz" in metadata["description"]
-    assert metadata["caption_text"] == (
-        'How to pronounce "abc123"? Not a real word — just a joke, give it a try! \U0001F604'
-    )
+    # comment_textはgenerate._random_comment_text()が複数パターンから
+    # ランダムに選ぶため(2026-10-13)、いずれかの出力と一致することを確認する。
+    expected_comments = {template("abc123", None) for template in generate._COMMENT_TEMPLATES}
+    assert metadata["comment_text"] in expected_comments
 
 
 def test_build_repost_metadata_adds_language_to_title_and_tags():
@@ -108,7 +110,7 @@ def test_build_repost_metadata_adds_language_to_title_and_tags():
     assert 'in French?' in metadata["title"]
     assert "french pronunciation" in metadata["tags"]
     assert "Voice: French (Male)" in metadata["description"]
-    assert 'in French? Not a real word' in metadata["caption_text"]
+    assert "in French" in metadata["comment_text"]
 
 
 def test_build_repost_metadata_skips_language_suffix_for_english():

@@ -79,7 +79,7 @@ import requests
 import config
 from audio_utils import extract_audio_track
 from frame_builder import build_thumbnail
-from generate import _TITLE_TEMPLATES, _mode_genre_suffix
+from generate import _TITLE_TEMPLATES, _mode_genre_suffix, _random_comment_text
 from jst_time import jst_timestamp
 from repost_state import (
     extract_zip_member,
@@ -249,16 +249,15 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
     if lang_label:
         tags.append(f"{lang_label.lower()} pronunciation")
 
-    # generate.py _youtube_metadata()のcaption_textと全く同じ文面(運営者
-    # コメントの自動投稿に使う、post_comment()参照)。「実在の単語ではない/
-    # ジョークだ」という注記をコメント欄にも確実に出すことで、説明欄まで
-    # 読まない視聴者にも伝わるようにする狙いはShortsと同じ。
-    caption_text = f'How to pronounce "{label}"'
-    if lang_label:
-        caption_text += f" in {lang_label}"
-    caption_text += "? Not a real word — just a joke, give it a try! \U0001F604"
+    # generate.py _random_comment_text()と同じ複数パターンのランダム選択
+    # (運営者コメントの自動投稿に使う、post_comment()参照)。「実在の単語
+    # ではない/ジョークだ」という注記をコメント欄にも確実に出すことで、
+    # 説明欄まで読まない視聴者にも伝わるようにする狙いはShortsと同じだが、
+    # 元Shortsの投稿時に選ばれた文面と揃える必要は無い(タイトルと違い
+    # SEO上の一致を保つ理由が無いため)、変換のたびに独立して抽選する。
+    comment_text = _random_comment_text(label, lang_label)
 
-    return {"title": title, "description": description, "tags": tags, "caption_text": caption_text}
+    return {"title": title, "description": description, "tags": tags, "comment_text": comment_text}
 
 
 def select_targets(pending: list, current_run_id: str | None, backlog_count: int) -> list:
@@ -383,7 +382,7 @@ def main():
                 # 参照)。失敗しても動画自体は既に公開済みなので警告に留める。
                 if config.COMMENT_ON_UPLOAD_ENABLED:
                     try:
-                        youtube_upload.post_comment(repost_video_id, metadata["caption_text"])
+                        youtube_upload.post_comment(repost_video_id, metadata["comment_text"])
                     except Exception as e:
                         print(f"::warning::{entry['label']} ({entry['video_id']}) の運営者コメント"
                               f"投稿に失敗しました: {e}")
