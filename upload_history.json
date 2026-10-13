@@ -3207,5 +3207,16 @@
     "voice_label": "Portuguese (Portugal) (Male)",
     "lang_code": "pt",
     "title_template": null
+  },
+  {
+    "word": "o᷏᷹ᷛᷞ᷁ᷖᷣᷔ᷅vvvvU֧֭֫AAAaaa ⊀ ❊ ❀",
+    "label": "ovvvvUAAAaaa...",
+    "video_id": "FZmVFL2wa-g",
+    "mode": "reverse",
+    "run_id": "38420138666",
+    "uploaded_at": "2026-10-13T15:14:22.881079+00:00",
+    "voice_label": "Icelandic (Female)",
+    "lang_code": "is",
+    "title_template": "can_you_pronounce"
   }
 ]
