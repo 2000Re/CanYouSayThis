@@ -130,6 +130,26 @@ _TITLE_TEMPLATES = {
     "is_pronounceable": lambda label, lang_label: (
         f'Is "{label}" Pronounceable' + (f" in {lang_label}" if lang_label else "") + "?"
     ),
+    # 2026-10-13、ユーザーとの相談で追加した6パターン(config.
+    # TITLE_TEMPLATE_WEIGHTS参照)。
+    "say_out_loud": lambda label, lang_label: (
+        f'Say "{label}"' + (f" in {lang_label}" if lang_label else "") + " Out Loud"
+    ),
+    "pronunciation_challenge": lambda label, lang_label: (
+        f'"{label}" Pronunciation Challenge' + (f" in {lang_label}" if lang_label else "")
+    ),
+    "nobody_can_pronounce": lambda label, lang_label: (
+        f'Nobody Can Pronounce "{label}"' + (f" in {lang_label}" if lang_label else "")
+    ),
+    "what_does_it_sound_like": lambda label, lang_label: (
+        f'What Does "{label}" Sound Like' + (f" in {lang_label}" if lang_label else "") + "?"
+    ),
+    "attempt_to_pronounce": lambda label, lang_label: (
+        f'Attempt to Pronounce "{label}"' + (f" in {lang_label}" if lang_label else "")
+    ),
+    "impossible_to_say": lambda label, lang_label: (
+        f'"{label}" — Impossible to Say' + (f" in {lang_label}" if lang_label else "") + "?"
+    ),
 }
 
 
