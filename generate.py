@@ -134,20 +134,45 @@ _TITLE_TEMPLATES = {
 
 
 # 運営者コメント自動投稿用の文面。固定1パターンだと複数本見る視聴者には
-# 「ボットの定型文」に見えやすいとの判断から、2パターンをランダムに
-# ローテーションする(2026-10-13、ユーザーとの相談で選定)。字幕用の
-# caption_text(_youtube_metadata()参照)とは別物で、こちらはコメント欄
-# にしか使わない。repost_shorts.py側も同じ関数を使う(build_repost_metadata()
-# 参照、元ShortsのコメントとDocument変換後の通常動画のコメントが同じ文面に
-# 揃う必要は無いため、変換のたびに独立して抽選する)。
+# 「ボットの定型文」に見えやすいとの判断から、8パターンをランダムに
+# ローテーションする(2026-10-13、ユーザーとの相談で選定。元々の固定文面
+# だった1番も含む)。字幕用のcaption_text(_youtube_metadata()参照)とは
+# 別物で、こちらはコメント欄にしか使わない。repost_shorts.py側も同じ関数を
+# 使う(build_repost_metadata()参照、元ShortsのコメントとDocument変換後の
+# 通常動画のコメントが同じ文面に揃う必要は無いため、変換のたびに独立して
+# 抽選する)。
 _COMMENT_TEMPLATES = [
+    lambda label, lang_label: (
+        f'How to pronounce "{label}"' + (f" in {lang_label}" if lang_label else "")
+        + "? Not a real word — just a joke, give it a try! \U0001F604"
+    ),
     lambda label, lang_label: (
         f'Think you can say "{label}"' + (f" in {lang_label}" if lang_label else "")
         + "? Not a real word — just a fun challenge! \U0001F604"
     ),
     lambda label, lang_label: (
+        f'"{label}"' + (f" in {lang_label}" if lang_label else "")
+        + " — not a real word, just a pronunciation joke. Can you say it? \U0001F606"
+    ),
+    lambda label, lang_label: (
+        f'Can anyone actually pronounce "{label}"' + (f" in {lang_label}" if lang_label else "")
+        + "? (Not real — just for fun!) \U0001F604"
+    ),
+    lambda label, lang_label: (
         f'Give "{label}"' + (f" in {lang_label}" if lang_label else "")
         + " a try! Just a made-up word for laughs, not real. \U0001F601"
+    ),
+    lambda label, lang_label: (
+        f'"{label}"' + (f" in {lang_label}" if lang_label else "")
+        + "? Good luck \U0001F605 (Not a real word, just a joke!)"
+    ),
+    lambda label, lang_label: (
+        f'Bet you can\'t say "{label}"' + (f" in {lang_label}" if lang_label else "")
+        + " on the first try \U0001F604 (Not real — just for fun)"
+    ),
+    lambda label, lang_label: (
+        f'Just a nonsense word for fun: "{label}"' + (f" in {lang_label}" if lang_label else "")
+        + ". Can you say it without laughing? \U0001F604"
     ),
 ]
 
