@@ -133,6 +133,29 @@ _TITLE_TEMPLATES = {
 }
 
 
+# 運営者コメント自動投稿用の文面。固定1パターンだと複数本見る視聴者には
+# 「ボットの定型文」に見えやすいとの判断から、2パターンをランダムに
+# ローテーションする(2026-10-13、ユーザーとの相談で選定)。字幕用の
+# caption_text(_youtube_metadata()参照)とは別物で、こちらはコメント欄
+# にしか使わない。repost_shorts.py側も同じ関数を使う(build_repost_metadata()
+# 参照、元ShortsのコメントとDocument変換後の通常動画のコメントが同じ文面に
+# 揃う必要は無いため、変換のたびに独立して抽選する)。
+_COMMENT_TEMPLATES = [
+    lambda label, lang_label: (
+        f'Think you can say "{label}"' + (f" in {lang_label}" if lang_label else "")
+        + "? Not a real word — just a fun challenge! \U0001F604"
+    ),
+    lambda label, lang_label: (
+        f'Give "{label}"' + (f" in {lang_label}" if lang_label else "")
+        + " a try! Just a made-up word for laughs, not real. \U0001F601"
+    ),
+]
+
+
+def _random_comment_text(label, lang_label):
+    return random.choice(_COMMENT_TEMPLATES)(label, lang_label)
+
+
 def _mode_genre_suffix(mode):
     """modeがconfig.TITLE_GENRE_MODESに含まれる場合、タイトル末尾に付ける
     " (ジャンル名)" を返す(該当しなければ空文字列)。
@@ -196,12 +219,17 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     検索キーワードフレーズ(視聴者属性で継続的に上位に入っているフィリピン・
     インドネシア・マレーシア向け)も、動画のボイス言語とは無関係に常に含める。
 
-    戻り値のcaption_text(YouTubeの手動字幕用。運営者コメントの自動投稿にも
-    そのまま流用している、generate.py参照)は、意味不明な音声を自動文字
+    戻り値のcaption_text(YouTubeの手動字幕用)は、意味不明な音声を自動文字
     起こし(ASR)に任せると検索インデックス対象のテキスト枠が無駄になる
     ため、説明文と同じ趣旨のキーワード付き固定テキストとして別途組み立てる
-    (youtube_upload.upload_caption()参照)。「実在の単語ではない/ジョーク」
-    という注記も常に含める(説明欄・フレームの注記は見ていなくても、
+    (youtube_upload.upload_caption()参照)。
+
+    戻り値のcomment_text(運営者コメントの自動投稿用、_COMMENT_TEMPLATES
+    参照)は、以前はcaption_textをそのまま流用していたが、固定1パターン
+    だと複数本見る視聴者に「ボットの定型文」に見えやすいとの判断から
+    2026-10-13に分離し、複数パターンをランダムに選ぶようにした。
+    「実在の単語ではない/ジョーク」という注記はcaption_text・comment_text
+    どちらにも常に含める(説明欄・フレームの注記は見ていなくても、
     コメント欄で実際にコメントを付けてくる視聴者はいることが分かったため)。
 
     戻り値のlocalizations(config.JAPANESE_TITLE_LOCALIZATION_ENABLED /
@@ -309,6 +337,7 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     if lang_label:
         caption_text += f" in {lang_label}"
     caption_text += "? Not a real word — just a joke, give it a try! 😄"
+    comment_text = _random_comment_text(label, lang_label)
 
     # タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド)。
     # YouTube側の視聴環境が日本語の視聴者には、通常のtitle/descriptionの
@@ -359,7 +388,7 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
                 "description": description,
             }
 
-    return title, description, tags, caption_text, localizations or None
+    return title, description, tags, caption_text, comment_text, localizations or None
 
 
 def _resolve_mode(mode):
@@ -653,7 +682,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # 組み立て直せるよう、upload_history.jsonにも記録する。
         actual_title_template = _resolve_title_template("random")
 
-        title, description, tags, caption_text, localizations = _youtube_metadata(
+        title, description, tags, caption_text, comment_text, localizations = _youtube_metadata(
             word, label, actual_mode, playlist_id=shorts_playlist_id, voice_label=voice_label,
             is_native_script=used_native_script, lang_code=lang_code,
             title_template=actual_title_template,
@@ -712,16 +741,16 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
             except Exception as e:
                 print(f"[Warning] {word}: 字幕のアップロードに失敗しました: {e}")
 
-        # 運営者コメントの自動投稿(caption_textをそのまま流用。字幕用に
-        # 組み立てたキーワード付きテキストがコメントとしてもそのまま使える
-        # ため)。captions.insertと同じyoutube.force-sslスコープを使うため、
-        # 同様に断続的な403 forbiddenが起きうる(README「ハマった罠」21番)。
-        # 失敗しても動画自体は既に公開済みなので警告に留めて処理は止めない。
+        # 運営者コメントの自動投稿(_random_comment_text()で選んだcomment_text
+        # を使う、caption_textとは別物。captions.insertと同じ
+        # youtube.force-sslスコープを使うため、同様に断続的な403 forbiddenが
+        # 起きうる(README「ハマった罠」21番)。失敗しても動画自体は既に
+        # 公開済みなので警告に留めて処理は止めない。
         if config.COMMENT_ON_UPLOAD_ENABLED:
             from youtube_upload import post_comment
 
             try:
-                post_comment(video_id, caption_text)
+                post_comment(video_id, comment_text)
             except Exception as e:
                 print(f"[Warning] {word}: コメントの投稿に失敗しました: {e}")
 

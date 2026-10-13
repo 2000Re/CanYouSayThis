@@ -11,12 +11,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import config
 import upload_history
 from generate import (
+    _COMMENT_TEMPLATES,
     _SINGLE_VOICE_MODES,
     _TITLE_TEMPLATES,
     _lang_code_for_voice,
     _mode_genre_suffix,
     _native_script_for_voice,
     _pictograph_word_generator,
+    _random_comment_text,
     _random_unique_word,
     _resolve_mode,
     _resolve_title_template,
@@ -243,25 +245,25 @@ def test_word_generator_for_chorus_and_morse_always_use_zalgo():
 
 
 def test_youtube_metadata_title_contains_label_and_shorts_hashtag():
-    title, _description, _tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "voOn" in title
     assert "#Shorts" in title
 
 
 def test_youtube_metadata_description_contains_cta():
-    _title, description, _tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "comment" in description.lower()
 
 
 def test_youtube_metadata_description_contains_hashtags():
-    _title, description, _tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     for hashtag in ("#Shorts", "#Pronunciation", "#Unpronounceable",
                      "#Zalgo", "#GlitchText", "#TextToSpeech", "#TTS", "#Challenge"):
         assert hashtag in description
 
 
 def test_youtube_metadata_tags_include_mode_and_topic_keywords():
-    _title, _description, tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "glitch")
+    _title, _description, tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "glitch")
     assert "glitch" in tags
     assert "zalgo" in tags
     assert "text to speech" in tags
@@ -271,7 +273,7 @@ def test_youtube_metadata_description_contains_alternate_search_keywords():
     # タイトル・タグの言語名追加(A/B)とは違う切り口の検索キーワード
     # ("tongue twister"/"language learners")を、言語が判明していない回でも
     # 常に含めることの回帰防止。
-    _title, description, tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "tongue twister" in description.lower()
     assert "language learners" in description.lower()
     assert "tongue twister" in tags
@@ -280,43 +282,43 @@ def test_youtube_metadata_description_contains_alternate_search_keywords():
 def test_youtube_metadata_description_contains_subscribe_cta():
     # 新規視聴者がほとんど(コア視聴者0.1%未満)というアナリティクスの偏りを
     # 踏まえ、playlist_idの有無に関わらず常に登録CTAを含める回帰テスト。
-    _title, description, _tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "Subscribe" in description
 
 
 def test_youtube_metadata_omits_playlist_link_when_not_given():
-    _title, description, _tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "playlist?list=" not in description
 
 
 def test_youtube_metadata_includes_playlist_link_when_given():
-    _title, description, _tags, _caption, _localizations = _youtube_metadata(
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", playlist_id="PLexample123"
     )
     assert "https://www.youtube.com/playlist?list=PLexample123" in description
 
 
 def test_youtube_metadata_omits_voice_line_when_not_given():
-    _title, description, _tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "Voice:" not in description
 
 
 def test_youtube_metadata_includes_voice_line_when_given():
-    _title, description, _tags, _caption, _localizations = _youtube_metadata(
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", voice_label="French (Female)"
     )
     assert "Voice: French (Female)" in description
 
 
 def test_youtube_metadata_omits_native_script_note_by_default():
-    _title, description, _tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "not a real word" not in description
 
 
 def test_youtube_metadata_includes_native_script_note_when_flagged():
     # 実在の文字体系(アラビア文字等)で生成した回は、実在の単語ではなく
     # ランダムな造語である旨を説明文に明記する
-    _title, description, _tags, _caption, _localizations = _youtube_metadata(
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata(
         "صغاافك", "صغاافك", "tts", voice_label="Arabic (Male)", is_native_script=True
     )
     assert "not a real word" in description
@@ -326,14 +328,14 @@ def test_youtube_metadata_includes_fake_word_note_for_spanish_despite_latin_scri
     # スペイン語(config.VOICE_LANGUAGES["es"]["fake_word_note"])はZalgo単語
     # (is_native_script=False)だが、トルコ語撤去の経緯(README「ハマった罠」
     # 26番)を踏まえ例外的に実在単語ではない旨の注記を出す。
-    _title, description, _tags, _caption, _localizations = _youtube_metadata(
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", voice_label="Spanish (Male)", lang_code="es"
     )
     assert "not a real word" in description
 
 
 def test_youtube_metadata_omits_native_hashtag_when_lang_code_not_given():
-    _title, description, tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert description.count("#") == 8
     assert config.VOICE_LANGUAGES["ar"]["hashtag_word"] not in tags
 
@@ -343,7 +345,7 @@ def test_youtube_metadata_includes_native_hashtag_when_lang_code_given():
     # 現地語ハッシュタグを説明文とtagsの両方に追加する(config.VOICE_LANGUAGES
     # の"hashtag_word"参照)。
     hashtag_word = config.VOICE_LANGUAGES["ar"]["hashtag_word"]
-    _title, description, tags, _caption, _localizations = _youtube_metadata(
+    _title, description, tags, _caption, _comment, _localizations = _youtube_metadata(
         "صغاافك", "صغاافك", "tts", voice_label="Arabic (Male)", lang_code="ar"
     )
     assert f"#{hashtag_word}" in description
@@ -355,7 +357,7 @@ def test_youtube_metadata_omits_native_hashtag_for_languages_without_one():
     # ハッシュタグのみになる)
     for lang_code in ("en",):
         assert config.VOICE_LANGUAGES[lang_code]["hashtag_word"] is None
-        _title, description, _tags, _caption, _localizations = _youtube_metadata(
+        _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata(
             "word", "word", "tts", lang_code=lang_code
         )
         assert description.count("#") == 8
@@ -366,7 +368,7 @@ def test_youtube_metadata_title_includes_language_name_when_lang_code_given():
     # レベルでマッチしやすくするための施策(README参照)。title_templateを
     # 明示的に固定し、ランダムなタイトル言い回し(try_to_sayは"?"を
     # 付けない等)によるテストのflakyさを避ける。
-    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", voice_label="French (Female)", lang_code="fr",
         title_template="how_to_pronounce",
     )
@@ -374,7 +376,7 @@ def test_youtube_metadata_title_includes_language_name_when_lang_code_given():
 
 
 def test_youtube_metadata_title_omits_language_name_when_lang_code_not_given():
-    title, _description, _tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert " in " not in title
 
 
@@ -395,14 +397,14 @@ def test_mode_genre_suffix_empty_for_non_genre_modes():
 
 
 def test_youtube_metadata_title_includes_genre_suffix_for_nightcore():
-    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "nightcore", title_template="how_to_pronounce",
     )
     assert title == 'How to Pronounce "voOn" (Nightcore) #Shorts'
 
 
 def test_youtube_metadata_title_omits_genre_suffix_for_non_genre_mode():
-    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "glitch", title_template="how_to_pronounce",
     )
     assert "(" not in title
@@ -410,12 +412,12 @@ def test_youtube_metadata_title_omits_genre_suffix_for_non_genre_mode():
 
 def test_youtube_metadata_title_omits_language_name_for_english():
     # 英語はこのチャンネルの既定言語のため、"in English?"は冗長なので付けない
-    title, _description, _tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts", lang_code="en")
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts", lang_code="en")
     assert " in " not in title
 
 
 def test_youtube_metadata_tags_include_english_language_pronunciation_tag():
-    _title, _description, tags, _caption, _localizations = _youtube_metadata(
+    _title, _description, tags, _caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", voice_label="French (Female)", lang_code="fr"
     )
     assert "french pronunciation" in tags
@@ -449,21 +451,21 @@ def test_resolve_title_template_random_weighting_matches_title_template_weights(
 
 
 def test_youtube_metadata_title_template_how_to_pronounce():
-    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", title_template="how_to_pronounce",
     )
     assert title == 'How to Pronounce "voOn" #Shorts'
 
 
 def test_youtube_metadata_title_template_can_you_say():
-    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", title_template="can_you_say",
     )
     assert title == 'Can You Say "voOn" #Shorts'
 
 
 def test_youtube_metadata_title_template_can_you_pronounce():
-    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", title_template="can_you_pronounce",
     )
     assert title == 'Can You Pronounce "voOn" #Shorts'
@@ -471,14 +473,14 @@ def test_youtube_metadata_title_template_can_you_pronounce():
 
 def test_youtube_metadata_title_template_try_to_say_omits_question_mark():
     # Try to Sayは命令形であり、How to Pronounce等と違い"?"は付けない
-    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", title_template="try_to_say",
     )
     assert title == 'Try to Say "voOn" #Shorts'
 
 
 def test_youtube_metadata_title_template_is_pronounceable():
-    title, _description, _tags, _caption, _localizations = _youtube_metadata(
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", title_template="is_pronounceable",
     )
     assert title == 'Is "voOn" Pronounceable? #Shorts'
@@ -494,7 +496,7 @@ def test_youtube_metadata_title_templates_include_language_name_when_given():
         ("try_to_say", 'Try to Say "voOn" in French #Shorts'),
         ("is_pronounceable", 'Is "voOn" Pronounceable in French? #Shorts'),
     ]:
-        title, _description, _tags, _caption, _localizations = _youtube_metadata(
+        title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
             "v́oOn", "voOn", "tts", lang_code="fr", title_template=template_name,
         )
         assert title == expected, template_name
@@ -507,7 +509,7 @@ def test_title_templates_keys_match_config_weights():
 
 
 def test_youtube_metadata_tags_omit_language_pronunciation_tag_when_not_given():
-    _title, _description, tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, _description, tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert not any(t.endswith(" pronunciation") for t in tags)
 
 
@@ -515,64 +517,105 @@ def test_youtube_metadata_description_contains_audience_region_phrases():
     # 視聴者属性で継続的に上位に入っている非英語圏(フィリピン・インドネシア・
     # マレーシア)向けの検索キーワードフレーズを、動画の言語に関わらず常に
     # 含める回帰テスト(config.AUDIENCE_REGION_PHRASES参照)。
-    _title, description, _tags, _caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     for _lang, phrase in config.AUDIENCE_REGION_PHRASES:
         assert phrase in description
 
 
 def test_youtube_metadata_caption_contains_label():
-    _title, _description, _tags, caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, _description, _tags, caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "voOn" in caption
 
 
 def test_youtube_metadata_caption_includes_language_name_when_lang_code_given():
-    _title, _description, _tags, caption, _localizations = _youtube_metadata(
+    _title, _description, _tags, caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", voice_label="French (Female)", lang_code="fr"
     )
     assert "in French" in caption
 
 
 def test_youtube_metadata_caption_omits_language_name_when_lang_code_not_given():
-    _title, _description, _tags, caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, _description, _tags, caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert " in " not in caption
 
 
 def test_youtube_metadata_caption_notes_not_a_real_word():
-    # コメント欄は説明欄/フレームより実際に読まれている(視聴者がコメントを
-    # 付けてくる)ことが分かったため、caption_text(運営者コメントに流用)に
-    # 「実在の単語ではない/ジョーク」の注記を必ず入れる回帰確認。
-    _title, _description, _tags, caption, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    # 字幕(caption_text)にも「実在の単語ではない/ジョーク」の注記を必ず
+    # 入れる回帰確認(運営者コメント用のcomment_textとは別に、字幕自体にも
+    # 同じ注記を入れる方針)。
+    _title, _description, _tags, caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "not a real word" in caption.lower()
     assert "joke" in caption.lower()
 
 
 def test_youtube_metadata_caption_notes_not_a_real_word_regardless_of_mode():
     for mode in ("tts", "tts_extreme", "glitch"):
-        _title, _description, _tags, caption, _localizations = _youtube_metadata("v́oOn", "voOn", mode)
+        _title, _description, _tags, caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", mode)
         assert "not a real word" in caption.lower()
 
 
+def test_random_comment_text_picks_from_configured_templates():
+    # 固定1パターンだと「ボットの定型文」に見えやすいとの判断で複数
+    # パターンをランダムに選ぶようにした(2026-10-13)。_COMMENT_TEMPLATES
+    # のいずれかの出力と一致することを確認する回帰テスト。
+    expected = {template("voOn", None) for template in _COMMENT_TEMPLATES}
+    for _ in range(50):
+        assert _random_comment_text("voOn", None) in expected
+
+
+def test_random_comment_text_varies_across_calls():
+    random.seed(1)
+    results = {_random_comment_text("voOn", None) for _ in range(50)}
+    assert len(results) > 1
+
+
+def test_random_comment_text_contains_label():
+    for _ in range(20):
+        assert "voOn" in _random_comment_text("voOn", None)
+
+
+def test_random_comment_text_includes_language_name_when_given():
+    for _ in range(20):
+        assert "in French" in _random_comment_text("voOn", "French")
+
+
+def test_random_comment_text_omits_language_name_when_not_given():
+    for _ in range(20):
+        assert " in " not in _random_comment_text("voOn", None)
+
+
+def test_youtube_metadata_comment_is_separate_from_caption():
+    # comment_textはcaption_textの使い回しではなく、_random_comment_text()
+    # で独立に選ばれる(2026-10-13の分離、caption_textは引き続き字幕専用)。
+    expected = {template("voOn", None) for template in _COMMENT_TEMPLATES}
+    _title, _description, _tags, caption, comment, _localizations = _youtube_metadata(
+        "v́oOn", "voOn", "tts"
+    )
+    assert comment in expected
+    assert comment != caption
+
+
 def test_youtube_metadata_localizations_includes_japanese_title():
-    _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert localizations is not None
     assert "voOn" in localizations["ja"]["title"]
     assert "#Shorts" in localizations["ja"]["title"]
 
 
 def test_youtube_metadata_localizations_reuses_description_for_japanese():
-    _title, description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert localizations["ja"]["description"] == description
 
 
 def test_youtube_metadata_localizations_includes_japanese_language_name_when_lang_code_given():
-    _title, _description, _tags, _caption, localizations = _youtube_metadata(
+    _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", voice_label="French (Female)", lang_code="fr"
     )
     assert "フランス語" in localizations["ja"]["title"]
 
 
 def test_youtube_metadata_localizations_omits_language_name_when_lang_code_not_given():
-    _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "(" not in localizations["ja"]["title"]
 
 
@@ -583,7 +626,7 @@ def test_youtube_metadata_localizations_wraps_label_in_bidi_isolate():
     # 確認済み)。First Strong Isolate(U+2068)/Pop Directional Isolate
     # (U+2069)でlabelを囲んで分離していることを回帰確認する。
     hebrew_label = "קקעמדחפ"
-    _title, _description, _tags, _caption, localizations = _youtube_metadata(
+    _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata(
         hebrew_label, hebrew_label, "tts", lang_code="he",
     )
     title_ja = localizations["ja"]["title"]
@@ -598,7 +641,7 @@ def test_youtube_metadata_localizations_japanese_title_starts_with_strong_ltr_ch
     # 常に実在の強いLTR文字(ここでは言語名のかな/カナ)にし、鉤括弧「」の
     # ような中立文字を先頭に置かないことを回帰確認する。
     hebrew_label = "קקעמדחפ"
-    _title, _description, _tags, _caption, localizations = _youtube_metadata(
+    _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata(
         hebrew_label, hebrew_label, "tts", lang_code="he",
     )
     title_ja = localizations["ja"]["title"]
@@ -607,7 +650,7 @@ def test_youtube_metadata_localizations_japanese_title_starts_with_strong_ltr_ch
 
 def test_youtube_metadata_localizations_bidi_isolate_wraps_any_label():
     # RTL文字かどうかで分岐していない(常にlabelを囲む)ことの確認。
-    _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     title_ja = localizations["ja"]["title"]
     assert "⁨voOn⁩" in title_ja
 
@@ -615,14 +658,14 @@ def test_youtube_metadata_localizations_bidi_isolate_wraps_any_label():
 def test_youtube_metadata_localizations_none_when_both_disabled(monkeypatch):
     monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", False)
     monkeypatch.setattr(config, "EXTRA_TITLE_LOCALIZATION_ENABLED", False)
-    _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert localizations is None
 
 
 def test_youtube_metadata_localizations_japanese_disabled_independently(monkeypatch):
     # 日本語を無効化しても、追加言語ローカライズは独立して有効なまま。
     monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", False)
-    _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "ja" not in localizations
     assert "id" in localizations
 
@@ -630,7 +673,7 @@ def test_youtube_metadata_localizations_japanese_disabled_independently(monkeypa
 def test_youtube_metadata_localizations_extra_disabled_independently(monkeypatch):
     # 追加言語ローカライズを無効化しても、日本語は独立して有効なまま。
     monkeypatch.setattr(config, "EXTRA_TITLE_LOCALIZATION_ENABLED", False)
-    _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "ja" in localizations
     assert "id" not in localizations
     assert "fil" not in localizations
@@ -638,7 +681,7 @@ def test_youtube_metadata_localizations_extra_disabled_independently(monkeypatch
 
 
 def test_youtube_metadata_localizations_includes_extra_languages():
-    _title, _description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     for lang_code in config.EXTRA_TITLE_LOCALIZATIONS:
         assert lang_code in localizations
         assert "voOn" in localizations[lang_code]["title"]
@@ -646,14 +689,14 @@ def test_youtube_metadata_localizations_includes_extra_languages():
 
 
 def test_youtube_metadata_localizations_extra_languages_reuse_description():
-    _title, description, _tags, _caption, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    _title, description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     for lang_code in config.EXTRA_TITLE_LOCALIZATIONS:
         assert localizations[lang_code]["description"] == description
 
 
 def test_youtube_metadata_localizations_extra_languages_wrap_label_in_bidi_isolate():
     hebrew_label = "קקעמדחפ"
-    _title, _description, _tags, _caption, localizations = _youtube_metadata(
+    _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata(
         hebrew_label, hebrew_label, "tts", lang_code="he",
     )
     for lang_code in config.EXTRA_TITLE_LOCALIZATIONS:
