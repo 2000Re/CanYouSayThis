@@ -83,6 +83,15 @@ TITLE_TEMPLATE_WEIGHTS = {
     "can_you_pronounce": 3,
     "try_to_say": 3,
     "is_pronounceable": 3,
+    # 2026-10-13、ユーザーとの相談で追加(generate.py _TITLE_TEMPLATES参照)。
+    # how_to_pronounceの検索クエリ一致という実証済みの強みを保つため、
+    # 既存の非主力パターンと同じ比重(3)にしている。
+    "say_out_loud": 3,
+    "pronunciation_challenge": 3,
+    "nobody_can_pronounce": 3,
+    "what_does_it_sound_like": 3,
+    "attempt_to_pronounce": 3,
+    "impossible_to_say": 3,
 }
 
 # タイトル末尾にモード名を付けると検索流入が見込める、実際にYouTube上で
