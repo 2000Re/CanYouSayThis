@@ -3141,5 +3141,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "can_you_say"
+  },
+  {
+    "word": "(o֛֤֟֫֘֠֓֔֜֕E֑֣֮֓֟֕֞֡֒֟IIIII֤֧֥֚֠֘֜֕A̵̡̗̟ͫͧ͞) ✬",
+    "label": "(oEIIIIIA) ✬",
+    "video_id": "8gR85faF2e0",
+    "mode": "tts",
+    "run_id": "38326141654",
+    "uploaded_at": "2026-10-13T00:14:18.211974+00:00",
+    "voice_label": "German (Male)",
+    "lang_code": "de",
+    "title_template": "can_you_pronounce"
   }
 ]
