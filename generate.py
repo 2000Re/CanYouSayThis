@@ -535,14 +535,19 @@ def _word_generator_for(actual_mode, actual_voice):
 def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOICE,
                   speed=config.DEFAULT_SPEED, unit_duration=config.DEFAULT_UNIT_DURATION,
                   repeat=config.DEFAULT_REPEAT, repeat_gap=config.DEFAULT_REPEAT_GAP,
-                  fade=config.DEFAULT_FADE, upload=False, privacy_status="public"):
+                  fade=config.DEFAULT_FADE, upload=False, privacy_status="public", word=None):
     actual_mode = _resolve_mode(mode)
     actual_voice, voice_label, voice_gender = _resolve_voice(voice)
     voice_pitch = _voice_pitch_for(actual_voice, voice_gender)
     word_generator = _word_generator_for(actual_mode, actual_voice)
     used_native_script = word_generator is not random_zalgo_word
 
-    if upload:
+    if word is not None:
+        # --wordで単語を固定した回。コメント欄等からの個別リクエスト用で、
+        # 重複チェック(アップロード済み単語との被り防止)は対象外
+        # (同じ単語を再度指定したい場合もあるため)。
+        pass
+    elif upload:
         # チャンネルへの重複投稿を避けるため、アップロード済みの単語と
         # 被らないものを選ぶ(--upload時のみ必要な依存関係の遅延importは
         # このファイル内で完結しているのでここでも問題ない)
@@ -806,10 +811,17 @@ def main():
                           "環境変数が必要。get_youtube_refresh_token.py 参照)")
     ap.add_argument("--privacy-status", type=str, choices=["public", "unlisted", "private"],
                      default="public", help="[--upload専用] アップロード時の公開範囲")
+    ap.add_argument("--word", type=str, default=None,
+                     help="単語をランダム生成せず、指定した文字列をそのまま使う"
+                          "(視聴者からのリクエスト対応用)。指定時は--countを1に固定し、"
+                          "アップロード済み単語との重複チェックも行わない")
     args = ap.parse_args()
 
     if args.seed is not None:
         random.seed(args.seed)
+
+    if args.word is not None:
+        args.count = 1
 
     os.makedirs(args.outdir, exist_ok=True)
 
@@ -822,7 +834,7 @@ def main():
                     i, args.outdir, mode=args.mode,
                     voice=args.voice, speed=args.speed, unit_duration=args.unit_duration,
                     repeat=args.repeat, repeat_gap=args.repeat_gap, fade=args.fade,
-                    upload=args.upload, privacy_status=args.privacy_status,
+                    upload=args.upload, privacy_status=args.privacy_status, word=args.word,
                 )
             except Exception as e:
                 # クォータ超過や一時的なネットワークエラーなどで1本失敗しても、

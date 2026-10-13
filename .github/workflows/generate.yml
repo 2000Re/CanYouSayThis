@@ -31,6 +31,10 @@ on:
         description: "[tts/tts_extreme/reverse/robot_voice/telephone/slowed_reverb/nightcore/underwater/8d_audio/echo_cave専用] espeak-ngの声 (例: en, en-us, ja / random=言語・性別をランダムに選ぶ)"
         required: false
         default: "random"
+      word:
+        description: "単語を指定する場合のみ(視聴者リクエスト対応用)。指定するとcountは1本に固定され、過去の単語との重複チェックも行わない。空欄ならランダム生成"
+        required: false
+        default: ""
       seed:
         description: "乱数シード(再現したい場合。空欄なら毎回ランダム)"
         required: false
@@ -122,6 +126,10 @@ jobs:
           YOUTUBE_REFRESH_TOKEN_ISSUED_AT: ${{ secrets.YOUTUBE_REFRESH_TOKEN_ISSUED_AT }}
           # 任意。設定しておくと、アップロードした各Shortsをこの再生リストに自動追加する
           YOUTUBE_SHORTS_PLAYLIST_ID: ${{ secrets.YOUTUBE_SHORTS_PLAYLIST_ID }}
+          # WORDはワークフロー入力の自由記述文字列なので、run:のスクリプト本文に
+          # 直接埋め込まず環境変数経由で渡す(引用符や$(...)等が含まれても
+          # スクリプトの構文を壊さないようにするため)
+          WORD: ${{ inputs.word }}
         run: |
           args=(--count "${{ inputs.count }}" --outdir ./out --mode "${{ inputs.mode }}" --voice "${{ inputs.voice }}")
           if [ -n "${{ inputs.seed }}" ]; then
@@ -129,6 +137,9 @@ jobs:
           fi
           if [ "${{ inputs.upload }}" = "true" ]; then
             args+=(--upload --privacy-status "${{ inputs.privacy_status }}")
+          fi
+          if [ -n "$WORD" ]; then
+            args+=(--word "$WORD")
           fi
           python3 generate.py "${args[@]}"
 
