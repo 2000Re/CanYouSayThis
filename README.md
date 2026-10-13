@@ -235,7 +235,7 @@ python3 get_youtube_refresh_token.py --client-id YOUR_CLIENT_ID --client-secret 
 ### 4. 実行
 
 - ローカル: `python3 generate.py --upload`(上記を環境変数にセット)
-- GitHub Actions: Actionsタブ → **generate** → **Run workflow**。`upload`はデフォルト有効、`privacy_status`はデフォルト`public`。
+- GitHub Actions: Actionsタブ → **generate** → **Run workflow**。`upload`はデフォルト有効、`privacy_status`はデフォルト`public`。`word`(視聴者リクエスト対応)を入力した場合は、`privacy_status`の選択に関わらず必ず`private`(非公開)でアップロードされる(`generate.yml`側の上書き。内容を確認してから手動でYouTube Studio側の公開設定を切り替える運用を想定。ローカルで`generate.py --word ... --privacy-status public`のように直接実行した場合はこの上書きは効かない)。
 
 ### 5. リフレッシュトークンの失効監視
 

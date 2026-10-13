@@ -61,7 +61,7 @@ on:
           - "ug | Uyghur"
           - "am | Amharic"
       word:
-        description: "単語を指定する場合のみ(視聴者リクエスト対応用)。指定するとcountは1本に固定され、過去の単語との重複チェックも行わない。空欄ならランダム生成"
+        description: "単語を指定する場合のみ(視聴者リクエスト対応用)。指定するとcountは1本に固定され、過去の単語との重複チェックも行わない。アップロード時はprivacy_statusの選択に関わらず必ず非公開(private)になる(内容確認後、手動でYouTube Studio側の公開設定を切り替える想定)。空欄ならランダム生成"
         required: false
         default: ""
       seed:
@@ -169,7 +169,15 @@ jobs:
             args+=(--seed "${{ inputs.seed }}")
           fi
           if [ "${{ inputs.upload }}" = "true" ]; then
-            args+=(--upload --privacy-status "${{ inputs.privacy_status }}")
+            privacy_status="${{ inputs.privacy_status }}"
+            if [ -n "$WORD" ]; then
+              # 単語指定(視聴者リクエスト対応)の回は、privacy_statusの選択に
+              # 関わらず必ず非公開(private)でアップロードする。いきなり公開
+              # されてしまう事故を防ぎ、内容を確認してから手動でYouTube Studio
+              # 側の公開設定を切り替える運用にするため。
+              privacy_status="private"
+            fi
+            args+=(--upload --privacy-status "$privacy_status")
           fi
           if [ -n "$WORD" ]; then
             args+=(--word "$WORD")
