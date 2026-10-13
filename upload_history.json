@@ -3152,5 +3152,16 @@
     "voice_label": "German (Male)",
     "lang_code": "de",
     "title_template": "can_you_pronounce"
+  },
+  {
+    "word": "-iiŐ͓͈̂͘a᷸᷑᷋ᷢ᷌᷵ᷠᷕnnnnnVVV) ؞ ◕",
+    "label": "-iiOannnnnVV...",
+    "video_id": "__dC38drziY",
+    "mode": "tts_extreme",
+    "run_id": "38340646319",
+    "uploaded_at": "2026-10-13T03:14:40.872853+00:00",
+    "voice_label": "Vietnamese (Female)",
+    "lang_code": "vi",
+    "title_template": "can_you_say"
   }
 ]
