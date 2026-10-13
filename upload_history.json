@@ -3218,5 +3218,16 @@
     "voice_label": "Icelandic (Female)",
     "lang_code": "is",
     "title_template": "can_you_pronounce"
+  },
+  {
+    "word": "جججااايييي",
+    "label": "جججااايييي",
+    "video_id": "fekDFLTy3Jc",
+    "mode": "underwater",
+    "run_id": "38468900177",
+    "uploaded_at": "2026-10-13T21:14:19.835640+00:00",
+    "voice_label": "Uyghur (Female)",
+    "lang_code": "ug",
+    "title_template": "how_to_pronounce"
   }
 ]
