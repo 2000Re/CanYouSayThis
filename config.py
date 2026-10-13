@@ -72,26 +72,22 @@ MODE_WEIGHTS = {
 # 参照)。毎回「How to Pronounce "X"?」固定だと、YouTube収益化審査の
 # 「reused content(使い回しコンテンツ)」判定で画一的と見なされるリスクが
 # あるという懸念から、言い回しに数パターン持たせてランダムに選ぶようにした。
-# 「how to pronounce <単語>」という検索クエリとのタイトルレベルでの一致は
-# 実証済みの強み(repost_shorts.pyの設計変更の経緯参照)なので最多のまま
-# 残すが、当初の6割配分では直近の実際の投稿がhow_to_pronounceに偏って見える
-# という指摘があったため4割に下げ、残り4パターンへの配分を1割から1.5割に
-# 引き上げた(how_to_pronounce以外が選ばれる割合を合計4割→6割に拡大)。
+# 2026-10-13、ユーザーの指示で全パターン均等配分に変更(以前は
+# how_to_pronounceを「how to pronounce <単語>」という検索クエリとの
+# タイトルレベルでの一致が実証済みの強みとして最多の比重にしていたが、
+# それより均等なローテーションを優先する方針に切り替えた)。
 TITLE_TEMPLATE_WEIGHTS = {
-    "how_to_pronounce": 8,
-    "can_you_say": 3,
-    "can_you_pronounce": 3,
-    "try_to_say": 3,
-    "is_pronounceable": 3,
-    # 2026-10-13、ユーザーとの相談で追加(generate.py _TITLE_TEMPLATES参照)。
-    # how_to_pronounceの検索クエリ一致という実証済みの強みを保つため、
-    # 既存の非主力パターンと同じ比重(3)にしている。
-    "say_out_loud": 3,
-    "pronunciation_challenge": 3,
-    "nobody_can_pronounce": 3,
-    "what_does_it_sound_like": 3,
-    "attempt_to_pronounce": 3,
-    "impossible_to_say": 3,
+    "how_to_pronounce": 1,
+    "can_you_say": 1,
+    "can_you_pronounce": 1,
+    "try_to_say": 1,
+    "is_pronounceable": 1,
+    "say_out_loud": 1,
+    "pronunciation_challenge": 1,
+    "nobody_can_pronounce": 1,
+    "what_does_it_sound_like": 1,
+    "attempt_to_pronounce": 1,
+    "impossible_to_say": 1,
 }
 
 # タイトル末尾にモード名を付けると検索流入が見込める、実際にYouTube上で
