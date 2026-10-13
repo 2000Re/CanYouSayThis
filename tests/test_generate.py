@@ -129,7 +129,7 @@ def test_native_script_for_voice_returns_none_for_latin_languages():
 def test_native_script_for_voice_returns_generator_for_cluster_languages():
     # 文字をランダムに並べるだけの言語はrandom_script_word()ベースの
     # 生成関数が返る
-    for lang in ("ru", "ar", "he", "ja", "ko", "hi", "ug", "am"):
+    for lang in ("ru", "ar", "he", "ko", "hi", "ug", "am"):
         generator = _native_script_for_voice(config.VOICE_LANGUAGES[lang]["male"])
         assert generator is not None
         word = generator()
@@ -822,22 +822,22 @@ def test_unposted_lang_codes_returns_all_when_history_empty(monkeypatch, tmp_pat
 
 
 def test_resolve_voice_random_prioritizes_unposted_language_in_pool(monkeypatch, tmp_path):
-    # いままで一度も投稿されていない言語(ここでは"ja")がプール内にあれば、
+    # いままで一度も投稿されていない言語(ここでは"ug")がプール内にあれば、
     # 均等抽選ではなく必ずそちらが選ばれる(ユーザー要望: 新規追加言語が
     # なかなか抽選されない問題への対策)。
     monkeypatch.setattr(upload_history, "UPLOAD_HISTORY_PATH", str(tmp_path / "upload_history.json"))
     native_codes = [c for c, e in config.VOICE_LANGUAGES.items() if e["script"] is not None]
-    # "ja"以外の実在文字体系言語は全て投稿済みにしておく
+    # "ug"以外の実在文字体系言語は全て投稿済みにしておく
     upload_history.save_upload_history([
         {"word": "x", "label": "x", "video_id": f"v{i}", "mode": "tts", "lang_code": code}
-        for i, code in enumerate(c for c in native_codes if c != "ja")
+        for i, code in enumerate(c for c in native_codes if c != "ug")
     ])
     monkeypatch.setattr(random, "random", lambda: 0.0)  # 必ず実在文字体系プールを選ぶ
 
     for _ in range(20):
         code, label, _gender = _resolve_voice("random")
-        assert code in (config.VOICE_LANGUAGES["ja"]["male"], config.VOICE_LANGUAGES["ja"]["female"])
-        assert label.startswith("Japanese")
+        assert code in (config.VOICE_LANGUAGES["ug"]["male"], config.VOICE_LANGUAGES["ug"]["female"])
+        assert label.startswith("Uyghur")
 
 
 def test_resolve_voice_random_falls_back_to_full_pool_once_all_posted(monkeypatch, tmp_path):

@@ -53,7 +53,6 @@ on:
           - "th | Thai"
           - "ar | Arabic"
           - "he | Hebrew"
-          - "ja | Japanese"
           - "ko | Korean"
           - "hi | Hindi"
           - "es | Spanish"
@@ -129,10 +128,12 @@ jobs:
           # それ以外の言語は、espeak-ng本体に内蔵の"+f3"フォルマントバリアント
           # で女性ボイスを代替しているため追加パッケージ不要(config.py
           # VOICE_LANGUAGESのコメント参照)。
-          # fonts-noto-cjkは日本語(ひらがな)・韓国語(ハングル)の描画に必要
-          # (frame_builder.pyのFRAME_CSS_FONT_STACKは元々'Noto Sans CJK JP'を
-          # 含んでいたが、このパッケージが入っていなかったため実際には
-          # 豆腐になっていた。「ハマった罠」参照)。
+          # fonts-noto-cjkは韓国語(ハングル)の描画に必要(frame_builder.pyの
+          # FRAME_CSS_FONT_STACKは元々'Noto Sans CJK JP'を含んでいたが、この
+          # パッケージが入っていなかったため実際には豆腐になっていた。
+          # 「ハマった罠」参照)。日本語ボイス自体は言語プールから撤去済みだが、
+          # --wordで日本語の文字列を手動指定された場合のひらがな描画のために
+          # 'Noto Sans CJK JP'はFRAME_CSS_FONT_STACKに残してある。
 
       - name: Install Python dependencies
         run: |

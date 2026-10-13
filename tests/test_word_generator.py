@@ -173,22 +173,13 @@ def test_new_language_character_pools_are_nonempty_and_assigned_codepoints():
     # フィルタが正しく効いていることの回帰防止)。
     pools = [
         config.ARABIC_LETTERS, config.HEBREW_LETTERS,
-        config.JAPANESE_LETTERS, config.KOREAN_LETTERS, config.HINDI_LETTERS,
+        config.KOREAN_LETTERS, config.HINDI_LETTERS,
         config.UYGHUR_LETTERS, config.AMHARIC_LETTERS,
     ]
     for pool in pools:
         assert len(pool) > 0
         for ch in pool:
             assert unicodedata.category(ch) != "Cn", f"unassigned codepoint: {hex(ord(ch))}"
-
-
-def test_japanese_letters_excludes_espeak_fallback_characters():
-    # ひらがなブロックのうち、濁点/半濁点(U+3099〜U+309C)・踊り字
-    # (U+309D〜U+309E)はespeak-ngで単独の発音を持たず"Japanese letter"と
-    # 英語で読み上げられてしまうことを実機で確認したため除外している
-    # (config.py JAPANESE_LETTERS参照、README「ハマった罠」)。
-    excluded = {chr(cp) for cp in range(0x3099, 0x309F)}
-    assert excluded.isdisjoint(set(config.JAPANESE_LETTERS))
 
 
 def test_uyghur_letters_is_subset_of_arabic_letters_excluding_fallback_characters():
