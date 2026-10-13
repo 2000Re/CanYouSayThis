@@ -236,7 +236,7 @@ python3 get_youtube_refresh_token.py --client-id YOUR_CLIENT_ID --client-secret 
 ### 4. 実行
 
 - ローカル: `python3 generate.py --upload`(上記を環境変数にセット)
-- GitHub Actions: Actionsタブ → **generate** → **Run workflow**。`upload`はデフォルト有効、`privacy_status`はデフォルト`public`。`word`(視聴者リクエスト対応)を入力した場合は、`privacy_status`の選択に関わらず必ず`private`(非公開)でアップロードされる(`generate.yml`側の上書き。内容を確認してから手動でYouTube Studio側の公開設定を切り替える運用を想定。ローカルで`generate.py --word ... --privacy-status public`のように直接実行した場合はこの上書きは効かない)。
+- GitHub Actions: Actionsタブ → **generate** → **Run workflow**。`upload`はデフォルト有効、`privacy_status`はデフォルト`public`。`word`(視聴者リクエスト対応)を入力した場合は、`privacy_status`の選択に関わらず必ず`private`(非公開)でアップロードされる(`generate.yml`側の上書き。内容を確認してから手動でYouTube Studio側の公開設定を切り替える運用を想定。ローカルで`generate.py --word ... --privacy-status public`のように直接実行した場合はこの上書きは効かない)。あわせて**Repost Shorts as regular videos**ステップもスキップされる(常にバックログ分も合わせて変換するため1本だけ素早く確認したい用途には時間がかかりすぎるうえ、`--privacy-status`が一律適用されるため通常動画側だけ先に公開されてしまう抜け道があったため)。
 
 ### 5. リフレッシュトークンの失効監視
 
@@ -390,6 +390,14 @@ Shorts本体のフレーム(キッカー+単語+モード注記+アイコン)と
 潰してしまっていた(類似フォーマットの他チャンネルが1記号1本・数秒の動画
 で数百万再生を得ている実例を踏まえた判断)。そのため1本ずつ、Shortsと全く
 同じタイトルを保ったまま変換する方式にした。
+
+**word指定時はこのステップごとスキップ**: `generate.yml`の`word`入力
+(視聴者リクエスト対応)を使った回は、`repost_shorts.py`自体を実行しません。
+常にバックログ分も合わせて変換してしまうため、1本だけ素早く確認したい
+用途には時間がかかりすぎるうえ、`--privacy-status`が全変換対象へ一律
+適用される(今回の回だけ`private`に上書きする仕組みが効かない)ため、
+確認前のはずの動画が通常動画側だけ先に公開されてしまう抜け道があった
+ことが分かり対応した。
 
 **注意**: 通常動画側のアップロードはShortsとは別カウントのため、同じ回で
 両方アップロードすると実質的に1日のアップロード本数が増えます。YouTube側
@@ -933,6 +941,19 @@ assets/
     対象で日本語ボイスの有無とは無関係)はこの変更の対象外。また`--word`で
     日本語の文字列を手動指定した場合の表示用に、ひらがな用フォント
     (`fonts-noto-cjk`、`'Noto Sans CJK JP'`)はそのまま残してある。
+51. **word指定(視聴者リクエスト対応)の回に非公開(private)アップロードを
+    入れた直後、通常動画側だけ先に公開されてしまう抜け道が見つかった**:
+    `generate.yml`の**Repost Shorts as regular videos**ステップは、
+    `word`指定かどうかに関わらず常に実行され、今回のShortsに加えて
+    バックログも合わせて`--privacy-status`(選択した値そのまま)で変換
+    していた。以前入れた「word指定時はprivacy_statusの選択に関わらず
+    Shorts自体を必ずprivateにする」上書き(`generate.yml`の
+    「Generate videos」ステップ)はこのステップには伝わらない
+    ため、Shorts側は確認待ちでも通常動画側だけ先に公開されてしまう状態
+    だった。運営者が「word指定の回だけ`repost_shorts.py`の実行に9分
+    以上かかる」と気づいたことがきっかけで発覚(バックログ変換分の時間が
+    本来不要なのに毎回かかっていた)。word指定時はこのステップごと
+    スキップするように変更し、速度・公開範囲の抜け道の両方を解決した。
 
 ## プロジェクト構成
 

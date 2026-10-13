@@ -208,8 +208,14 @@ jobs:
       # 変換する対象もないのでスキップする。本編パイプラインとは独立した
       # 追加機能なので、失敗しても後続の処理はブロックしない
       # (repost_shorts.py側で例外を吸収する)。
+      #
+      # word指定(視聴者リクエスト対応)の回もスキップする。このステップは
+      # 常にバックログも合わせて変換してしまうため、1本だけ素早く確認したい
+      # リクエスト対応の趣旨に反して無駄に時間がかかるうえ、--privacy-status
+      # が一律に適用される(今回の回だけprivateに上書きする仕組みが効かない)
+      # ため、確認前のはずの動画が通常動画側だけ先に公開されてしまう。
       - name: Repost Shorts as regular videos
-        if: ${{ inputs.upload }}
+        if: ${{ inputs.upload && !inputs.word }}
         run: python3 repost_shorts.py --privacy-status "${{ inputs.privacy_status }}"
         env:
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
