@@ -3196,5 +3196,16 @@
     "voice_label": "Spanish (Female)",
     "lang_code": "es",
     "title_template": "how_to_pronounce"
+  },
+  {
+    "word": "-Ammmmmmvoa(...",
+    "label": "-Ammmmmmvoa(...",
+    "video_id": "UATz4IlTHLs",
+    "mode": "chorus",
+    "run_id": "38395675574",
+    "uploaded_at": "2026-10-13T12:15:27+00:00",
+    "voice_label": "Portuguese (Portugal) (Male)",
+    "lang_code": "pt",
+    "title_template": null
   }
 ]

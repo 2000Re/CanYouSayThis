@@ -1,0 +1,6 @@
+# generate.ymlの複数実行が追記・加算するだけのファイル。通常のテキスト
+# マージだと同じ配列末尾への追記同士が衝突するため、merge_tracking_json.py
+# (git mergeドライバ、generate.yml側で登録)でJSONとして意味的に統合する。
+upload_history.json merge=tracking-json
+repost_state.json merge=tracking-json
+quota_usage.json merge=tracking-json

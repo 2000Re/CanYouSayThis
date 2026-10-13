@@ -106,7 +106,20 @@ jobs:
     # 一番時間がかかる)ため、十分な余裕を見て30分で強制終了する。
     timeout-minutes: 30
     steps:
+      # refを明示しないと、actions/checkout@v4はgithub.sha(このジョブが
+      # ディスパッチ/キューされた時点のmainの先端)をそのままチェックアウト
+      # してしまう。concurrency(cancel-in-progress: false)で前の実行の
+      # 終了待ちになっている間にmainが進んでいても追従されず、ジョブ開始時
+      # には既に古いコミットを見ている状態になる。これが原因で2026-10-13に
+      # 実機事故が発生した(直前の実行がupload_history.json/repost_state.json
+      # を更新してpushした直後に、古いチェックアウトのまま始まった次の実行が
+      # 同じファイルに別の追記を試みてpushが衝突、git rebaseがdetached HEADで
+      # 止まった挙句、同じShortsが2本重複して通常動画に変換されてしまった)。
+      # refを明示すると、ジョブが実際に開始する時点のブランチ先端を
+      # 再解決してチェックアウトするようになり、これを防げる。
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -231,6 +244,15 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # upload_history.json/repost_state.json/quota_usage.jsonは複数の
+          # 実行がそれぞれ追記・加算するだけのファイルで、通常のテキスト
+          # マージだと同じ配列末尾への追記同士が行単位で衝突する(.gitattributes
+          # で割り当て、実体はmerge_tracking_json.py参照)。git pull --rebase
+          # (後述)がこれらのファイルで衝突した際、意味的に正しく統合して
+          # 自動解決できるようにする。
+          git config merge.tracking-json.name "generate.yml tracking files (JSON-aware union merge)"
+          git config merge.tracking-json.driver "python3 merge_tracking_json.py %O %A %B %P"
+
           git add upload_history.json repost_state.json
           # quota_usage.json は upload=false の実行では作られないため、
           # 存在する場合のみ追加する(存在しないパスをgit addすると
@@ -252,7 +274,12 @@ jobs:
             fi
             echo "git push 失敗(${attempt}回目)。リトライします。"
             sleep $((attempt * 10))
-            git pull --rebase origin "${GITHUB_REF_NAME}" || true
+            # 上記のmergeドライバで解決できない(対象外のファイル、または
+            # ドライバ自体が失敗した)衝突が残った場合、rebaseが中途半端な
+            # detached HEAD状態で止まり、以降のリトライが全て無意味な
+            # エラーで失敗し続けてしまう(2026-10-13に実機で発生)。
+            # 確実に次のリトライへ進めるよう、rebase失敗時は必ず中断する。
+            git pull --rebase origin "${GITHUB_REF_NAME}" || git rebase --abort
           done
           echo "git push が複数回失敗しました。upload_history.json の更新が反映されていない" \
                "可能性があります。手動での確認・修正が必要です。"
