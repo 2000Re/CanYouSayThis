@@ -174,6 +174,7 @@ def test_new_language_character_pools_are_nonempty_and_assigned_codepoints():
     pools = [
         config.ARABIC_LETTERS, config.HEBREW_LETTERS,
         config.JAPANESE_LETTERS, config.KOREAN_LETTERS, config.HINDI_LETTERS,
+        config.UYGHUR_LETTERS, config.AMHARIC_LETTERS,
     ]
     for pool in pools:
         assert len(pool) > 0
@@ -188,6 +189,15 @@ def test_japanese_letters_excludes_espeak_fallback_characters():
     # (config.py JAPANESE_LETTERS参照、README「ハマった罠」)。
     excluded = {chr(cp) for cp in range(0x3099, 0x309F)}
     assert excluded.isdisjoint(set(config.JAPANESE_LETTERS))
+
+
+def test_uyghur_letters_is_subset_of_arabic_letters_excluding_fallback_characters():
+    # ウイグル語ボイス("ug")ではARABIC_LETTERSの半数以上が単独の発音を持たず
+    # "Arabic hamza"のように英語で読み上げられてしまうことを実機で確認した
+    # ため、問題無い20文字だけに絞っている(config.py UYGHUR_LETTERS参照、
+    # README「ハマった罠」49番)。
+    assert set(config.UYGHUR_LETTERS) <= set(config.ARABIC_LETTERS)
+    assert len(config.UYGHUR_LETTERS) == 20
 
 
 def test_pictograph_scripts_are_nonempty_and_assigned_codepoints():

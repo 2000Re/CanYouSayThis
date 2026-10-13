@@ -57,6 +57,9 @@ on:
           - "ko | Korean"
           - "hi | Hindi"
           - "es | Spanish"
+          - "pl | Polish"
+          - "ug | Uyghur"
+          - "am | Amharic"
       word:
         description: "単語を指定する場合のみ(視聴者リクエスト対応用)。指定するとcountは1本に固定され、過去の単語との重複チェックも行わない。空欄ならランダム生成"
         required: false
@@ -118,9 +121,9 @@ jobs:
             fonts-noto-core fonts-noto-extra fonts-noto-ui-core fonts-noto-ui-extra \
             fonts-noto-cjk \
             mbrola mbrola-us1 mbrola-fr4 mbrola-de1 mbrola-hu1 mbrola-sw2 \
-            mbrola-br4 mbrola-pt1 mbrola-es3
+            mbrola-br4 mbrola-pt1 mbrola-es3 mbrola-pl1
           # mbrola-*は--voice random(config.VOICE_LANGUAGES参照)の女性ボイス用
-          # (MBROLA音声データが確認できた8言語: en/fr/de/hu/sv/pt-br/pt/es。
+          # (MBROLA音声データが確認できた9言語: en/fr/de/hu/sv/pt-br/pt/es/pl。
           # トルコ語はREADME「ハマった罠」26番の理由で言語プール自体から
           # 撤去したため、mbrola-tr2は不要)。
           # それ以外の言語は、espeak-ng本体に内蔵の"+f3"フォルマントバリアント

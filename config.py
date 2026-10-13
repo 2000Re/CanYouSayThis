@@ -139,6 +139,28 @@ KOREAN_LETTERS = _assigned_chars([(0xAC00, 0xD7A3)])
 # デーヴァナーガリーも母音記号を含む全128文字が実機確認で問題無かった。
 HINDI_LETTERS = _assigned_chars([(0x0900, 0x097F)])
 
+# [罠] ウイグル語はアラビア文字を拡張した表記体系だが、espeak-ngの"ug"
+# ボイスでARABIC_LETTERS(42文字)を1文字ずつ検証したところ、半数以上が
+# 単独の発音を持たず"Arabic hamza"のように英語で読み上げてしまうことが
+# 判明した(espeak-ng -v ug -xのフォネーム出力に`_:(en)`が混入することで
+# 確認。"ar"ボイスでは同じ文字でも問題無い=ボイスごとに対応表が異なる)。
+# そのため単独でも発音を持つことを確認済みの20文字だけに絞っている
+# (ARABIC_LETTERSの部分集合。フォント描画は既存のNoto Sans Arabicで
+# カバー済みのため追加パッケージ不要)。
+UYGHUR_LETTERS = [chr(cp) for cp in (
+    0x0627, 0x0628, 0x062A, 0x062C, 0x062E, 0x062F, 0x0631, 0x0632,
+    0x0633, 0x0634, 0x063A, 0x0641, 0x0642, 0x0643, 0x0644, 0x0645,
+    0x0646, 0x0648, 0x0649, 0x064A,
+)]
+
+# エチオピア文字(Ge'ez文字。アムハラ語等で使用)は子音+母音の組み合わせが
+# 1文字になっている音節文字(アブギダ)なので、ロシア語等と同じ
+# random_script_word()(文字をランダムに並べるだけ)で単語として成立する。
+# U+1200〜U+135Cの音節文字326字は実機で1文字ずつ検証し、全て単独の発音を
+# 持つことを確認済み(espeak-ng -v am -x)。それ以降(U+135D〜)の結合記号・
+# 区切り記号・数字は無音(フォネーム出力が空)になるため範囲から除外。
+AMHARIC_LETTERS = _assigned_chars([(0x1200, 0x135C)])
+
 # glitchモード専用の「絵のように見える」単語生成(word_generator.
 # random_pictograph_word()参照)向けの文字プール。単一の文字でも「絵」の
 # ように見える表現をヒントに、複数文字を組み合わせたら「絵」のように
@@ -255,6 +277,9 @@ VOICE_LANGUAGES = {
     # (generate.py _youtube_metadata()参照)。トルコ語除去後の経過を見て
     # 様子見する。
     "es":  {"label": "Spanish",    "male": "es",    "female": "mb-es3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Pronunciación", "fake_word_note": True},
+    "pl":  {"label": "Polish",     "male": "pl",    "female": "mb-pl1", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Wymowa"},
+    "ug":  {"label": "Uyghur",     "male": "ug",    "female": "ug+f3", "script": "cluster", "chars": UYGHUR_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "تەلەپپۇز"},
+    "am":  {"label": "Amharic",    "male": "am",    "female": "am+f3", "script": "cluster", "chars": AMHARIC_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "አጠራር"},
 }
 
 # --mode chorus専用: 複数言語のボイスで同時に読み上げる際の候補言語プール。
@@ -269,7 +294,8 @@ VOICE_LANGUAGES = {
 # 日本語(ja)追加時の実機検証で、日本語ボイスにも同様の問題(Zalgo単語で
 # 平均6.16秒・最大13.45秒、英語ボイスは平均1.65秒・最大2.37秒)が見つかった
 # ため、heと同様に除外する。韓国語(ko)・ヒンディー語(hi)は同じ検証で
-# 問題無かった。
+# 問題無かった。ポーランド語(pl)・ウイグル語(ug)・アムハラ語(am)追加時も
+# 同じ検証を行い、いずれも平均1.4〜1.6秒程度で問題無かった。
 CHORUS_VOICE_LANGUAGE_CODES = [code for code in VOICE_LANGUAGES if code not in ("he", "ja")]
 
 # タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド、
@@ -285,11 +311,12 @@ LANGUAGE_LABELS_JA = {
     "pt-br": "ポルトガル語(ブラジル)", "pt": "ポルトガル語(ポルトガル)",
     "ro": "ルーマニア語", "ru": "ロシア語", "th": "タイ語", "ar": "アラビア語", "he": "ヘブライ語",
     "ja": "日本語", "ko": "韓国語", "hi": "ヒンディー語", "es": "スペイン語",
+    "pl": "ポーランド語", "ug": "ウイグル語", "am": "アムハラ語",
 }
 
 # --voice random で女性ボイスが選ばれた場合に使うespeak-ngのピッチ(-p、
 # 0〜99、デフォルト50)。MBROLA由来の女性ボイス(femaleコードが"mb-"で
-# 始まる5言語)は素のままだとやや低めに聞こえたため、この値で底上げする。
+# 始まる9言語)は素のままだとやや低めに聞こえたため、この値で底上げする。
 # "+f3"フォルマントバリアント由来の女性ボイスはそれ単体で既に十分な高さに
 # なるため対象外(generate.py generate_one()参照)。tts_synth.synthesize_tts()も
 # 参照。
@@ -297,12 +324,11 @@ FEMALE_VOICE_PITCH = 75
 
 # --voice random で「実在の文字体系を使う言語」が選ばれる確率。
 # 実在文字体系の言語(ロシア語・タイ語・アラビア語・ヘブライ語・日本語・
-# 韓国語・ヒンディー語の7言語)は、ラテン文字(Zalgo)系の言語(スペイン語
-# 追加で16言語)に対して少数派(23言語中7、均等抽選なら7/23≒0.30)。
-# これらの言語が持つ「見た目のインパクト」(視覚的なnoveltyがこのチャンネル
-# の売りの一部)を一定の頻度で保つ狙いで0.3に設定している(偶然均等抽選に
-# 近い値になっているだけで、意図的に高めに寄せているわけではない。
-# generate.py _resolve_voice()参照)。
+# 韓国語・ヒンディー語・ウイグル語・アムハラ語の9言語)は、ラテン文字
+# (Zalgo)系の言語(ポーランド語追加で17言語)に対して少数派
+# (26言語中9、均等抽選なら9/26≒0.35)。これらの言語が持つ「見た目の
+# インパクト」(視覚的なnoveltyがこのチャンネルの売りの一部)を一定の
+# 頻度で保つ狙いで0.3に設定している(generate.py _resolve_voice()参照)。
 NATIVE_SCRIPT_VOICE_CHANCE = 0.3
 
 # --- 単語ジェネレータ設定 ----------------------------------------------------
@@ -389,6 +415,7 @@ DECORATIVE_SYMBOLS = list(
 FRAME_CSS_FONT_STACK = (
     "'Noto Sans','Noto Sans CJK JP','Noto Sans CJK KR','Noto Sans Symbols','Noto Sans Symbols2',"
     "'Noto Sans Thai','Noto Sans Devanagari','Noto Sans Hebrew','Noto Sans Arabic',"
+    "'Noto Sans Ethiopic',"
     "'Noto Sans Tibetan','Noto Sans Yi','Noto Sans Mongolian',"
     "'Noto Sans Cuneiform','Noto Sans Egyptian Hieroglyphs','Noto Sans Anatolian Hieroglyphs',"
     "'DejaVu Sans',sans-serif"
