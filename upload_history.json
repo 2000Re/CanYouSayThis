@@ -3185,5 +3185,16 @@
     "voice_label": "Polish (Male)",
     "lang_code": "pl",
     "title_template": "try_to_say"
+  },
+  {
+    "word": "JIMmy bilbilbil",
+    "label": "JIMmy bilbil...",
+    "video_id": "zrLTVq9pRas",
+    "mode": "nightcore",
+    "run_id": "38393688133",
+    "uploaded_at": "2026-10-13T12:01:32.345864+00:00",
+    "voice_label": "Spanish (Female)",
+    "lang_code": "es",
+    "title_template": "how_to_pronounce"
   }
 ]
