@@ -68,6 +68,7 @@ python3 generate.py --count 5 --mode random --outdir ./out_mixed     # 全方式
 python3 generate.py --count 5 --voice random --outdir ./out_multilang  # 言語・性別もランダム
 python3 generate.py --count 5 --repeat 3 --seed 42                   # 繰り返し回数・シード固定
 python3 generate.py --count 3 --upload --privacy-status unlisted     # YouTubeへアップロード
+python3 generate.py --word "JIMmy bilbilbil" --voice en --outdir ./out_req  # 単語を指定(視聴者リクエスト対応)
 ```
 
 ### 主なオプション
@@ -86,6 +87,7 @@ python3 generate.py --count 3 --upload --privacy-status unlisted     # YouTube�
 | `--seed` | 乱数シード(再現したい場合) | なし |
 | `--upload` | 生成した各動画をそのままYouTubeにアップロードする | 無効 |
 | `--privacy-status` | [`--upload`専用] `public` / `unlisted` / `private` | `public` |
+| `--word` | 単語をランダム生成せず指定した文字列を使う(視聴者リクエスト対応用)。指定時は`--count`を1に固定し、アップロード済み単語との重複チェックも行わない | なし(ランダム生成) |
 
 ### 出力
 
