@@ -3163,5 +3163,16 @@
     "voice_label": "Vietnamese (Female)",
     "lang_code": "vi",
     "title_template": "can_you_say"
+  },
+  {
+    "word": "にまじじじゕ",
+    "label": "にまじじじゕ",
+    "video_id": "-jbND_pS89U",
+    "mode": "underwater",
+    "run_id": "38355483145",
+    "uploaded_at": "2026-10-13T06:14:30.494043+00:00",
+    "voice_label": "Japanese (Female)",
+    "lang_code": "ja",
+    "title_template": "can_you_say"
   }
 ]
