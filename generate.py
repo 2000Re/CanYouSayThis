@@ -304,10 +304,8 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     TITLE_TEMPLATE_WEIGHTSの重みに従ってタイトルの言い回しをランダムに
     選ぶ(_resolve_title_template()参照)。「How to Pronounce "X"?」固定だと
     YouTube収益化審査の「reused content」判定で画一的と見なされるリスクが
-    あるという懸念から導入した。"how to pronounce"の検索クエリ一致という
-    実証済みの強みは保つため、既定の言い回し(how_to_pronounce)を最多の
-    比重で残しつつ、"Can You Say", "Can You Pronounce", "Try to Say",
-    "Is ... Pronounceable"の4パターンにも振る(config.TITLE_TEMPLATE_WEIGHTS
+    あるという懸念から導入した。2026-10-13、ユーザーの指示で全11パターン
+    (_TITLE_TEMPLATES参照)を均等配分に変更した(config.TITLE_TEMPLATE_WEIGHTS
     参照)。テストでは_TITLE_TEMPLATESの特定のキーを明示的に渡して固定できる。
 
     modeがnightcore/8d_audio/slowed_reverbのいずれかの場合、タイトル末尾に
