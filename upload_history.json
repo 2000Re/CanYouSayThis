@@ -3295,5 +3295,16 @@
     "voice_label": "Polish (Male)",
     "lang_code": "pl",
     "title_template": "can_you_say"
+  },
+  {
+    "word": "-u҅҅҉҅҃҃҇҈i᷽᷹ᷟᷣᷔᷓOOOO) ֍ ❊",
+    "label": "-u҉҈iOOOO) ֍...",
+    "video_id": "h88bvEX6PoA",
+    "mode": "robot_voice",
+    "run_id": "38585920990",
+    "uploaded_at": "2026-10-14T15:04:22.133412+00:00",
+    "voice_label": "Malay (Female)",
+    "lang_code": "ms",
+    "title_template": "pronunciation_challenge"
   }
 ]
