@@ -3284,5 +3284,16 @@
     "voice_label": null,
     "lang_code": "bs",
     "title_template": "impossible_to_say"
+  },
+  {
+    "word": "ƏƽƿɖѬѸҀӃƜƘ",
+    "label": "ƏƽƿɖѬѸҀӃƜƘ",
+    "video_id": "Va7ZLu2yLBc",
+    "mode": "tts",
+    "run_id": "38562231843",
+    "uploaded_at": "2026-10-14T12:19:20.068696+00:00",
+    "voice_label": "Polish (Male)",
+    "lang_code": "pl",
+    "title_template": "can_you_say"
   }
 ]
