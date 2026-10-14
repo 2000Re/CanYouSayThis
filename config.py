@@ -279,6 +279,7 @@ VOICE_LANGUAGES = {
     "bs":  {"label": "Bosnian",    "male": "bs",    "female": "bs+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Izgovor"},
     "ug":  {"label": "Uyghur",     "male": "ug",    "female": "ug+f3", "script": "cluster", "chars": UYGHUR_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "تەلەپپۇز"},
     "am":  {"label": "Amharic",    "male": "am",    "female": "am+f3", "script": "cluster", "chars": AMHARIC_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "አጠራር"},
+    "kk":  {"label": "Kazakh",     "male": "kk",    "female": "kk+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Айтылу"},
 }
 
 # --mode chorus専用: 複数言語のボイスで同時に読み上げる際の候補言語プール。
@@ -311,7 +312,7 @@ LANGUAGE_LABELS_JA = {
     "pt-br": "ポルトガル語(ブラジル)", "pt": "ポルトガル語(ポルトガル)",
     "ro": "ルーマニア語", "ru": "ロシア語", "th": "タイ語", "ar": "アラビア語", "he": "ヘブライ語",
     "ko": "韓国語", "hi": "ヒンディー語", "es": "スペイン語",
-    "pl": "ポーランド語", "ug": "ウイグル語", "am": "アムハラ語",
+    "pl": "ポーランド語", "bs": "ボスニア語", "ug": "ウイグル語", "am": "アムハラ語", "kk": "カザフ語",
 }
 
 # --voice random で女性ボイスが選ばれた場合に使うespeak-ngのピッチ(-p、
@@ -325,8 +326,8 @@ FEMALE_VOICE_PITCH = 75
 # --voice random で「実在の文字体系を使う言語」が選ばれる確率。
 # 実在文字体系の言語(ロシア語・タイ語・アラビア語・ヘブライ語・韓国語・
 # ヒンディー語・ウイグル語・アムハラ語の8言語。日本語は撤去済み、
-# 「ハマった罠」参照)は、ラテン文字(Zalgo)系の言語(17言語)に対して
-# 少数派(25言語中8、均等抽選なら8/25=0.32)。これらの言語が持つ
+# 「ハマった罠」参照)は、ラテン文字(Zalgo)系の言語(19言語。ボスニア語・
+# カザフ語を含む)に対して少数派(27言語中8、均等抽選なら8/27=0.30)。これらの言語が持つ
 # 「見た目のインパクト」(視覚的なnoveltyがこのチャンネルの売りの一部)を
 # 一定の頻度で保つ狙いで0.3に設定している(generate.py _resolve_voice()
 # 参照)。
