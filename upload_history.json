@@ -3339,5 +3339,16 @@
     "voice_label": null,
     "lang_code": "is",
     "title_template": "what_does_it_sound_like"
+  },
+  {
+    "word": "𔙅𔐄𔗜𔘟𔒭𔒰𔔸𔑟𔐳",
+    "label": "𔙅𔐄𔗜𔘟𔒭𔒰𔔸𔑟𔐳",
+    "video_id": "hyOyWPP3bV8",
+    "mode": "glitch",
+    "run_id": "38643227416",
+    "uploaded_at": "2026-10-14T21:55:34.052524+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "can_you_pronounce"
   }
 ]
