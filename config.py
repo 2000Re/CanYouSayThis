@@ -276,6 +276,7 @@ VOICE_LANGUAGES = {
     # 様子見する。
     "es":  {"label": "Spanish",    "male": "es",    "female": "mb-es3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Pronunciación", "fake_word_note": True},
     "pl":  {"label": "Polish",     "male": "pl",    "female": "mb-pl1", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Wymowa"},
+    "bs":  {"label": "Bosnian",    "male": "bs",    "female": "bs+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Izgovor"},
     "ug":  {"label": "Uyghur",     "male": "ug",    "female": "ug+f3", "script": "cluster", "chars": UYGHUR_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "تەلەپپۇز"},
     "am":  {"label": "Amharic",    "male": "am",    "female": "am+f3", "script": "cluster", "chars": AMHARIC_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "አጠራር"},
 }
