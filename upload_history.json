@@ -3251,5 +3251,16 @@
     "voice_label": "Swedish (Male)",
     "lang_code": "sv",
     "title_template": "what_does_it_sound_like"
+  },
+  {
+    "word": "𒅌𒈔𒋨𒆙𖠈𖣘𖣁𒐫𒅌𒌧𒆜𒈞𒋨",
+    "label": "𒅌𒈔𒋨𒆙𖠈𖣘𖣁𒐫𒅌𒌧𒆜𒈞...",
+    "video_id": "UJcb9t0P0Jo",
+    "mode": "glitch",
+    "run_id": "38552185946",
+    "uploaded_at": "2026-10-14T10:54:17.610016+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "what_does_it_sound_like"
   }
 ]
