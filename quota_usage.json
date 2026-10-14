@@ -1,13 +1,13 @@
 {
   "date": "2026-10-14",
   "api_call_counts": {
-    "videos.insert": 16,
-    "playlistItems.insert": 7,
-    "channels.list": 10,
+    "videos.insert": 17,
+    "playlistItems.insert": 8,
+    "channels.list": 11,
     "videos.list": 9,
     "videos.update": 9,
     "captions.insert": 0,
-    "commentThreads.insert": 16,
-    "thumbnails.set": 16
+    "commentThreads.insert": 17,
+    "thumbnails.set": 17
   }
 }
