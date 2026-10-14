@@ -57,6 +57,7 @@ on:
           - "hi | Hindi"
           - "es | Spanish"
           - "pl | Polish"
+          - "bs | Bosnian"
           - "ug | Uyghur"
           - "am | Amharic"
       word:
