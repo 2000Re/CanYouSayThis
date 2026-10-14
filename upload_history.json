@@ -3306,5 +3306,16 @@
     "voice_label": "Malay (Female)",
     "lang_code": "ms",
     "title_template": "pronunciation_challenge"
+  },
+  {
+    "word": "ृृृअअॢ",
+    "label": "ृृृअअॢ",
+    "video_id": "4I7Uga4Ty74",
+    "mode": "tts_extreme",
+    "run_id": "38637180631",
+    "uploaded_at": "2026-10-14T21:04:21.620103+00:00",
+    "voice_label": "Hindi (Male)",
+    "lang_code": "hi",
+    "title_template": "say_out_loud"
   }
 ]
