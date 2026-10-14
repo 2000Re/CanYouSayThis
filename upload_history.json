@@ -3273,5 +3273,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "what_does_it_sound_like"
+  },
+  {
+    "word": "꧁ඞ꧂",
+    "label": "꧁ඞ꧂",
+    "video_id": "VFGUo1CKJT8",
+    "mode": "tts",
+    "run_id": "38556326235",
+    "uploaded_at": "2026-10-14T11:31:05.549998+00:00",
+    "voice_label": null,
+    "lang_code": "bs",
+    "title_template": "impossible_to_say"
   }
 ]
