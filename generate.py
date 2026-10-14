@@ -201,6 +201,38 @@ def _random_comment_text(label, lang_label):
     return random.choice(_COMMENT_TEMPLATES)(label, lang_label)
 
 
+# 楔形文字・エジプト/アナトリア象形文字・線文字B(config.PICTOGRAPH_SCRIPTS)の
+# 単語は、動画のフレーム画像(このプロジェクト自身のChromium+Notoフォントで
+# 描画)では問題無く表示されるが、タイトル・説明欄・字幕・コメントの
+# プレーンテキストはYouTube自身のウェブサイト/アプリ側のフォントで表示
+# されるため、これらの歴史的文字体系のフォントが無く「豆腐」(表示不能の
+# 四角)になってしまう(2026-10-14、実機のタイトル表示で確認)。動画フレーム
+# 側の見た目は変えず、タイトル/説明欄/字幕/コメントにだけ生の文字を埋め込ま
+# ないようにする。
+_PICTOGRAPH_SCRIPT_CHARS = frozenset(ch for script in config.PICTOGRAPH_SCRIPTS for ch in script)
+
+
+def _is_pictograph_word(word):
+    """wordが_pictograph_word_generator()が生成した(楔形文字等の)単語か
+    どうかを、生成に使った関数を覚えておく代わりに単語の中身から判定する。"""
+    return any(ch in _PICTOGRAPH_SCRIPT_CHARS for ch in word)
+
+
+_PICTOGRAPH_TITLE = "Can You Read These Ancient Symbols?"
+_PICTOGRAPH_DESCRIPTION_LINE = "A sequence of ancient pictographic symbols"
+_PICTOGRAPH_CAPTION_TEXT = (
+    "Can you read these ancient symbols? Not a real word — just a visual puzzle! \U0001F440"
+)
+_PICTOGRAPH_COMMENT_TEMPLATES = [
+    "These ancient-looking symbols are just for fun — can you make sense of them? \U0001F440",
+    "Not a real word, just a pattern of ancient symbols! Can you read it? \U0001F604",
+]
+
+
+def _random_pictograph_comment_text():
+    return random.choice(_PICTOGRAPH_COMMENT_TEMPLATES)
+
+
 def _mode_genre_suffix(mode):
     """modeがconfig.TITLE_GENRE_MODESに含まれる場合、タイトル末尾に付ける
     " (ジャンル名)" を返す(該当しなければ空文字列)。
@@ -277,6 +309,15 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     どちらにも常に含める(説明欄・フレームの注記は見ていなくても、
     コメント欄で実際にコメントを付けてくる視聴者はいることが分かったため)。
 
+    wordが楔形文字・エジプト/アナトリア象形文字・線文字Bのいずれか
+    (_is_pictograph_word()参照)の場合、title/description/caption_text/
+    comment_text/localizationsのいずれにも単語そのものを埋め込まず、代わりに
+    _PICTOGRAPH_TITLE等の固定の汎用フレーズを使う(動画フレーム画像はこの
+    プロジェクト自身のフォントで描画するため問題無いが、YouTube自身の
+    ウェブサイト/アプリのフォントにはこれらの文字体系が無く、タイトル等の
+    プレーンテキストに生で埋め込むと「豆腐」になることを2026-10-14に実機で
+    確認したため)。
+
     戻り値のlocalizations(config.JAPANESE_TITLE_LOCALIZATION_ENABLED /
     config.EXTRA_TITLE_LOCALIZATION_ENABLEDがいずれもFalseならNone)は、
     YouTube側の視聴環境が該当言語の視聴者にだけ表示されるローカライズ
@@ -317,17 +358,21 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     # 英語はこのチャンネルの既定言語なので、タイトル・タグへの言語名追加は
     # 対象外にする("in English?"は冗長なため)。
     lang_label = lang_entry["label"] if lang_entry and lang_code != "en" else None
+    is_pictograph_script = _is_pictograph_word(word)
 
     mode_label = config.MODE_LABELS.get(mode, mode)
-    actual_title_template = _resolve_title_template(title_template)
-    title = _TITLE_TEMPLATES[actual_title_template](label, lang_label)
+    if is_pictograph_script:
+        title = _PICTOGRAPH_TITLE
+    else:
+        actual_title_template = _resolve_title_template(title_template)
+        title = _TITLE_TEMPLATES[actual_title_template](label, lang_label)
     title += _mode_genre_suffix(mode)
     title += " #Shorts"
-    description = (
-        "Can you pronounce this? \U0001F440\n\n"
-        f"Word: {word}\n"
-        f"Mode: {mode_label}\n"
+    description = "Can you pronounce this? \U0001F440\n\n"
+    description += (
+        f"{_PICTOGRAPH_DESCRIPTION_LINE}\n" if is_pictograph_script else f"Word: {word}\n"
     )
+    description += f"Mode: {mode_label}\n"
     if voice_label:
         description += f"Voice: {voice_label}\n"
     if is_native_script or (lang_entry and lang_entry.get("fake_word_note")):
@@ -376,11 +421,15 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     # なる仕様で、肝心の「実在の単語ではない」の注記まで見えなくなっていた
     # (実機で確認)。tags/descriptionに既にtongue twister等のキーワードは
     # あり重複するため削り、注記が確実に切り詰められずに見える短さにした。
-    caption_text = f'How to pronounce "{label}"'
-    if lang_label:
-        caption_text += f" in {lang_label}"
-    caption_text += "? Not a real word — just a joke, give it a try! 😄"
-    comment_text = _random_comment_text(label, lang_label)
+    if is_pictograph_script:
+        caption_text = _PICTOGRAPH_CAPTION_TEXT
+        comment_text = _random_pictograph_comment_text()
+    else:
+        caption_text = f'How to pronounce "{label}"'
+        if lang_label:
+            caption_text += f" in {lang_label}"
+        caption_text += "? Not a real word — just a joke, give it a try! 😄"
+        comment_text = _random_comment_text(label, lang_label)
 
     # タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド)。
     # YouTube側の視聴環境が日本語の視聴者には、通常のtitle/descriptionの
@@ -410,15 +459,19 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     isolated_label = f"⁨{label}⁩"
 
     if config.JAPANESE_TITLE_LOCALIZATION_ENABLED:
-        lang_label_ja = config.LANGUAGE_LABELS_JA.get(lang_code)
-        if lang_label_ja:
-            # 言語名(かな/カナ/漢字、常に強いLTR文字)を先頭に置き、鉤括弧
-            # 「」を文頭にしない。labelが実在のRTL文字体系になり得るのは
-            # lang_codeが設定されている場合に限られる(_word_generator_for()
-            # 参照)ため、このルートだけで足りる。
-            title_ja = f"{lang_label_ja}で「{isolated_label}」はどう発音する?"
+        if is_pictograph_script:
+            # labelを埋め込まない(タイトル本文と同じ理由、本関数冒頭参照)。
+            title_ja = "この古代文字、読めますか?"
         else:
-            title_ja = f"「{isolated_label}」の発音は?"
+            lang_label_ja = config.LANGUAGE_LABELS_JA.get(lang_code)
+            if lang_label_ja:
+                # 言語名(かな/カナ/漢字、常に強いLTR文字)を先頭に置き、鉤括弧
+                # 「」を文頭にしない。labelが実在のRTL文字体系になり得るのは
+                # lang_codeが設定されている場合に限られる(_word_generator_for()
+                # 参照)ため、このルートだけで足りる。
+                title_ja = f"{lang_label_ja}で「{isolated_label}」はどう発音する?"
+            else:
+                title_ja = f"「{isolated_label}」の発音は?"
         title_ja += " #Shorts"
         localizations["ja"] = {"title": title_ja, "description": description}
 
@@ -427,7 +480,13 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     if config.EXTRA_TITLE_LOCALIZATION_ENABLED:
         for extra_lang_code, template in config.EXTRA_TITLE_LOCALIZATIONS.items():
             localizations[extra_lang_code] = {
-                "title": template.format(label=isolated_label),
+                # is_pictograph_scriptの場合、翻訳済みの汎用フレーズを言語数分
+                # 用意する手間をかけるほどの頻度ではないため、英語の汎用タイトル
+                # をそのまま使う(labelを埋め込まないことが優先、本関数冒頭参照)。
+                "title": (
+                    f"{_PICTOGRAPH_TITLE} #Shorts" if is_pictograph_script
+                    else template.format(label=isolated_label)
+                ),
                 "description": description,
             }
 

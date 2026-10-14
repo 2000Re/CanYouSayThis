@@ -159,6 +159,22 @@ def test_build_repost_metadata_omits_genre_suffix_for_non_genre_mode():
     assert "(" not in metadata["title"]
 
 
+def test_build_repost_metadata_omits_word_for_pictograph_entry():
+    # 楔形文字等(generate._is_pictograph_word()参照)はYouTube自身のフォントが
+    # 対応しておらずタイトル等に生で埋め込むと「豆腐」になるため(2026-10-14に
+    # 実機で確認)、通常動画への変換時も単語そのものを埋め込まない。
+    word = generate.config.CUNEIFORM_CHARS[0] + generate.config.CUNEIFORM_CHARS[1]
+    entry = {
+        "word": word, "label": word, "mode": "glitch",
+        "voice_label": None, "lang_code": None, "title_template": "how_to_pronounce",
+    }
+    metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
+    assert word not in metadata["title"]
+    assert metadata["title"].startswith(generate._PICTOGRAPH_TITLE)
+    assert word not in metadata["description"]
+    assert word not in metadata["comment_text"]
+
+
 def _entry(video_id, run_id):
     return {"video_id": video_id, "run_id": run_id, "label": video_id}
 
