@@ -3350,5 +3350,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "can_you_pronounce"
+  },
+  {
+    "word": "▒▒░░▓▒░▓◧▒◧▓░░◨▓▓►◮◮♱✟▼▼►▵※※◧𓃙𓃗𓃱%$/꫞꧁꧂",
+    "label": "▒▒░░▓▒░▓◧▒◧▓...",
+    "video_id": "0HK9SSUha3k",
+    "mode": "glitch",
+    "run_id": "38643394447",
+    "uploaded_at": "2026-10-14T22:01:14.326189+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "attempt_to_pronounce"
   }
 ]
