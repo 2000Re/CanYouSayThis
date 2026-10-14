@@ -3229,5 +3229,16 @@
     "voice_label": "Uyghur (Female)",
     "lang_code": "ug",
     "title_template": "how_to_pronounce"
+  },
+  {
+    "word": "𒒐𒂈𒆒𒔀𒁇",
+    "label": "𒒐𒂈𒆒𒔀𒁇",
+    "video_id": "1RYg0SNF_4E",
+    "mode": "glitch",
+    "run_id": "38504235351",
+    "uploaded_at": "2026-10-14T03:04:43.775346+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "say_out_loud"
   }
 ]
