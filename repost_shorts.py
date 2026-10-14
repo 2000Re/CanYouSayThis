@@ -79,7 +79,15 @@ import requests
 import config
 from audio_utils import extract_audio_track
 from frame_builder import build_thumbnail
-from generate import _TITLE_TEMPLATES, _mode_genre_suffix, _random_comment_text
+from generate import (
+    _PICTOGRAPH_DESCRIPTION_LINE,
+    _PICTOGRAPH_TITLE,
+    _TITLE_TEMPLATES,
+    _is_pictograph_word,
+    _mode_genre_suffix,
+    _random_comment_text,
+    _random_pictograph_comment_text,
+)
 from jst_time import jst_timestamp
 from repost_state import (
     extract_zip_member,
@@ -220,23 +228,32 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
     "how_to_pronounce"にフォールバックする(generate.py側の既定の言い回し)。
 
     nightcore/8d_audio/slowed_reverbのいずれかのモードの場合、タイトル末尾
-    のジャンル名も同様に揃える(generate.py _mode_genre_suffix()参照)。"""
+    のジャンル名も同様に揃える(generate.py _mode_genre_suffix()参照)。
+
+    楔形文字等(_is_pictograph_word()参照)の場合、タイトル・説明欄・
+    コメントに単語そのものを埋め込まない(generate.py _youtube_metadata()
+    のdocstring参照。YouTube自身のフォントがこれらの文字体系に対応しておらず
+    「豆腐」になるため)。"""
     label = entry["label"]
     mode = entry.get("mode", "")
     mode_label = config.MODE_LABELS.get(mode, mode)
     lang_code = entry.get("lang_code")
     lang_entry = config.VOICE_LANGUAGES.get(lang_code) if lang_code else None
     lang_label = lang_entry["label"] if lang_entry and lang_code != "en" else None
+    is_pictograph_script = _is_pictograph_word(entry["word"])
 
-    title_template = entry.get("title_template") or "how_to_pronounce"
-    title = _TITLE_TEMPLATES[title_template](label, lang_label)
+    if is_pictograph_script:
+        title = _PICTOGRAPH_TITLE
+    else:
+        title_template = entry.get("title_template") or "how_to_pronounce"
+        title = _TITLE_TEMPLATES[title_template](label, lang_label)
     title += _mode_genre_suffix(mode)
 
-    description = (
-        "Can you pronounce this? \U0001F440\n\n"
-        f"Word: {entry['word']}\n"
-        f"Mode: {mode_label}\n"
+    description = "Can you pronounce this? \U0001F440\n\n"
+    description += (
+        f"{_PICTOGRAPH_DESCRIPTION_LINE}\n" if is_pictograph_script else f"Word: {entry['word']}\n"
     )
+    description += f"Mode: {mode_label}\n"
     if entry.get("voice_label"):
         description += f"Voice: {entry['voice_label']}\n"
     description += (
@@ -255,7 +272,10 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
     # 説明欄まで読まない視聴者にも伝わるようにする狙いはShortsと同じだが、
     # 元Shortsの投稿時に選ばれた文面と揃える必要は無い(タイトルと違い
     # SEO上の一致を保つ理由が無いため)、変換のたびに独立して抽選する。
-    comment_text = _random_comment_text(label, lang_label)
+    comment_text = (
+        _random_pictograph_comment_text() if is_pictograph_script
+        else _random_comment_text(label, lang_label)
+    )
 
     return {"title": title, "description": description, "tags": tags, "comment_text": comment_text}
 

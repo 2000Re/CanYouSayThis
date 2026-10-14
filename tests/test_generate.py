@@ -12,13 +12,16 @@ import config
 import upload_history
 from generate import (
     _COMMENT_TEMPLATES,
+    _PICTOGRAPH_TITLE,
     _SINGLE_VOICE_MODES,
     _TITLE_TEMPLATES,
+    _is_pictograph_word,
     _lang_code_for_voice,
     _mode_genre_suffix,
     _native_script_for_voice,
     _pictograph_word_generator,
     _random_comment_text,
+    _random_pictograph_comment_text,
     _random_unique_word,
     _resolve_mode,
     _resolve_title_template,
@@ -593,6 +596,63 @@ def test_youtube_metadata_comment_is_separate_from_caption():
     )
     assert comment in expected
     assert comment != caption
+
+
+def test_is_pictograph_word_detects_cuneiform_and_hieroglyphs():
+    for pool in config.PICTOGRAPH_SCRIPTS:
+        assert _is_pictograph_word(pool[0])
+
+
+def test_is_pictograph_word_false_for_ordinary_words():
+    assert not _is_pictograph_word("voOn")
+    assert not _is_pictograph_word("v́oOn")
+
+
+def test_random_pictograph_comment_text_never_contains_placeholder_braces():
+    # プレースホルダの埋め忘れ(f文字列の{label}未置換等)の回帰防止。
+    for _ in range(20):
+        assert "{" not in _random_pictograph_comment_text()
+
+
+def test_youtube_metadata_omits_word_from_title_for_pictograph_word():
+    # 楔形文字・ヒエログリフ系の単語はYouTube自身のフォントが対応しておらず
+    # タイトルに生で埋め込むと「豆腐」になるため(2026-10-14に実機で確認)、
+    # 単語そのものは埋め込まない(_PICTOGRAPH_TITLE固定文言を使う)。
+    word = config.CUNEIFORM_CHARS[0] + config.CUNEIFORM_CHARS[1]
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
+        word, word, "glitch"
+    )
+    assert word not in title
+    assert title.startswith(_PICTOGRAPH_TITLE)
+
+
+def test_youtube_metadata_omits_word_from_description_caption_comment_for_pictograph_word():
+    word = config.EGYPTIAN_HIEROGLYPH_CHARS[0] + config.EGYPTIAN_HIEROGLYPH_CHARS[1]
+    _title, description, _tags, caption, comment, _localizations = _youtube_metadata(
+        word, word, "glitch"
+    )
+    assert word not in description
+    assert word not in caption
+    assert word not in comment
+
+
+def test_youtube_metadata_omits_word_from_localizations_for_pictograph_word():
+    word = config.ANATOLIAN_HIEROGLYPH_CHARS[0] + config.ANATOLIAN_HIEROGLYPH_CHARS[1]
+    _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata(
+        word, word, "glitch"
+    )
+    assert localizations is not None
+    for entry in localizations.values():
+        assert word not in entry["title"]
+
+
+def test_youtube_metadata_still_embeds_word_in_title_for_ordinary_word():
+    # 通常の単語(非ピクトグラフ)は従来通りタイトルに埋め込まれることの
+    # 回帰防止(今回の変更が誤って全モードに適用されていないことの確認)。
+    _title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
+        "voOn", "voOn", "glitch", title_template="can_you_say"
+    )
+    assert "voOn" in _title
 
 
 def test_youtube_metadata_localizations_includes_japanese_title():
