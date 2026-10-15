@@ -218,6 +218,25 @@ def _is_pictograph_word(word):
     return any(ch in _PICTOGRAPH_SCRIPT_CHARS for ch in word)
 
 
+def _speakable_word(word):
+    """TTSに渡す直前にだけ楔形文字・エジプト/アナトリア象形文字・線文字B
+    表意文字を取り除いた文字列を返す(動画フレーム側の見た目・label・
+    upload_history.json記録用のwordそのものは変えない。呼び出し側で
+    別々に扱う)。
+
+    これらの文字はespeak-ngに読ませるとコードポイントを桁ごとに延々と
+    読み上げてしまう(README「ハマった罠」参照)ため、morse_synth.pyが
+    対応表に無い文字を無視するのと同じ考え方で、TTS系モード
+    (tts/tts_extreme/reverse/robot_voice/chorus/telephone/slowed_reverb/
+    nightcore/underwater/8d_audio/echo_cave)に渡す単語からだけ取り除く。
+    全文字が取り除かれて空文字列になった場合はespeak-ngにほぼ無音の
+    音声を作らせることになるが、エラーにはならず
+    _stretch_to_min_duration()で最低尺まで引き伸ばされる(glitchモード
+    専用だったPICTOGRAPH_VISUAL_CHANCEや--word直接指定時と同様、実害は
+    無い)。"""
+    return "".join(ch for ch in word if ch not in _PICTOGRAPH_SCRIPT_CHARS)
+
+
 _PICTOGRAPH_TITLE = "Can You Read These Ancient Symbols?"
 _PICTOGRAPH_DESCRIPTION_LINE = "A sequence of ancient pictographic symbols"
 _PICTOGRAPH_CAPTION_TEXT = (
@@ -704,35 +723,40 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     with open(txt_path, "w", encoding="utf-8") as f:
         f.write(word)
 
+    # TTS系モードにはword自体ではなく_speakable_word(word)を渡す
+    # (楔形文字等を取り除いた版。_speakable_word()参照)。動画フレーム・
+    # label・upload_history.json記録にはword自体をそのまま使い続ける。
+    tts_word = _speakable_word(word)
+
     if actual_mode == "tts":
         # espeak-ngが吐く長さがそのまま採用される(パディングはしない)
-        synthesize_tts(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        synthesize_tts(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     elif actual_mode == "tts_extreme":
-        synthesize_tts_extreme(word, raw_wav, voice=actual_voice)
+        synthesize_tts_extreme(tts_word, raw_wav, voice=actual_voice)
     elif actual_mode == "glitch":
         # unit_durationが「1回分」の長さ。--repeatで指定した回数ぶん、
         # これがそのまま繰り返される(動画の総尺は自動的に決まる)
         synthesize_glitch_chunk(raw_wav, target_seconds=unit_duration)
     elif actual_mode == "reverse":
-        synthesize_tts_reverse(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        synthesize_tts_reverse(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     elif actual_mode == "robot_voice":
-        synthesize_tts_robot(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        synthesize_tts_robot(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     elif actual_mode == "chorus":
-        synthesize_tts_chorus(word, raw_wav)
+        synthesize_tts_chorus(tts_word, raw_wav)
     elif actual_mode == "morse":
         synthesize_morse(word, raw_wav)
     elif actual_mode == "telephone":
-        synthesize_tts_telephone(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        synthesize_tts_telephone(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     elif actual_mode == "slowed_reverb":
-        synthesize_tts_slowed_reverb(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        synthesize_tts_slowed_reverb(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     elif actual_mode == "nightcore":
-        synthesize_tts_nightcore(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        synthesize_tts_nightcore(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     elif actual_mode == "underwater":
-        synthesize_tts_underwater(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        synthesize_tts_underwater(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     elif actual_mode == "8d_audio":
-        synthesize_tts_8d_audio(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        synthesize_tts_8d_audio(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     elif actual_mode == "echo_cave":
-        synthesize_tts_echo_cave(word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        synthesize_tts_echo_cave(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     else:
         raise ValueError(
             f"unknown mode: {actual_mode!r} "

@@ -1013,6 +1013,22 @@ assets/
     (未変換の過去のShorts)がまだ残っている間は`REPOST_BACKLOG_PER_RUN`
     (2本)の上乗せ分があるため、当面は「1(今回分)+最大2(バックログ)」で
     推移し、バックログを使い切った時点で通常動画も1本/回に落ち着く見込み。
+58. **楔形文字等が混じった単語をreverse/robot_voice等のTTS系モードで
+    リクエストされ、glitchモード以外の選択肢が無いか聞かれた**:
+    `morse`モードがespeak-ngを使わず対応表に無い文字を無視するだけで
+    壊れない(54番の`glitch`と同じ理由)ことをヒントに、TTS系モード
+    (tts/tts_extreme/reverse/robot_voice/chorus/telephone/slowed_reverb/
+    nightcore/underwater/8d_audio/echo_cave)全般に対応する恒久対応を
+    実装した。`generate.py`に`_speakable_word()`を追加し、espeak-ngに
+    渡す直前の単語からだけ楔形文字・エジプト/アナトリア象形文字・線文字B
+    表意文字を取り除く(動画フレーム・label・upload_history.json記録用の
+    wordはそのまま)。実機確認: 楔形文字混じりの単語をreverseモードに
+    そのまま渡すと4.36秒(コードポイントを桁ごとに読み上げる壊れた音声)
+    になるところ、取り除いた版を渡すと0.67秒(正常な読み上げ)になった。
+    全文字が取り除かれて空文字列になるケース(純粋な楔形文字等の単語)も
+    espeak-ngはエラーにせずほぼ無音の短い音声を返すため、
+    `_stretch_to_min_duration()`で最低尺まで引き伸ばされるだけで実害は
+    無いことを確認済み。
 
 ## プロジェクト構成
 
