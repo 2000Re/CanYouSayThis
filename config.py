@@ -192,11 +192,14 @@ PICTOGRAPH_SCRIPTS = [
 # ヒエログリフが見た目として一番「らしい」ため他の2倍出やすくしている。
 PICTOGRAPH_SCRIPT_WEIGHTS = [1, 2, 1, 1]
 
-# glitchモードでPICTOGRAPH_SCRIPTSの「絵のような」単語を使う確率(それ以外は
-# 従来通りのZalgo単語)。NATIVE_SCRIPT_VOICE_CHANCE(tts/tts_extremeで実在
-# 文字体系を使う確率)と同じ考え方で、glitchモードの見た目に一定の頻度で
-# noveltyを混ぜつつ、これまでのZalgo系の見た目も引き続き主流のまま残す
-# ようにしている(generate.py _pictograph_word_generator()参照)。
+# chorus/morse以外のモードでPICTOGRAPH_SCRIPTSの「絵のような」単語を使う
+# 確率(それ以外は従来通りのZalgo単語)。元はglitchモード限定だったが、
+# _speakable_word()でTTS合成直前に楔形文字等を取り除くようになった
+# (README「ハマった罠」58番)ことで全TTS系モードでも安全に使えるように
+# なったため解禁した。NATIVE_SCRIPT_VOICE_CHANCE(tts/tts_extremeで実在
+# 文字体系を使う確率)と同じ考え方で、見た目に一定の頻度でnoveltyを
+# 混ぜつつ、これまでのZalgo系の見た目も引き続き主流のまま残すようにして
+# いる(generate.py _pictograph_word_generator()・_word_generator_for()参照)。
 PICTOGRAPH_VISUAL_CHANCE = 0.4
 
 # --voice random(generate.py _resolve_voice()参照)が抽選する言語/性別の

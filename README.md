@@ -1029,6 +1029,18 @@ assets/
     espeak-ngはエラーにせずほぼ無音の短い音声を返すため、
     `_stretch_to_min_duration()`で最低尺まで引き伸ばされるだけで実害は
     無いことを確認済み。
+59. **58番で--word直接指定時の安全性を確認した後、--word指定無しの
+    ランダム生成(`--mode random`等)でもglitch限定を解除してほしいと
+    要望があった**: `generate.py`の`_word_generator_for()`で、
+    ピクトグラフ系単語生成(`_pictograph_word_generator()`)を選ぶ条件
+    から「glitchモード限定」を外し、「chorus/morse以外の全モード」に
+    変更した(chorus/morseは元々別の理由(複数ボイス同時読み上げ・
+    モールス符号表の非対応)で対象外のまま維持)。実機確認: reverseモードで
+    `--seed 1 --count 5`を実行したところ、純粋な線文字B単語(1本目)・
+    純粋な楔形文字単語(5本目)を含む5本とも正常に生成完了(クラッシュ無し)。
+    テストを更新(`test_word_generator_for_never_uses_pictograph_outside_
+    glitch_mode`を`test_word_generator_for_can_use_pictograph_in_tts_
+    modes`に置き換え)。
 
 ## プロジェクト構成
 
