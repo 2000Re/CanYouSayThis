@@ -3438,5 +3438,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "what_does_it_sound_like"
+  },
+  {
+    "word": "꧁𒁂꧂𖣘꧂꫞꧂꧁☺︎꧂π",
+    "label": "꧁𒁂꧂𖣘꧂꫞꧂꧁☺︎꧂π",
+    "video_id": "PZv9Ji3H1CI",
+    "mode": "reverse",
+    "run_id": "38735790266",
+    "uploaded_at": "2026-10-15T12:40:52.857707+00:00",
+    "voice_label": "Amharic (Male)",
+    "lang_code": "am",
+    "title_template": "can_you_say"
   }
 ]
