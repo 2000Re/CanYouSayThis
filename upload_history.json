@@ -3482,5 +3482,16 @@
     "voice_label": null,
     "lang_code": "en",
     "title_template": "say_out_loud"
+  },
+  {
+    "word": "k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌κ̯̈̂k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌k̯̈̌",
+    "label": "kkkkkkkkkkkk...",
+    "video_id": "TmZVmW2QR_s",
+    "mode": "tts",
+    "run_id": "38812924774",
+    "uploaded_at": "2026-10-15T21:56:20.013480+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "can_you_say"
   }
 ]
