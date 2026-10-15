@@ -3394,5 +3394,16 @@
     "voice_label": "Kazakh (Female)",
     "lang_code": "kk",
     "title_template": "how_to_pronounce"
+  },
+  {
+    "word": "™®®©%%££√÷π∆¶¶][✓%,!;gg.. '...",
+    "label": "™®®©%%££√÷π∆...",
+    "video_id": "oDjWYGz5_FQ",
+    "mode": "tts",
+    "run_id": "38720352310",
+    "uploaded_at": "2026-10-15T10:32:37.749697+00:00",
+    "voice_label": "Lithuanian (Female)",
+    "lang_code": "lt",
+    "title_template": "impossible_to_say"
   }
 ]
