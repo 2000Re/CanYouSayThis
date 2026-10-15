@@ -3416,5 +3416,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "is_pronounceable"
+  },
+  {
+    "word": "â̸̙͐͑̌̿͛̽i̵̢̢̡͚̩̞̥͕̜̻̫̩̐̈͘͜ŕ̶̛̰̱̈́̀́̑̿̾͛͂̈́͗̓̈́̒͘͝️p̸̢̻͓͎̻͙͂͒̋͒̓̃͊̐̔͘͝l̷̢̨̨̫̼͙̞͉̗͉̖̲̖̞̿̉â̸̙͐͑̌̿͛̽️ṉ̵͓̬͈̞̥̭̥̇̓̔͋ẹ̷͓̺̰̽̍͛̉̐̔͋̓̚͜",
+    "label": "âiŕ️plâ️ṉẹ",
+    "video_id": "dmHDq2oPEd8",
+    "mode": "tts",
+    "run_id": "38721072365",
+    "uploaded_at": "2026-10-15T10:43:48.620303+00:00",
+    "voice_label": "Icelandic (Female)",
+    "lang_code": "is",
+    "title_template": "how_to_pronounce"
   }
 ]
