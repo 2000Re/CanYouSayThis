@@ -61,6 +61,7 @@ on:
           - "ug | Uyghur"
           - "am | Amharic"
           - "kk | Kazakh"
+          - "lt | Lithuanian"
       word:
         description: "単語を指定する場合のみ(視聴者リクエスト対応用)。指定するとcountは1本に固定され、過去の単語との重複チェックも行わない。アップロード時はprivacy_statusの選択に関わらず必ず非公開(private)になる(内容確認後、手動でYouTube Studio側の公開設定を切り替える想定)。空欄ならランダム生成"
         required: false
