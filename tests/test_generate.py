@@ -203,15 +203,17 @@ def test_pictograph_word_generator_weighting_matches_script_weights():
         assert abs(actual_ratio - expected_ratio) < 0.03
 
 
-def test_word_generator_for_never_uses_pictograph_outside_glitch_mode():
-    # tts/tts_extremeでは、乱数がどう転んでもピクトグラフ生成にはならない
-    # (config.PICTOGRAPH_VISUAL_CHANCEの確率判定自体がglitchモード限定)。
+def test_word_generator_for_can_use_pictograph_in_tts_modes():
+    # _speakable_word()でTTS合成直前に楔形文字等を取り除くようになった
+    # (README「ハマった罠」58番)ことで、glitch以外のTTS系モードでも
+    # ピクトグラフ生成(random_zalgo_word以外)が選ばれるようになったことの
+    # 確認(確率的な挙動なので統計的に確認する)。
     random.seed(11)
     en_voice = config.VOICE_LANGUAGES["en"]["male"]
-    for mode in ("tts", "tts_extreme"):
-        for _ in range(50):
-            generator = _word_generator_for(mode, en_voice)
-            assert generator is random_zalgo_word
+    for mode in ("tts", "tts_extreme", "reverse", "robot_voice", "telephone"):
+        picks = [_word_generator_for(mode, en_voice) for _ in range(80)]
+        assert any(g is not random_zalgo_word for g in picks), mode
+        assert any(g is random_zalgo_word for g in picks), mode
 
 
 def test_word_generator_for_can_use_pictograph_in_glitch_mode():

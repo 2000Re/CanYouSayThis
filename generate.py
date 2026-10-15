@@ -601,10 +601,12 @@ def _pictograph_word_generator():
     抽選してlambdaに固定することで、_random_unique_word()の再抽選試行中に
     文字体系がぶれない(同じ「絵」の系統の中で単語違いを試す)ようにしている。
 
-    glitchモード専用(generate_one()参照)。これらの文字はespeak-ngに
-    読ませると無音にならず、コードポイントを桁ごとに読み上げる長い音声に
-    なってしまうこと(README「ハマった罠」参照)を実機で確認済みのため、
-    単語の読み上げ音声に依存しないglitchモードでのみ使う。"""
+    chorus/morse以外の全モードで使われ得る(_word_generator_for()参照)。
+    これらの文字をespeak-ngに読ませると無音にならず、コードポイントを
+    桁ごとに読み上げる長い音声になってしまうこと(README「ハマった罠」
+    参照)を実機で確認済みのため、以前はTTSを使わないglitchモード限定
+    だったが、_speakable_word()でTTS合成直前にこれらの文字を取り除く
+    ようになった(58番)ことで全TTS系モードでも安全に使えるようになった。"""
     chars = random.choices(
         config.PICTOGRAPH_SCRIPTS, weights=config.PICTOGRAPH_SCRIPT_WEIGHTS
     )[0]
@@ -655,15 +657,19 @@ def _word_generator_for(actual_mode, actual_voice):
     """generate_one()が使う単語生成関数を決める。
 
     楔形文字・エジプト/アナトリア象形文字の「絵のような」単語
-    (_pictograph_word_generator()参照)はglitchモード限定で、
-    config.PICTOGRAPH_VISUAL_CHANCEの確率でのみ選ぶ(これらの文字は
-    espeak-ngに読ませると無音にならず、コードポイントを桁ごとに読み上げる
-    長い音声になってしまうため、単語の読み上げ音声に依存しないglitchモード
-    でのみ使う。README「ハマった罠」参照)。
+    (_pictograph_word_generator()参照)は、config.PICTOGRAPH_VISUAL_CHANCE
+    の確率で選ぶ。以前はglitchモード限定だった(これらの文字をespeak-ngに
+    読ませると無音にならず、コードポイントを桁ごとに読み上げる長い音声に
+    なってしまうため)が、_speakable_word()でTTS合成の直前にこれらの文字を
+    取り除くようになった(README「ハマった罠」58番)ことで、tts/
+    tts_extreme/reverse/robot_voice/telephone/slowed_reverb/nightcore/
+    underwater/8d_audio/echo_caveでも安全に扱えるようになったため解禁した
+    (視聴者からの要望)。chorus/morseは下記の理由で対象外。
 
     chorus/morseは、それぞれ「複数言語のボイスで同時に同じ単語を読む」
     「単語の文字をモールス符号のビープ音に変換する」という性質上、実在
-    文字体系の単語(結合文字を含まない)だと不都合がある:
+    文字体系の単語(結合文字を含まない。楔形文字等のピクトグラフ系単語も
+    同じ理由でここに含める)だと不都合がある:
       - chorus: 特定言語の文字体系の単語を、その言語と無関係な他のボイス
         でも同時に読ませることになり、狙いと合わない。
       - morse: morse_synth.MORSE_CODEはラテン文字(+区切り記号4種)のみに
@@ -672,10 +678,10 @@ def _word_generator_for(actual_mode, actual_voice):
     そのため両モードは常にZalgo単語(random_zalgo_word()、土台がラテン文字
     のBASE_CHARSのみ)を使う。
 
-    それ以外(および上記の確率に外れた場合のglitchモード)は従来通り、
-    実在文字体系のボイスならそちらの単語生成(_native_script_for_voice()参照)、
-    無ければZalgo単語(random_zalgo_word())を使う。"""
-    if actual_mode == "glitch" and random.random() < config.PICTOGRAPH_VISUAL_CHANCE:
+    それ以外(および上記の確率に外れた場合)は従来通り、実在文字体系の
+    ボイスならそちらの単語生成(_native_script_for_voice()参照)、無ければ
+    Zalgo単語(random_zalgo_word())を使う。"""
+    if actual_mode not in ("chorus", "morse") and random.random() < config.PICTOGRAPH_VISUAL_CHANCE:
         return _pictograph_word_generator()
     if actual_mode in ("chorus", "morse"):
         return random_zalgo_word
