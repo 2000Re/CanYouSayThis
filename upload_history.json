@@ -3383,5 +3383,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "is_pronounceable"
+  },
+  {
+    "word": "(llllllE֛֥֥֭֭֯֒v- ✻ ❍",
+    "label": "(llllllEv- ✻...",
+    "video_id": "nUrEygtAxgE",
+    "mode": "robot_voice",
+    "run_id": "38710083838",
+    "uploaded_at": "2026-10-15T09:04:29.492914+00:00",
+    "voice_label": "Kazakh (Female)",
+    "lang_code": "kk",
+    "title_template": "how_to_pronounce"
   }
 ]
