@@ -3405,5 +3405,16 @@
     "voice_label": "Lithuanian (Female)",
     "lang_code": "lt",
     "title_template": "impossible_to_say"
+  },
+  {
+    "word": "𓃚𓃙𓄃𓃙𓃚𓃘☜☝︎☜𓃚𓃚𓃛𓄃𓃛𓃜꫞꫞𐂄△𐂄◉◇⃝",
+    "label": "𓃚𓃙𓄃𓃙𓃚𓃘☜☝︎☜𓃚𓃚...",
+    "video_id": "NVSbwMZN1U8",
+    "mode": "glitch",
+    "run_id": "38720459423",
+    "uploaded_at": "2026-10-15T10:38:03.233920+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "is_pronounceable"
   }
 ]
