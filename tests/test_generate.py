@@ -26,6 +26,7 @@ from generate import (
     _resolve_mode,
     _resolve_title_template,
     _resolve_voice,
+    _speakable_word,
     _unposted_lang_codes,
     _voice_pitch_for,
     _word_generator_for,
@@ -612,6 +613,22 @@ def test_random_pictograph_comment_text_never_contains_placeholder_braces():
     # プレースホルダの埋め忘れ(f文字列の{label}未置換等)の回帰防止。
     for _ in range(20):
         assert "{" not in _random_pictograph_comment_text()
+
+
+def test_speakable_word_strips_pictograph_chars_only():
+    cuneiform = config.CUNEIFORM_CHARS[0]
+    word = f"ab{cuneiform}cd"
+    assert _speakable_word(word) == "abcd"
+
+
+def test_speakable_word_returns_empty_string_for_pure_pictograph_word():
+    for pool in config.PICTOGRAPH_SCRIPTS:
+        assert _speakable_word(pool[0] + pool[1]) == ""
+
+
+def test_speakable_word_leaves_ordinary_words_unchanged():
+    assert _speakable_word("voOn") == "voOn"
+    assert _speakable_word("v́oOn") == "v́oOn"
 
 
 def test_youtube_metadata_omits_word_from_title_for_pictograph_word():
