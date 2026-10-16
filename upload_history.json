@@ -3548,5 +3548,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "can_you_say"
+  },
+  {
+    "word": "Animal Crossing",
+    "label": "Animal Cross...",
+    "video_id": "uxsFgAEboZs",
+    "mode": "animalese",
+    "run_id": "38910773400",
+    "uploaded_at": "2026-10-16T13:54:05.368535+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "can_you_pronounce"
   }
 ]
