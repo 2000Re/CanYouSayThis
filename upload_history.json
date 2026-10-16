@@ -3537,5 +3537,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "pronunciation_challenge"
+  },
+  {
+    "word": "𓄂𓆦𓆉𓆉𓆉𓆉𓆉𓅞𓅘𒋨𒈒𒈔𒁎ᐖ",
+    "label": "𓄂𓆦𓆉𓆉𓆉𓆉𓆉𓅞𓅘𒋨𒈒𒈔...",
+    "video_id": "W6blpf1YzWA",
+    "mode": "chorus",
+    "run_id": "38896304640",
+    "uploaded_at": "2026-10-16T11:59:11.915127+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "can_you_say"
   }
 ]
