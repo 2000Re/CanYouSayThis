@@ -13,11 +13,10 @@ import upload_history
 from generate import (
     _COMMENT_TEMPLATES,
     _FRAME_MAX_BASE_CHARS,
-    _LONG_SENTENCE_TITLE,
     _PICTOGRAPH_TITLE,
     _SINGLE_VOICE_MODES,
+    _TITLE_SENTENCE_SNIPPET_CHARS,
     _TITLE_TEMPLATES,
-    _is_long_sentence,
     _is_pictograph_word,
     _lang_code_for_voice,
     _mode_genre_suffix,
@@ -29,6 +28,7 @@ from generate import (
     _resolve_mode,
     _resolve_title_template,
     _resolve_voice,
+    _sentence_title_snippet,
     _speakable_word,
     _unposted_lang_codes,
     _voice_pitch_for,
@@ -694,39 +694,46 @@ def test_youtube_metadata_still_embeds_word_in_title_for_ordinary_word():
     assert "voOn" in _title
 
 
-def test_is_long_sentence_true_for_space_containing_word_beyond_title_limit():
+def test_sentence_title_snippet_cuts_at_word_boundary_for_long_sentence():
     # --wordでの文章丸ごとのリクエスト(animaleseモード等)で、タイトル用の
-    # readable_label()(12文字)では途中で切れてしまう場合のみTrue。
+    # 通常のlabel(readable_label()、12文字)では単語の途中で切れてしまう
+    # 場合、単語の区切り(スペース)より手前までを返す(README「ハマった
+    # 罠」65番)。
     sentence = "Welcome to my island! I hope you enjoy your stay. Make yourself at home!"
-    assert _is_long_sentence(sentence)
+    assert _sentence_title_snippet(sentence) == "Welcome to my..."
 
 
-def test_is_long_sentence_false_for_short_sentence_within_title_limit():
-    # スペースを含んでいても、12文字以内に収まるなら切り詰めが発生しない
-    # ため意味は失われない。
-    assert not _is_long_sentence("say hi")
+def test_sentence_title_snippet_none_for_short_sentence_within_title_limit():
+    # スペースを含んでいても、_TITLE_SENTENCE_SNIPPET_CHARS以内に収まる
+    # なら切り詰め自体が発生しないため、Noneを返す(呼び出し側は通常の
+    # readable_label()の結果をそのまま使う)。
+    assert _sentence_title_snippet("say hi") is None
 
 
-def test_is_long_sentence_false_for_long_word_without_spaces():
+def test_sentence_title_snippet_none_for_long_word_without_spaces():
     # スペースを含まない通常の自動生成単語(zalgo単語等)は、長くても
     # 「文章」ではないため対象外(従来通りの「...」省略のままでよい)。
-    assert not _is_long_sentence("O" * 20)
+    assert _sentence_title_snippet("O" * 20) is None
 
 
-def test_youtube_metadata_omits_word_from_title_for_long_sentence():
-    # 文章丸ごとのリクエストは、タイトルに文の途中までしか入らず意味が
-    # 通じなくなる(「Welcome to m...」等)のを避けるため、_LONG_SENTENCE_
-    # TITLE固定文言を使う(README「ハマった罠」64番)。
+def test_youtube_metadata_embeds_word_boundary_snippet_in_title_for_long_sentence():
+    # 文章丸ごとのリクエストでも、単語の途中で切れた断片(「Welcome to
+    # m...」)ではなく、単語の区切りまでのスニペット(「Welcome to
+    # my...」)がタイトルに埋め込まれる。固定の汎用フレーズ1種類に揃えて
+    # しまうと画一的なタイトルになる懸念があったため、通常の単語と同じ
+    # _TITLE_TEMPLATESのバリエーションがそのまま活きるようにしてある
+    # (README「ハマった罠」65番)。
     sentence = "Welcome to my island! I hope you enjoy your stay. Make yourself at home!"
     title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
-        sentence, sentence, "animalese"
+        sentence, sentence, "animalese", title_template="can_you_say"
     )
+    assert "Welcome to my..." in title
+    assert "Welcome to m..." not in title
     assert sentence not in title
-    assert title.startswith(_LONG_SENTENCE_TITLE)
 
 
 def test_youtube_metadata_keeps_full_sentence_in_description_for_long_sentence():
-    # タイトルには埋め込まないが、description(Word: {word}の行)には
+    # タイトルには断片しか入らないが、description(Word: {word}の行)には
     # 元々切り詰め無しで全文が入っているため、視聴者が全文を見られること
     # 自体は変わらない。
     sentence = "Welcome to my island! I hope you enjoy your stay. Make yourself at home!"
@@ -736,16 +743,18 @@ def test_youtube_metadata_keeps_full_sentence_in_description_for_long_sentence()
     assert sentence in description
 
 
-def test_youtube_metadata_omits_sentence_from_caption_and_comment_for_long_sentence():
+def test_youtube_metadata_caption_and_comment_use_word_boundary_snippet_for_long_sentence():
     sentence = "Welcome to my island! I hope you enjoy your stay. Make yourself at home!"
     _title, _description, _tags, caption, comment, _localizations = _youtube_metadata(
         sentence, sentence, "animalese"
     )
     assert sentence not in caption
     assert sentence not in comment
+    assert "Welcome to m..." not in caption
+    assert "Welcome to m..." not in comment
 
 
-def test_youtube_metadata_omits_sentence_from_localizations_for_long_sentence():
+def test_youtube_metadata_localizations_use_word_boundary_snippet_for_long_sentence():
     sentence = "Welcome to my island! I hope you enjoy your stay. Make yourself at home!"
     _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata(
         sentence, sentence, "animalese"
@@ -753,6 +762,7 @@ def test_youtube_metadata_omits_sentence_from_localizations_for_long_sentence():
     assert localizations is not None
     for entry in localizations.values():
         assert sentence not in entry["title"]
+        assert "Welcome to m..." not in entry["title"]
 
 
 def test_youtube_metadata_localizations_includes_japanese_title():
@@ -1095,3 +1105,17 @@ def test_frame_max_base_chars_is_too_long_to_safely_embed_in_a_title():
         len(fn("", longest_lang_label)) for fn in _TITLE_TEMPLATES.values()
     ) + len(" (Slowed + Reverb) #Shorts")
     assert _FRAME_MAX_BASE_CHARS + worst_case_overhead > 100
+
+
+def test_title_sentence_snippet_chars_stays_within_the_100_char_title_limit():
+    # _TITLE_SENTENCE_SNIPPET_CHARS(文章スニペットの文字数上限)は、
+    # _FRAME_MAX_BASE_CHARSとは逆に、YouTubeタイトルの100文字制限の
+    # worst case(最長の言語名+最長のタイトルテンプレート+ジャンル
+    # サフィックス+" #Shorts")でも安全に収まることの確認
+    # (README「ハマった罠」65番)。
+    longest_lang_label = max(v["label"] for v in config.VOICE_LANGUAGES.values())
+    snippet_placeholder = "a" * _TITLE_SENTENCE_SNIPPET_CHARS
+    worst_case_title_length = max(
+        len(fn(snippet_placeholder, longest_lang_label)) for fn in _TITLE_TEMPLATES.values()
+    ) + len(" (Slowed + Reverb) #Shorts")
+    assert worst_case_title_length <= 100
