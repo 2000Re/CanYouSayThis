@@ -29,7 +29,9 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
                             ごとの短い録音済み音声をピッチシフトしながら
                             つなげる(espeak-ngは使わない。視聴者コメントで
                             紹介されたequalo-official/animalese-generator
-                            を移植。animalese_synth.py参照)
+                            を移植。animalese_synth.py参照)。声の高さは
+                            --pitchで直接指定できる(省略時は1本ごとに
+                            ランダム)
      --mode random       : 1本ごとに上記いずれかの方式からランダムに選ぶ
                             (--countで複数本まとめて作る際や、自動実行の
                             日々の投稿に単調さが出ないようにする用途)
@@ -702,7 +704,8 @@ def _word_generator_for(actual_mode, actual_voice):
 def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOICE,
                   speed=config.DEFAULT_SPEED, unit_duration=config.DEFAULT_UNIT_DURATION,
                   repeat=config.DEFAULT_REPEAT, repeat_gap=config.DEFAULT_REPEAT_GAP,
-                  fade=config.DEFAULT_FADE, upload=False, privacy_status="public", word=None):
+                  fade=config.DEFAULT_FADE, upload=False, privacy_status="public", word=None,
+                  pitch=None):
     actual_mode = _resolve_mode(mode)
     actual_voice, voice_label, voice_gender = _resolve_voice(voice)
     voice_pitch = _voice_pitch_for(actual_voice, voice_gender)
@@ -764,8 +767,9 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         synthesize_morse(word, raw_wav)
     elif actual_mode == "animalese":
         # espeak-ngを使わないため_speakable_word()は不要(対応表に無い
-        # 文字は animalese_synth.py 側で無視される。morseと同じ方針)
-        synthesize_animalese(word, raw_wav)
+        # 文字は animalese_synth.py 側で無視される。morseと同じ方針)。
+        # pitch未指定(None)ならsynthesize_animalese側で毎回ランダムに選ぶ
+        synthesize_animalese(word, raw_wav, pitch=pitch)
     elif actual_mode == "telephone":
         synthesize_tts_telephone(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     elif actual_mode == "slowed_reverb":
@@ -983,6 +987,12 @@ def main():
                      help="末尾のフェードアウトの長さ(秒)。無音パディングはせず、"
                           "中身の実際の長さに動画尺を合わせる")
     ap.add_argument("--seed", type=int, default=None, help="乱数シード(再現したい場合)")
+    ap.add_argument("--pitch", type=str, choices=["lowest", "low", "med", "high"],
+                     default=None,
+                     help="[animalese専用] キャラクターボイスの高さを直接指定する"
+                          "(lowest=最も低い 〜 high=最も高い)。指定しない場合は"
+                          "1本ごとにランダムに選ぶ(「乱数シード」のような分かりにくい"
+                          "指定をしなくても、声の高さだけを直接選べるようにしたもの)")
     ap.add_argument("--upload", action="store_true",
                      help="生成した各動画をそのままYouTubeにアップロードする"
                           "(YOUTUBE_CLIENT_ID/YOUTUBE_CLIENT_SECRET/YOUTUBE_REFRESH_TOKEN"
@@ -1013,6 +1023,7 @@ def main():
                     voice=args.voice, speed=args.speed, unit_duration=args.unit_duration,
                     repeat=args.repeat, repeat_gap=args.repeat_gap, fade=args.fade,
                     upload=args.upload, privacy_status=args.privacy_status, word=args.word,
+                    pitch=args.pitch,
                 )
             except Exception as e:
                 # クォータ超過や一時的なネットワークエラーなどで1本失敗しても、

@@ -63,6 +63,17 @@ on:
           - "am | Amharic"
           - "kk | Kazakh"
           - "lt | Lithuanian"
+      pitch:
+        description: "[animalese専用] キャラクターボイスの高さ(「どうぶつの森」のキャラクターごとの声の高さ違いに相当)。ランダムなら1本ごとに毎回変わる"
+        required: false
+        default: "random | ランダム"
+        type: choice
+        options:
+          - "random | ランダム"
+          - "lowest | 最も低い"
+          - "low | 低い"
+          - "med | 普通"
+          - "high | 高い"
       word:
         description: "単語を指定する場合のみ(視聴者リクエスト対応用)。指定するとcountは1本に固定され、過去の単語との重複チェックも行わない。アップロード時はprivacy_statusの選択に関わらず必ず非公開(private)になる(内容確認後、手動でYouTube Studio側の公開設定を切り替える想定)。空欄ならランダム生成"
         required: false
@@ -185,6 +196,13 @@ jobs:
           args=(--count "${{ inputs.count }}" --outdir ./out --mode "${{ inputs.mode }}" --voice "$voice_code")
           if [ -n "${{ inputs.seed }}" ]; then
             args+=(--seed "${{ inputs.seed }}")
+          fi
+          # pitch入力はvoiceと同じ「<値> | <日本語名>」形式(random | ランダム等)
+          # なので、ランダム以外が選ばれた場合のみ実際の値部分を取り出して渡す
+          pitch_code="${{ inputs.pitch }}"
+          pitch_code="${pitch_code%% | *}"
+          if [ "$pitch_code" != "random" ]; then
+            args+=(--pitch "$pitch_code")
           fi
           if [ "${{ inputs.upload }}" = "true" ]; then
             privacy_status="${{ inputs.privacy_status }}"
