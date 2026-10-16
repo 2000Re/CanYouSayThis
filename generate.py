@@ -401,6 +401,16 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
         f"{_PICTOGRAPH_DESCRIPTION_LINE}\n" if is_pictograph_script else f"Word: {word}\n"
     )
     description += f"Mode: {mode_label}\n"
+    if mode == "animalese":
+        # animalese_synth.pyは「どうぶつの森」風の高速ピッチシフト声を模した
+        # ファンメイドの音声合成であり、実際のゲーム音源は使っていない
+        # (README「ハマった罠」62番参照)。公式との誤解を避けるため、説明欄に
+        # 明記する。
+        description += (
+            "(This voice effect is a fan-made audio synthesis inspired by a "
+            "certain game series' character voices. It is not affiliated "
+            "with, endorsed by, or associated with the original publisher.)\n"
+        )
     if voice_label:
         description += f"Voice: {voice_label}\n"
     if is_native_script or (lang_entry and lang_entry.get("fake_word_note")):

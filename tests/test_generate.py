@@ -342,6 +342,21 @@ def test_youtube_metadata_includes_fake_word_note_for_spanish_despite_latin_scri
     assert "not a real word" in description
 
 
+def test_youtube_metadata_omits_fan_made_note_for_non_animalese_modes():
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "fan-made" not in description
+
+
+def test_youtube_metadata_includes_fan_made_note_for_animalese():
+    # 「どうぶつの森」風ボイスが公式音源ではなくファンメイドの模倣合成である旨を
+    # 明記し、公式提供コンテンツだという誤解を避ける(README「ハマった罠」62番)。
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata(
+        "hello", "hello", "animalese"
+    )
+    assert "fan-made" in description
+    assert "not affiliated" in description
+
+
 def test_youtube_metadata_omits_native_hashtag_when_lang_code_not_given():
     _title, description, tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert description.count("#") == 8
