@@ -13,9 +13,11 @@ import upload_history
 from generate import (
     _COMMENT_TEMPLATES,
     _FRAME_MAX_BASE_CHARS,
+    _LONG_SENTENCE_TITLE,
     _PICTOGRAPH_TITLE,
     _SINGLE_VOICE_MODES,
     _TITLE_TEMPLATES,
+    _is_long_sentence,
     _is_pictograph_word,
     _lang_code_for_voice,
     _mode_genre_suffix,
@@ -690,6 +692,67 @@ def test_youtube_metadata_still_embeds_word_in_title_for_ordinary_word():
         "voOn", "voOn", "glitch", title_template="can_you_say"
     )
     assert "voOn" in _title
+
+
+def test_is_long_sentence_true_for_space_containing_word_beyond_title_limit():
+    # --wordでの文章丸ごとのリクエスト(animaleseモード等)で、タイトル用の
+    # readable_label()(12文字)では途中で切れてしまう場合のみTrue。
+    sentence = "Welcome to my island! I hope you enjoy your stay. Make yourself at home!"
+    assert _is_long_sentence(sentence)
+
+
+def test_is_long_sentence_false_for_short_sentence_within_title_limit():
+    # スペースを含んでいても、12文字以内に収まるなら切り詰めが発生しない
+    # ため意味は失われない。
+    assert not _is_long_sentence("say hi")
+
+
+def test_is_long_sentence_false_for_long_word_without_spaces():
+    # スペースを含まない通常の自動生成単語(zalgo単語等)は、長くても
+    # 「文章」ではないため対象外(従来通りの「...」省略のままでよい)。
+    assert not _is_long_sentence("O" * 20)
+
+
+def test_youtube_metadata_omits_word_from_title_for_long_sentence():
+    # 文章丸ごとのリクエストは、タイトルに文の途中までしか入らず意味が
+    # 通じなくなる(「Welcome to m...」等)のを避けるため、_LONG_SENTENCE_
+    # TITLE固定文言を使う(README「ハマった罠」64番)。
+    sentence = "Welcome to my island! I hope you enjoy your stay. Make yourself at home!"
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
+        sentence, sentence, "animalese"
+    )
+    assert sentence not in title
+    assert title.startswith(_LONG_SENTENCE_TITLE)
+
+
+def test_youtube_metadata_keeps_full_sentence_in_description_for_long_sentence():
+    # タイトルには埋め込まないが、description(Word: {word}の行)には
+    # 元々切り詰め無しで全文が入っているため、視聴者が全文を見られること
+    # 自体は変わらない。
+    sentence = "Welcome to my island! I hope you enjoy your stay. Make yourself at home!"
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata(
+        sentence, sentence, "animalese"
+    )
+    assert sentence in description
+
+
+def test_youtube_metadata_omits_sentence_from_caption_and_comment_for_long_sentence():
+    sentence = "Welcome to my island! I hope you enjoy your stay. Make yourself at home!"
+    _title, _description, _tags, caption, comment, _localizations = _youtube_metadata(
+        sentence, sentence, "animalese"
+    )
+    assert sentence not in caption
+    assert sentence not in comment
+
+
+def test_youtube_metadata_omits_sentence_from_localizations_for_long_sentence():
+    sentence = "Welcome to my island! I hope you enjoy your stay. Make yourself at home!"
+    _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata(
+        sentence, sentence, "animalese"
+    )
+    assert localizations is not None
+    for entry in localizations.values():
+        assert sentence not in entry["title"]
 
 
 def test_youtube_metadata_localizations_includes_japanese_title():

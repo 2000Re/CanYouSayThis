@@ -266,6 +266,44 @@ _PICTOGRAPH_COMMENT_TEMPLATES = [
 _FRAME_MAX_BASE_CHARS = 80
 
 
+def _is_long_sentence(word):
+    """wordが複数単語からなる「文章」(--wordでの視聴者リクエスト等、
+    スペースを含む長い入力。animaleseモードの文章丸ごとリクエストが典型例)
+    で、タイトル用のreadable_label()(デフォルトmax_base_chars=12)では
+    意味のある形に収まらないかどうかを判定する。
+
+    通常の自動生成された単語(zalgo単語等)はスペースを含まない1語構成
+    のため、ここで真になることは無い。動画フレーム側は別枠の
+    _FRAME_MAX_BASE_CHARS(80文字)で既に全文表示されており(README
+    「ハマった罠」63番)、ここで対処するのはタイトル・字幕・コメント欄
+    だけの問題であることに注意(README「ハマった罠」64番)。"""
+    return " " in word.strip() and readable_label(word).endswith("...")
+
+
+_LONG_SENTENCE_TITLE = "Can You Pronounce This Full Sentence?"
+_LONG_SENTENCE_CAPTION_TEXT = (
+    "This one's a full sentence, not just a single word — give it a try! \U0001F5E3️"
+)
+_LONG_SENTENCE_COMMENT_TEMPLATES = [
+    "This one's a whole sentence, not just a word — think you can say it fluently? \U0001F5E3️",
+    "A full-sentence challenge this time! Try reading it all in one breath \U0001F604",
+    "Not a single word this time — a whole sentence! Can you say it smoothly? \U0001F604",
+]
+
+
+def _random_long_sentence_comment_text():
+    return random.choice(_LONG_SENTENCE_COMMENT_TEMPLATES)
+
+# 動画フレーム(サムネイル含む)表示専用の文字数上限。readable_label()の
+# デフォルト(12文字)はYouTubeタイトルの100文字制限を守るためのもので、
+# フレーム画像自体にはそのような技術的上限が無い(frame_builder.py側の
+# _word_font_size()がフォントサイズを文字数に応じて縮小するだけで済む)。
+# そのため、長い文章の--wordリクエスト(animaleseモード等)でも
+# フレーム上で「Welcome to m...」のように途中で切れないよう、こちらは
+# 別枠でより大きい値にしている(README「ハマった罠」63番参照)。
+_FRAME_MAX_BASE_CHARS = 80
+
+
 def _random_pictograph_comment_text():
     return random.choice(_PICTOGRAPH_COMMENT_TEMPLATES)
 
@@ -355,6 +393,17 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     プレーンテキストに生で埋め込むと「豆腐」になることを2026-10-14に実機で
     確認したため)。
 
+    wordが複数単語からなる「文章」で、タイトル用のlabel(readable_label()、
+    max_base_chars=12)では意味のある形に収まらない場合(_is_long_sentence()
+    参照。--wordでの文章丸ごとのリクエスト(animaleseモード等)が典型例)、
+    title/caption_text/comment_text/localizationsには同様に_LONG_SENTENCE_
+    TITLE等の固定の汎用フレーズを使う(「Welcome to m...」のように文の
+    途中で切れて意味が通じなくなるのを避けるため)。動画フレーム画像は
+    別枠の_FRAME_MAX_BASE_CHARS(80文字)で既に全文表示されており
+    (README「ハマった罠」63番)、description内の「Word: {word}」の行も
+    元々wordをそのまま埋め込んでいて切り詰めが無いため、全文はどちらかで
+    必ず視聴者の目に入る(README「ハマった罠」64番)。
+
     戻り値のlocalizations(config.JAPANESE_TITLE_LOCALIZATION_ENABLED /
     config.EXTRA_TITLE_LOCALIZATION_ENABLEDがいずれもFalseならNone)は、
     YouTube側の視聴環境が該当言語の視聴者にだけ表示されるローカライズ
@@ -396,10 +445,13 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     # 対象外にする("in English?"は冗長なため)。
     lang_label = lang_entry["label"] if lang_entry and lang_code != "en" else None
     is_pictograph_script = _is_pictograph_word(word)
+    is_long_sentence = _is_long_sentence(word)
 
     mode_label = config.MODE_LABELS.get(mode, mode)
     if is_pictograph_script:
         title = _PICTOGRAPH_TITLE
+    elif is_long_sentence:
+        title = _LONG_SENTENCE_TITLE
     else:
         actual_title_template = _resolve_title_template(title_template)
         title = _TITLE_TEMPLATES[actual_title_template](label, lang_label)
@@ -471,6 +523,9 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     if is_pictograph_script:
         caption_text = _PICTOGRAPH_CAPTION_TEXT
         comment_text = _random_pictograph_comment_text()
+    elif is_long_sentence:
+        caption_text = _LONG_SENTENCE_CAPTION_TEXT
+        comment_text = _random_long_sentence_comment_text()
     else:
         caption_text = f'How to pronounce "{label}"'
         if lang_label:
@@ -509,6 +564,8 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
         if is_pictograph_script:
             # labelを埋め込まない(タイトル本文と同じ理由、本関数冒頭参照)。
             title_ja = "この古代文字、読めますか?"
+        elif is_long_sentence:
+            title_ja = "この文章、発音できますか?"
         else:
             lang_label_ja = config.LANGUAGE_LABELS_JA.get(lang_code)
             if lang_label_ja:
@@ -527,11 +584,13 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     if config.EXTRA_TITLE_LOCALIZATION_ENABLED:
         for extra_lang_code, template in config.EXTRA_TITLE_LOCALIZATIONS.items():
             localizations[extra_lang_code] = {
-                # is_pictograph_scriptの場合、翻訳済みの汎用フレーズを言語数分
-                # 用意する手間をかけるほどの頻度ではないため、英語の汎用タイトル
-                # をそのまま使う(labelを埋め込まないことが優先、本関数冒頭参照)。
+                # is_pictograph_script/is_long_sentenceの場合、翻訳済みの汎用
+                # フレーズを言語数分用意する手間をかけるほどの頻度ではないため、
+                # 英語の汎用タイトルをそのまま使う(labelを埋め込まないことが
+                # 優先、本関数冒頭参照)。
                 "title": (
                     f"{_PICTOGRAPH_TITLE} #Shorts" if is_pictograph_script
+                    else f"{_LONG_SENTENCE_TITLE} #Shorts" if is_long_sentence
                     else template.format(label=isolated_label)
                 ),
                 "description": description,
