@@ -3526,5 +3526,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "is_pronounceable"
+  },
+  {
+    "word": "ノ⁠彡⁠┻⁠━⁠┻(⁠ﾉ⁠°ﾉ⁠⌒⁠┫⁠ ⁠┻⁠ ⁠┣⁠ ⁠┳(⁠ﾉ⁠°⁠_⁠o⁠)⁠ﾉ⁠⌒⁠┫⁠ ⁠┻┳(⁠ﾉ⁠°⁠_⁠o⁠)⁠ﾉ⁠⌒⁠┫⁠ ⁠┻⁠ ⁠┣⁠ ⁠┳(⁠/⁠¯⁠◡⁠ ⁠‿⁠",
+    "label": "ノ⁠彡⁠┻⁠━⁠┻(⁠ﾉ...",
+    "video_id": "Ea1Wfi5I00M",
+    "mode": "glitch",
+    "run_id": "38896110235",
+    "uploaded_at": "2026-10-16T11:53:48.848486+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "pronunciation_challenge"
   }
 ]
