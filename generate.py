@@ -256,6 +256,15 @@ _PICTOGRAPH_COMMENT_TEMPLATES = [
     "Not a real word, just a pattern of ancient symbols! Can you read it? \U0001F604",
 ]
 
+# 動画フレーム(サムネイル含む)表示専用の文字数上限。readable_label()の
+# デフォルト(12文字)はYouTubeタイトルの100文字制限を守るためのもので、
+# フレーム画像自体にはそのような技術的上限が無い(frame_builder.py側の
+# _word_font_size()がフォントサイズを文字数に応じて縮小するだけで済む)。
+# そのため、長い文章の--wordリクエスト(animaleseモード等)でも
+# フレーム上で「Welcome to m...」のように途中で切れないよう、こちらは
+# 別枠でより大きい値にしている(README「ハマった罠」63番参照)。
+_FRAME_MAX_BASE_CHARS = 80
+
 
 def _random_pictograph_comment_text():
     return random.choice(_PICTOGRAPH_COMMENT_TEMPLATES)
@@ -738,7 +747,16 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     else:
         word = word_generator()
     label = readable_label(word)
-    frame_word = zalgo_display_word(word)
+    # フレーム表示用は、タイトルのYouTube100文字制限(labelを使う側、言語名
+    # 付きテンプレートのworst caseでも実質23文字程度までしか安全に入らない)
+    # とは別の制約。フレーム画像自体には文字数の技術的な上限が無く、
+    # _word_font_size()側でフォントサイズを文字数に応じて縮小するだけで
+    # 済むため、こちらはより長い_FRAME_MAX_BASE_CHARSで別途truncateし直す
+    # (--word指定で文章丸ごとのリクエスト(animaleseモード等)が来ても、
+    # フレーム上で「Welcome to m...」のように途中で切れないようにするため。
+    # README「ハマった罠」63番参照)。
+    frame_label = readable_label(word, max_base_chars=_FRAME_MAX_BASE_CHARS)
+    frame_word = zalgo_display_word(word, max_base_chars=_FRAME_MAX_BASE_CHARS)
 
     base = os.path.join(outdir, f"{idx:03d}")
     txt_path = base + "_word.txt"
@@ -815,7 +833,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     os.remove(str_wav)
 
     wav_to_mp3(fin_wav, mp3_path)
-    build_frame(label, frame_path, mode=actual_mode, display_word=frame_word,
+    build_frame(frame_label, frame_path, mode=actual_mode, display_word=frame_word,
                 is_native_script=used_native_script)
     build_video(frame_path, mp3_path, video_path)
 
@@ -877,7 +895,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
 
             thumbnail_path = base + "_thumbnail.png"
             try:
-                build_thumbnail(label, thumbnail_path, display_word=frame_word)
+                build_thumbnail(frame_label, thumbnail_path, display_word=frame_word)
                 upload_thumbnail(video_id, thumbnail_path)
             except Exception as e:
                 print(f"[Warning] {word}: カスタムサムネイルのアップロードに失敗しました: {e}")

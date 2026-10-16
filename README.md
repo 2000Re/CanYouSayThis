@@ -1084,6 +1084,25 @@ assets/
     した(`mode == "animalese"`の場合のみ。タイトル・動画フレームの表示
     ラベルは元々`"Animalese Voice"`という汎用的なファン用語のみで、
     「どうぶつの森」「Animal Crossing」等の名称自体は使っていない)。
+63. **animaleseモードで文章丸ごとの`--word`リクエスト(例:
+    `"Welcome to my island! I hope you enjoy your stay. Make yourself
+    at home!"`)を試したところ、動画フレーム上で「Welcome to m...」の
+    ように12文字で途中が切れてしまうと指摘があった**: `generate.py`の
+    `label = readable_label(word)`(デフォルト`max_base_chars=12`)は
+    元々、YouTubeタイトルの100文字制限を守るための値で、言語名付き
+    タイトルテンプレートのworst caseでは実質23文字程度までしか安全に
+    入らない(`_TITLE_TEMPLATES`の組み合わせで実測)。一方、動画フレーム
+    画像自体にはそのような技術的上限が無く、`_word_font_size()`側で
+    文字数に応じてフォントサイズを縮小すれば長い文章でも収まる。この2つ
+    の制約を混同していたのが原因だったため、フレーム表示専用に
+    `_FRAME_MAX_BASE_CHARS = 80`を新設し、`frame_label`/`frame_word`
+    として`readable_label()`/`zalgo_display_word()`を別途呼び直す
+    ように分離した(タイトル用の`label`は従来通り12文字のまま)。
+    `frame_builder.py`の`_word_font_size()`/`_thumbnail_word_font_size()`
+    にも13〜80文字超まで縮小し続ける段階を追加。実機でフレーム画像を
+    生成して目視確認し(72文字の文章が2行に収まる、100文字の極端な
+    入力でも崩れない、短い単語は従来通り大きく表示される、の3パターン)、
+    問題無いことを確認した。
 
 ## プロジェクト構成
 

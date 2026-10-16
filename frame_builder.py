@@ -97,7 +97,12 @@ def _sub_label(mode, is_native_script):
 
 def _word_font_size(word_label, width):
     """単語の長さに応じて「どかんと」感が出る最大サイズを選ぶ
-    (フレーム幅からはみ出さない範囲で、短いほど大きく)"""
+    (フレーム幅からはみ出さない範囲で、短いほど大きく)。
+
+    n<=12までの4段階は元々単発の「読めない単語」向けの基準。--wordで文章
+    丸ごとのリクエスト(animaleseモード等)が来た場合に備え、より長い文字数
+    向けの段階も用意している(frame_label/generate.py _FRAME_MAX_BASE_CHARS
+    参照、README「ハマった罠」63番)。"""
     n = len(word_label)
     if n <= 6:
         base = 220
@@ -105,15 +110,28 @@ def _word_font_size(word_label, width):
         base = 180
     elif n <= 12:
         base = 150
+    elif n <= 20:
+        base = 100
+    elif n <= 35:
+        base = 72
+    elif n <= 50:
+        base = 56
+    elif n <= 65:
+        base = 46
     else:
-        base = 120
+        base = 38
     return round(base * width / _BASELINE_WIDTH)
 
 
 def _thumbnail_word_font_size(word_label, width):
     """サムネイル(絵だけ・キッカーやサブラベル無し)用のフォントサイズ。
     _word_font_size()と違い、競合する要素(キッカー・サブラベル・アイコン)
-    が無く画面の全高を単語だけに使えるため、同じ文字数でも一回り大きくする。"""
+    が無く画面の全高を単語だけに使えるため、同じ文字数でも一回り大きくする。
+
+    n<=12までの4段階は元々単発の「読めない単語」向けの基準。それ以降は
+    _word_font_size()と同じ理由で長い文字数向けの段階を追加している
+    (ただしサムネイルは16:9で縦の余白が少ないため、_word_font_size()より
+    控えめな値にしている)。"""
     n = len(word_label)
     if n <= 6:
         base = 320
@@ -121,8 +139,16 @@ def _thumbnail_word_font_size(word_label, width):
         base = 260
     elif n <= 12:
         base = 210
+    elif n <= 20:
+        base = 130
+    elif n <= 35:
+        base = 85
+    elif n <= 50:
+        base = 62
+    elif n <= 65:
+        base = 48
     else:
-        base = 170
+        base = 38
     return round(base * width / _BASELINE_WIDTH)
 
 _playwright_ctx = {"pw": None, "browser": None}
