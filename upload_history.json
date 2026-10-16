@@ -3504,5 +3504,16 @@
     "voice_label": null,
     "lang_code": "en",
     "title_template": "what_does_it_sound_like"
+  },
+  {
+    "word": "l֖֘֞֕֯l֖֪֣֭֮֒֔rrrr ✺ ◡",
+    "label": "llrrrr ✺ ◡",
+    "video_id": "_fhUfjugvhg",
+    "mode": "8d_audio",
+    "run_id": "38843553688",
+    "uploaded_at": "2026-10-16T03:04:23.960135+00:00",
+    "voice_label": "Bosnian (Female)",
+    "lang_code": "bs",
+    "title_template": "what_does_it_sound_like"
   }
 ]
