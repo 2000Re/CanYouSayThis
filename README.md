@@ -89,6 +89,7 @@ python3 generate.py --word "JIMmy bilbilbil" --voice en --outdir ./out_req  # �
 | `--repeat-gap` | 繰り返し間の無音の長さ(秒) | `0.4` |
 | `--fade` | 末尾のフェードアウトの長さ(秒) | `0.4` |
 | `--seed` | 乱数シード(再現したい場合) | なし |
+| `--pitch` | [animalese専用] キャラクターボイスの高さを`lowest`/`low`/`med`/`high`で直接指定する(「どうぶつの森」のキャラクターごとの声の高さ違いに相当)。指定しない場合は1本ごとにランダム | なし(ランダム) |
 | `--upload` | 生成した各動画をそのままYouTubeにアップロードする | 無効 |
 | `--privacy-status` | [`--upload`専用] `public` / `unlisted` / `private` | `public` |
 | `--word` | 単語をランダム生成せず指定した文字列を使う(視聴者リクエスト対応用)。指定時は`--count`を1に固定し、アップロード済み単語との重複チェックも行わない | なし(ランダム生成) |
@@ -1059,6 +1060,18 @@ assets/
     単語だとほぼ無音になってしまうため)。`pydub`を依存関係に追加
     (`requirements.txt`)。`*.wav`を除外している`.gitignore`に
     `animalese_sounds/**/*.wav`の例外を追加。
+61. **60番のサンプル動画を見せた際、運営者から「`--seed 42`のような指定は
+    分かりにくい、もっと分かりやすいパラメータにできないか」と要望が
+    あった**: `--seed`はPythonの`random.seed()`そのものを渡すだけの汎用
+    オプションで、どの乱数がどのピッチに対応するかは実行してみるまで
+    分からない(デバッグ・再現目的のオプションであり、本来「声の高さを
+    選ぶ」ための手段ではなかった)。そこで`animalese`専用に`--pitch`
+    (`lowest`/`low`/`med`/`high`)を新設し、`synthesize_animalese()`の
+    `pitch`引数へ`generate_one()`経由でそのまま渡すようにした
+    (`--pitch`省略時は従来通り1本ごとにランダム)。`generate.yml`側にも
+    `voice`入力と同じ「`<値> | <日本語名>`」形式のドロップダウンとして
+    追加し、GitHub Actions実行時にもコード値を直接入力する必要がないように
+    した。
 
 ## プロジェクト構成
 
