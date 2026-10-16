@@ -3559,5 +3559,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "can_you_pronounce"
+  },
+  {
+    "word": "Welcome to my island! I hope you enjoy your stay. Make yourself at home!",
+    "label": "Welcome to m...",
+    "video_id": "LJiIQ0iHdhA",
+    "mode": "animalese",
+    "run_id": "38911856375",
+    "uploaded_at": "2026-10-16T14:02:40.697245+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "attempt_to_pronounce"
   }
 ]
