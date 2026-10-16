@@ -8,7 +8,7 @@ on:
         required: false
         default: "1"
       mode:
-        description: "音声の作り方 (tts / tts_extreme / glitch / reverse / robot_voice / chorus / morse / telephone / slowed_reverb / nightcore / underwater / 8d_audio / echo_cave / random)"
+        description: "音声の作り方 (tts / tts_extreme / glitch / reverse / robot_voice / chorus / morse / animalese / telephone / slowed_reverb / nightcore / underwater / 8d_audio / echo_cave / random)"
         required: false
         default: "tts"
         type: choice
@@ -20,6 +20,7 @@ on:
           - robot_voice
           - chorus
           - morse
+          - animalese
           - telephone
           - slowed_reverb
           - nightcore

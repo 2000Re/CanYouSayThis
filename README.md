@@ -10,14 +10,15 @@ Zalgo風の「発音不能な単語」をランダム生成し、それに対し
 
 1. **単語生成**: 母音などの土台文字にUnicodeの結合文字(Zalgoテキスト)や
    記号を大量に重ねた、見た目からして発音不能な単語をランダムに作ります。
-2. **音声生成**: 13種類の方式、またはそれらをランダムに混ぜる方式を選べます。
+2. **音声生成**: 14種類の方式、またはそれらをランダムに混ぜる方式を選べます。
    - `tts`(デフォルト): [espeak-ng](https://github.com/espeak-ng/espeak-ng)に単語そのものを読ませる。
    - `tts_extreme`: 奇妙な声バリエーション+極端なピッチ・速度で読ませ、ffmpegでさらに歪ませる。
-   - `glitch`: 単語の音とは無関係な合成効果音を当てる。単語自体も一定確率(`config.PICTOGRAPH_VISUAL_CHANCE`、デフォルト0.4)で楔形文字・エジプト/アナトリア象形文字・線文字B表意文字を組み合わせた「絵のように見える」単語になる(`glitch`限定、「ハマった罠」27番)。
+   - `glitch`: 単語の音とは無関係な合成効果音を当てる。単語自体も一定確率(`config.PICTOGRAPH_VISUAL_CHANCE`、デフォルト0.4)で楔形文字・エジプト/アナトリア象形文字・線文字B表意文字を組み合わせた「絵のように見える」単語になる(`chorus`/`morse`/`animalese`以外の全モードが対象、「ハマった罠」27番・58番・59番)。
    - `reverse`: espeak-ngの読み上げ音声をそのまま逆再生する。
    - `robot_voice`: 読み上げ音声に搬送波とのリング変調(ffmpegの`amultiply`)をかけロボット風の声にする。
    - `chorus`: 同じ単語を複数言語(3〜4言語、`config.CHORUS_VOICE_LANGUAGE_CODES`)のボイスで同時に読み上げて重ねる(「ハマった罠」28番)。
    - `morse`: espeak-ngは使わず、単語の文字を国際モールス符号のビープ音列に変換する(結合文字・装飾記号は無視)。
+   - `animalese`: espeak-ngは使わず、「どうぶつの森」のキャラクターボイス風にa〜zの文字ごとの録音済み音声(`animalese_sounds/`)をピッチシフトしながらつなげる。視聴者コメントで紹介された[equalo-official/animalese-generator](https://github.com/equalo-official/animalese-generator)(MIT License)を移植したもの(「ハマった罠」60番)。
    - `telephone`: 電話回線(300〜3400Hz)相当のバンドパスフィルタと軽いビットクラッシュをかける。
    - `slowed_reverb`: ゆっくり再生(atempo)+残響(aecho)の「slowed + reverb」ジャンル風に加工する。
    - `nightcore`: サンプルレートを上げてピッチとテンポを同時に上げる「nightcore」ジャンル風に加工する(slowed_reverbと対になる高速化方向)。
@@ -80,7 +81,7 @@ python3 generate.py --word "JIMmy bilbilbil" --voice en --outdir ./out_req  # �
 |---|---|---|
 | `--count` | 生成する本数 | `3` |
 | `--outdir` | 出力ディレクトリ | `./out` |
-| `--mode` | `tts` / `tts_extreme` / `glitch` / `reverse` / `robot_voice` / `chorus` / `morse` / `telephone` / `slowed_reverb` / `nightcore` / `underwater` / `8d_audio` / `echo_cave` / `random` | `tts` |
+| `--mode` | `tts` / `tts_extreme` / `glitch` / `reverse` / `robot_voice` / `chorus` / `morse` / `animalese` / `telephone` / `slowed_reverb` / `nightcore` / `underwater` / `8d_audio` / `echo_cave` / `random` | `tts` |
 | `--voice` | [tts/tts_extreme/reverse/robot_voice/telephone/slowed_reverb/nightcore/underwater/8d_audio/echo_cave専用] espeak-ngの声(`en`, `en-us` 等 / `random`=言語・性別ランダム) | `en` |
 | `--speed` | [tts専用] 読み上げ速度(words/min) | `150` |
 | `--unit-duration` | [glitch専用] 「答え」1回分の長さ(秒) | `2.0` |
@@ -1041,6 +1042,23 @@ assets/
     テストを更新(`test_word_generator_for_never_uses_pictograph_outside_
     glitch_mode`を`test_word_generator_for_can_use_pictograph_in_tts_
     modes`に置き換え)。
+60. **視聴者コメントで[equalo-official/animalese-generator](https://github.com/equalo-official/animalese-generator)
+    (MIT License)が紹介され、新しい音声方式として追加してほしいと
+    要望があった**: 「どうぶつの森」のキャラクターボイス(Animalese)風に、
+    a〜z(+"th"/"sh"・スペース・句読点)の文字ごとの短い録音済み音声を
+    ピッチシフトしながらつなげる方式。espeak-ngの本物のTTSとは別物で、
+    外部APIも使わない(完全オフライン、このプロジェクトの既存方針と
+    合致)。音声サンプル(4ピッチプリセット、計121ファイル・3.5MB、
+    元リポジトリのMITライセンスを`animalese_sounds/LICENSE`に同梱)を
+    `animalese_sounds/`に取り込み、`animalese_synth.py`として移植。
+    結合文字・装飾記号・非ラテン文字(楔形文字等を含む)は対応表に無いため
+    無視する(`morse_synth.py`と同じ方針。espeak-ngを使わないため58番の
+    「コードポイントを桁ごとに読み上げる」問題はそもそも起こらない)。
+    a〜zのみの対応のため、`_word_generator_for()`では`chorus`/`morse`と
+    同様に常にZalgo単語を使う対象に含めた(実在文字体系・ピクトグラフ系の
+    単語だとほぼ無音になってしまうため)。`pydub`を依存関係に追加
+    (`requirements.txt`)。`*.wav`を除外している`.gitignore`に
+    `animalese_sounds/**/*.wav`の例外を追加。
 
 ## プロジェクト構成
 
@@ -1053,6 +1071,8 @@ tts_synth.py                  TTS(espeak-ng)による音声合成 [--mode tts / 
                                echo_cave]
 glitch_synth.py               合成グリッチ音による音声生成 [--mode glitch]
 morse_synth.py                モールス信号のビープ音による音声生成 [--mode morse]
+animalese_synth.py            「どうぶつの森」風ボイスによる音声生成 [--mode animalese]
+animalese_sounds/             animalese_synth.pyが使う録音済み音声サンプル(ピッチ別、MIT License)
 audio_utils.py                繰り返し・パディング無しフェード・mp3変換・音声トラック抽出
 frame_builder.py              "How to Pronounce" フレーム画像・カスタムサムネイルの生成(Playwright)
 video_builder.py              フレーム+音声 → mp4 の合成

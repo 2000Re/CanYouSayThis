@@ -6,7 +6,8 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
 1. Zalgo風「発音不能な単語」をランダム生成          -> word_generator.py
    (--upload時は、upload_history.jsonに既に記録済みの単語と被らないものを
    選ぶ。チャンネルへの重複投稿を避けるため)
-2. 音声を作る(7方式から選択):     -> tts_synth.py / glitch_synth.py / morse_synth.py
+2. 音声を作る(14方式から選択):     -> tts_synth.py / glitch_synth.py / morse_synth.py /
+                                       animalese_synth.py
      --mode tts          : espeak-ng に単語そのものを読ませ、出てきた音を採用
                             (デフォルト。単語の文字列がそのまま音に反映され
                             るので「本当にその単語を読ませている」感が出せる)
@@ -24,6 +25,11 @@ How-to-Pronounce ネタ動画 自動生成パイプライン(メインCLI)
      --mode morse        : 単語の文字をモールス信号のビープ音に変換する
                             (espeak-ngは使わず、文字パターンから決定論的に
                             音を組み立てる)
+     --mode animalese    : 「どうぶつの森」のキャラクターボイス風に、文字
+                            ごとの短い録音済み音声をピッチシフトしながら
+                            つなげる(espeak-ngは使わない。視聴者コメントで
+                            紹介されたequalo-official/animalese-generator
+                            を移植。animalese_synth.py参照)
      --mode random       : 1本ごとに上記いずれかの方式からランダムに選ぶ
                             (--countで複数本まとめて作る際や、自動実行の
                             日々の投稿に単調さが出ないようにする用途)
@@ -72,6 +78,7 @@ import random
 import sys
 
 import config
+from animalese_synth import synthesize_animalese
 from audio_utils import _stretch_to_min_duration, finalize_audio, repeat_audio, wav_to_mp3
 from frame_builder import build_frame, close_browser
 from glitch_synth import synthesize_glitch_chunk
@@ -664,26 +671,30 @@ def _word_generator_for(actual_mode, actual_voice):
     取り除くようになった(README「ハマった罠」58番)ことで、tts/
     tts_extreme/reverse/robot_voice/telephone/slowed_reverb/nightcore/
     underwater/8d_audio/echo_caveでも安全に扱えるようになったため解禁した
-    (視聴者からの要望)。chorus/morseは下記の理由で対象外。
+    (視聴者からの要望)。chorus/morse/animaleseは下記の理由で対象外。
 
-    chorus/morseは、それぞれ「複数言語のボイスで同時に同じ単語を読む」
-    「単語の文字をモールス符号のビープ音に変換する」という性質上、実在
-    文字体系の単語(結合文字を含まない。楔形文字等のピクトグラフ系単語も
-    同じ理由でここに含める)だと不都合がある:
+    chorus/morse/animaleseは、それぞれ「複数言語のボイスで同時に同じ単語を
+    読む」「単語の文字をモールス符号のビープ音に変換する」「a〜zの文字
+    ごとの録音済み音声をつなげる」という性質上、実在文字体系の単語
+    (結合文字を含まない。楔形文字等のピクトグラフ系単語も同じ理由で
+    ここに含める)だと不都合がある:
       - chorus: 特定言語の文字体系の単語を、その言語と無関係な他のボイス
         でも同時に読ませることになり、狙いと合わない。
       - morse: morse_synth.MORSE_CODEはラテン文字(+区切り記号4種)のみに
         対応しており、キリル文字・アラビア文字等は変換できない(無視される
         だけで音自体は壊れないが、単語の見た目と音の対応が薄くなる)。
-    そのため両モードは常にZalgo単語(random_zalgo_word()、土台がラテン文字
-    のBASE_CHARSのみ)を使う。
+      - animalese: animalese_synth._KEYSもラテン文字(a〜z + "th"/"sh"等)
+        のみに対応しており、同じ理由で単語の見た目と音の対応が薄くなる
+        (非ラテン文字主体の単語だとほぼ無音になってしまう)。
+    そのため3モードとも常にZalgo単語(random_zalgo_word()、土台がラテン
+    文字のBASE_CHARSのみ)を使う。
 
     それ以外(および上記の確率に外れた場合)は従来通り、実在文字体系の
     ボイスならそちらの単語生成(_native_script_for_voice()参照)、無ければ
     Zalgo単語(random_zalgo_word())を使う。"""
-    if actual_mode not in ("chorus", "morse") and random.random() < config.PICTOGRAPH_VISUAL_CHANCE:
+    if actual_mode not in ("chorus", "morse", "animalese") and random.random() < config.PICTOGRAPH_VISUAL_CHANCE:
         return _pictograph_word_generator()
-    if actual_mode in ("chorus", "morse"):
+    if actual_mode in ("chorus", "morse", "animalese"):
         return random_zalgo_word
     return _native_script_for_voice(actual_voice) or random_zalgo_word
 
@@ -751,6 +762,10 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         synthesize_tts_chorus(tts_word, raw_wav)
     elif actual_mode == "morse":
         synthesize_morse(word, raw_wav)
+    elif actual_mode == "animalese":
+        # espeak-ngを使わないため_speakable_word()は不要(対応表に無い
+        # 文字は animalese_synth.py 側で無視される。morseと同じ方針)
+        synthesize_animalese(word, raw_wav)
     elif actual_mode == "telephone":
         synthesize_tts_telephone(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     elif actual_mode == "slowed_reverb":
@@ -767,7 +782,8 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         raise ValueError(
             f"unknown mode: {actual_mode!r} "
             "(tts / tts_extreme / glitch / reverse / robot_voice / chorus / morse / "
-            "telephone / slowed_reverb / nightcore / underwater / 8d_audio / echo_cave)"
+            "animalese / telephone / slowed_reverb / nightcore / underwater / 8d_audio / "
+            "echo_cave)"
         )
 
     repeat_audio(raw_wav, rep_wav, times=repeat, gap=repeat_gap)
@@ -930,8 +946,8 @@ def main():
     ap.add_argument("--outdir", type=str, default="./out", help="出力ディレクトリ")
     ap.add_argument("--mode", type=str,
                      choices=["tts", "tts_extreme", "glitch", "reverse", "robot_voice",
-                              "chorus", "morse", "telephone", "slowed_reverb", "nightcore",
-                              "underwater", "8d_audio", "echo_cave", "random"],
+                              "chorus", "morse", "animalese", "telephone", "slowed_reverb",
+                              "nightcore", "underwater", "8d_audio", "echo_cave", "random"],
                      default=config.DEFAULT_MODE,
                      help="音声の作り方: tts=espeak-ngに単語を読ませる(デフォルト) / "
                           "tts_extreme=奇妙な声+極端なピッチ・速度+ffmpegの歪みフィルタで読ませる / "
@@ -940,6 +956,7 @@ def main():
                           "robot_voice=espeak-ngで読ませた音声に搬送波とのリング変調をかける / "
                           "chorus=複数言語のボイスで同時に読み上げて重ねる / "
                           "morse=単語をモールス信号のビープ音に変換する / "
+                          "animalese=「どうぶつの森」風に文字ごとの録音済み音声をつなげる / "
                           "telephone=電話回線のような帯域制限をかける / "
                           "slowed_reverb=ゆっくり再生+残響の「slowed + reverb」風にする / "
                           "nightcore=高速化+ピッチアップの「nightcore」風にする / "
