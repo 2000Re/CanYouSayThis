@@ -94,6 +94,29 @@ def test_thumbnail_word_font_size_scales_with_width():
     assert scaled == round(base / 2)
 
 
+def test_word_font_size_keeps_shrinking_for_long_sentences():
+    # --wordで文章丸ごとのリクエスト(animaleseモード等)が来た場合、
+    # 12文字を超える長さでも単調に縮小し続けること(README「ハマった罠」
+    # 63番)。以前は13文字以上が一律同じ最小サイズだった。各段階の境界を
+    # またぐ代表値を1つずつ取る(13→n<=20、21→n<=35、36→n<=50、
+    # 51→n<=65、66→それ以上)。
+    sizes = [
+        frame_builder._word_font_size("a" * n, 1280)
+        for n in (13, 21, 36, 51, 66)
+    ]
+    assert sizes == sorted(sizes, reverse=True)
+    assert len(set(sizes)) == len(sizes)
+
+
+def test_thumbnail_word_font_size_keeps_shrinking_for_long_sentences():
+    sizes = [
+        frame_builder._thumbnail_word_font_size("a" * n, 1280)
+        for n in (13, 21, 36, 51, 66)
+    ]
+    assert sizes == sorted(sizes, reverse=True)
+    assert len(set(sizes)) == len(sizes)
+
+
 def test_shrink_word_to_fit_evaluates_with_expected_args():
     # 実際のブラウザは起動せず、page.evaluate()に正しい引数(フレーム幅・
     # 高さ・最小フォントサイズ・縮小係数)が渡ることだけを確認する。

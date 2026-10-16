@@ -12,6 +12,7 @@ import config
 import upload_history
 from generate import (
     _COMMENT_TEMPLATES,
+    _FRAME_MAX_BASE_CHARS,
     _PICTOGRAPH_TITLE,
     _SINGLE_VOICE_MODES,
     _TITLE_TEMPLATES,
@@ -32,7 +33,7 @@ from generate import (
     _word_generator_for,
     _youtube_metadata,
 )
-from word_generator import random_zalgo_word
+from word_generator import random_zalgo_word, readable_label, zalgo_display_word
 
 
 def _use_empty_upload_history(tmp_path, monkeypatch):
@@ -1008,3 +1009,26 @@ def test_voice_pitch_for_boosts_only_mbrola_female_voices():
     assert _voice_pitch_for("ar+f3", "female") is None
     assert _voice_pitch_for("en", "male") is None
     assert _voice_pitch_for("mb-us1", None) is None
+
+
+def test_frame_max_base_chars_is_longer_than_a_realistic_sentence():
+    # --wordで文章丸ごとのリクエスト(animaleseモード等)が来た場合でも、
+    # フレーム表示(readable_label()/zalgo_display_word()に_FRAME_MAX_
+    # BASE_CHARSを渡す側)で途中で切れないことの確認
+    # (README「ハマった罠」63番)。
+    sentence = "Welcome to my island! I hope you enjoy your stay. Make yourself at home!"
+    assert len(sentence) <= _FRAME_MAX_BASE_CHARS
+    assert readable_label(sentence, max_base_chars=_FRAME_MAX_BASE_CHARS) == sentence
+    assert zalgo_display_word(sentence, max_base_chars=_FRAME_MAX_BASE_CHARS) == sentence
+
+
+def test_frame_max_base_chars_is_too_long_to_safely_embed_in_a_title():
+    # 一方で、_FRAME_MAX_BASE_CHARSはYouTubeタイトルの100文字制限を守る
+    # ためのreadable_label()の既定値(12文字、titleに使う側)とは別物で、
+    # そのままtitleに使うと長すぎることの確認(_FRAME_MAX_BASE_CHARSを
+    # titleの組み立てに流用しないようにする回帰防止)。
+    longest_lang_label = max(v["label"] for v in config.VOICE_LANGUAGES.values())
+    worst_case_overhead = max(
+        len(fn("", longest_lang_label)) for fn in _TITLE_TEMPLATES.values()
+    ) + len(" (Slowed + Reverb) #Shorts")
+    assert _FRAME_MAX_BASE_CHARS + worst_case_overhead > 100
