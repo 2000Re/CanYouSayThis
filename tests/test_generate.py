@@ -41,7 +41,7 @@ def _use_empty_upload_history(tmp_path, monkeypatch):
     monkeypatch.setattr(upload_history, "UPLOAD_HISTORY_PATH", str(tmp_path / "upload_history.json"))
 
 REAL_MODES = (
-    "tts", "tts_extreme", "glitch", "reverse", "robot_voice", "chorus", "morse",
+    "tts", "tts_extreme", "glitch", "reverse", "robot_voice", "chorus", "morse", "animalese",
     "telephone", "slowed_reverb", "nightcore", "underwater", "8d_audio", "echo_cave",
 )
 
@@ -57,6 +57,7 @@ def test_single_voice_modes_excludes_multi_or_no_voice_modes():
     assert "glitch" not in _SINGLE_VOICE_MODES
     assert "chorus" not in _SINGLE_VOICE_MODES
     assert "morse" not in _SINGLE_VOICE_MODES
+    assert "animalese" not in _SINGLE_VOICE_MODES
 
 
 def test_resolve_mode_passes_through_tts():
@@ -238,14 +239,15 @@ def test_word_generator_for_glitch_weighting_matches_pictograph_chance():
     assert abs(actual_ratio - config.PICTOGRAPH_VISUAL_CHANCE) < 0.03
 
 
-def test_word_generator_for_chorus_and_morse_always_use_zalgo():
-    # chorus(複数言語同時読み上げ)・morse(ラテン文字のみ対応の符号表)は
-    # 実在文字体系の単語だと不都合があるため、常にrandom_zalgo_wordを使う
-    # (_word_generator_for()のdocstring参照)。voiceが実在文字体系の言語
-    # (例: ロシア語)でも上書きされないことを確認する。
+def test_word_generator_for_chorus_morse_and_animalese_always_use_zalgo():
+    # chorus(複数言語同時読み上げ)・morse(ラテン文字のみ対応の符号表)・
+    # animalese(a〜zのみ対応)は実在文字体系の単語だと不都合があるため、
+    # 常にrandom_zalgo_wordを使う(_word_generator_for()のdocstring参照)。
+    # voiceが実在文字体系の言語(例: ロシア語)でも上書きされないことを
+    # 確認する。
     random.seed(14)
     ru_voice = config.VOICE_LANGUAGES["ru"]["male"]
-    for mode in ("chorus", "morse"):
+    for mode in ("chorus", "morse", "animalese"):
         for _ in range(30):
             assert _word_generator_for(mode, ru_voice) is random_zalgo_word
 

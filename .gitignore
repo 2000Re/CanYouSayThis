@@ -7,6 +7,11 @@
 *_frame.png
 *_word.txt
 
+# animalese_synth.py [--mode animalese] が使う録音済み音声サンプル
+# (equalo-official/animalese-generator由来、animalese_sounds/LICENSE参照)。
+# 生成物ではなくリポジトリに同梱する素材なので*.wav除外の対象から外す。
+!animalese_sounds/**/*.wav
+
 # Python
 __pycache__/
 *.pyc

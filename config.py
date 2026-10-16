@@ -31,6 +31,7 @@ MODE_LABELS = {
     "robot_voice": "Robot Voice",
     "chorus": "Multilingual Chorus",
     "morse": "Morse Code",
+    "animalese": "Animalese Voice",
     "telephone": "Telephone Filter",
     "slowed_reverb": "Slowed + Reverb",
     "nightcore": "Nightcore",
