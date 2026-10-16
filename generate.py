@@ -265,43 +265,37 @@ _PICTOGRAPH_COMMENT_TEMPLATES = [
 # 別枠でより大きい値にしている(README「ハマった罠」63番参照)。
 _FRAME_MAX_BASE_CHARS = 80
 
+# タイトル用「文章スニペット」の文字数上限。YouTubeタイトルの100文字制限
+# のworst case(最長の言語名+最長のタイトルテンプレート+ジャンルサフィ
+# ックス+" #Shorts")でも安全な23文字以内で、readable_label()の既定値
+# (12文字)より少し余裕を持たせている(_sentence_title_snippet()参照、
+# README「ハマった罠」65番)。
+_TITLE_SENTENCE_SNIPPET_CHARS = 20
 
-def _is_long_sentence(word):
+
+def _sentence_title_snippet(word):
     """wordが複数単語からなる「文章」(--wordでの視聴者リクエスト等、
     スペースを含む長い入力。animaleseモードの文章丸ごとリクエストが典型例)
-    で、タイトル用のreadable_label()(デフォルトmax_base_chars=12)では
-    意味のある形に収まらないかどうかを判定する。
+    で、通常のreadable_label()(12文字)のまま使うと単語の途中で切れて
+    「Welcome to m...」のように意味が通じなくなる場合、単語の区切り
+    (スペース)より手前までの範囲をタイトル用に切り出す。
 
     通常の自動生成された単語(zalgo単語等)はスペースを含まない1語構成
-    のため、ここで真になることは無い。動画フレーム側は別枠の
-    _FRAME_MAX_BASE_CHARS(80文字)で既に全文表示されており(README
-    「ハマった罠」63番)、ここで対処するのはタイトル・字幕・コメント欄
-    だけの問題であることに注意(README「ハマった罠」64番)。"""
-    return " " in word.strip() and readable_label(word).endswith("...")
+    のため、常にNoneを返す(呼び出し側はreadable_label()の結果(label)
+    をそのまま使う)。切り詰めが発生しないほど短い文章もNoneを返す
+    (readable_label()の結果で十分なため)。
 
-
-_LONG_SENTENCE_TITLE = "Can You Pronounce This Full Sentence?"
-_LONG_SENTENCE_CAPTION_TEXT = (
-    "This one's a full sentence, not just a single word — give it a try! \U0001F5E3️"
-)
-_LONG_SENTENCE_COMMENT_TEMPLATES = [
-    "This one's a whole sentence, not just a word — think you can say it fluently? \U0001F5E3️",
-    "A full-sentence challenge this time! Try reading it all in one breath \U0001F604",
-    "Not a single word this time — a whole sentence! Can you say it smoothly? \U0001F604",
-]
-
-
-def _random_long_sentence_comment_text():
-    return random.choice(_LONG_SENTENCE_COMMENT_TEMPLATES)
-
-# 動画フレーム(サムネイル含む)表示専用の文字数上限。readable_label()の
-# デフォルト(12文字)はYouTubeタイトルの100文字制限を守るためのもので、
-# フレーム画像自体にはそのような技術的上限が無い(frame_builder.py側の
-# _word_font_size()がフォントサイズを文字数に応じて縮小するだけで済む)。
-# そのため、長い文章の--wordリクエスト(animaleseモード等)でも
-# フレーム上で「Welcome to m...」のように途中で切れないよう、こちらは
-# 別枠でより大きい値にしている(README「ハマった罠」63番参照)。
-_FRAME_MAX_BASE_CHARS = 80
+    動画フレーム側は別枠の_FRAME_MAX_BASE_CHARS(80文字)で既に全文
+    表示されている(README「ハマった罠」63番)ため、ここで対処するのは
+    タイトル・字幕・コメント・ローカライズタイトルだけの問題であること
+    に注意(README「ハマった罠」65番)。"""
+    stripped = readable_label(word, max_base_chars=len(word) + 1)
+    if " " not in stripped or len(stripped) <= _TITLE_SENTENCE_SNIPPET_CHARS:
+        return None
+    cutoff = stripped.rfind(" ", 0, _TITLE_SENTENCE_SNIPPET_CHARS + 1)
+    if cutoff <= 0:
+        return None
+    return stripped[:cutoff] + "..."
 
 
 def _random_pictograph_comment_text():
@@ -394,15 +388,19 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     確認したため)。
 
     wordが複数単語からなる「文章」で、タイトル用のlabel(readable_label()、
-    max_base_chars=12)では意味のある形に収まらない場合(_is_long_sentence()
-    参照。--wordでの文章丸ごとのリクエスト(animaleseモード等)が典型例)、
-    title/caption_text/comment_text/localizationsには同様に_LONG_SENTENCE_
-    TITLE等の固定の汎用フレーズを使う(「Welcome to m...」のように文の
-    途中で切れて意味が通じなくなるのを避けるため)。動画フレーム画像は
-    別枠の_FRAME_MAX_BASE_CHARS(80文字)で既に全文表示されており
-    (README「ハマった罠」63番)、description内の「Word: {word}」の行も
-    元々wordをそのまま埋め込んでいて切り詰めが無いため、全文はどちらかで
-    必ず視聴者の目に入る(README「ハマった罠」64番)。
+    max_base_chars=12)のままだと単語の途中で切れて意味が通じなくなる場合
+    (_sentence_title_snippet()参照。--wordでの文章丸ごとのリクエスト
+    (animaleseモード等)が典型例)、labelをより大きい予算(23文字以内で
+    安全な_TITLE_SENTENCE_SNIPPET_CHARS、20文字)で単語の区切りまでの
+    スニペットに差し替える。そのため以降のtitle/caption_text/
+    comment_text/localizationsの組み立ては通常の単語の場合と全く同じ
+    コードパスを通り、_TITLE_TEMPLATES・_COMMENT_TEMPLATES等の言い回しの
+    バリエーションもそのまま活きる(固定の汎用フレーズ1種類に揃ってしま
+    うと、画一的なタイトルになり得る懸念があったため、README「ハマった
+    罠」65番)。動画フレーム画像は別枠の_FRAME_MAX_BASE_CHARS(80文字)で
+    既に全文表示されており(README「ハマった罠」63番)、description内の
+    「Word: {word}」の行も元々wordをそのまま埋め込んでいて切り詰めが
+    無いため、全文はどちらかで必ず視聴者の目に入る。
 
     戻り値のlocalizations(config.JAPANESE_TITLE_LOCALIZATION_ENABLED /
     config.EXTRA_TITLE_LOCALIZATION_ENABLEDがいずれもFalseならNone)は、
@@ -445,13 +443,16 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     # 対象外にする("in English?"は冗長なため)。
     lang_label = lang_entry["label"] if lang_entry and lang_code != "en" else None
     is_pictograph_script = _is_pictograph_word(word)
-    is_long_sentence = _is_long_sentence(word)
+    # 文章(スペースを含む長いword)で、通常のlabel(12文字)だと単語の
+    # 途中で切れてしまう場合のみ、タイトル用により大きい予算のスニペットに
+    # 差し替える(本関数冒頭のdocstring、README「ハマった罠」65番参照)。
+    sentence_snippet = _sentence_title_snippet(word)
+    if sentence_snippet is not None:
+        label = sentence_snippet
 
     mode_label = config.MODE_LABELS.get(mode, mode)
     if is_pictograph_script:
         title = _PICTOGRAPH_TITLE
-    elif is_long_sentence:
-        title = _LONG_SENTENCE_TITLE
     else:
         actual_title_template = _resolve_title_template(title_template)
         title = _TITLE_TEMPLATES[actual_title_template](label, lang_label)
@@ -523,9 +524,6 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     if is_pictograph_script:
         caption_text = _PICTOGRAPH_CAPTION_TEXT
         comment_text = _random_pictograph_comment_text()
-    elif is_long_sentence:
-        caption_text = _LONG_SENTENCE_CAPTION_TEXT
-        comment_text = _random_long_sentence_comment_text()
     else:
         caption_text = f'How to pronounce "{label}"'
         if lang_label:
@@ -564,8 +562,6 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
         if is_pictograph_script:
             # labelを埋め込まない(タイトル本文と同じ理由、本関数冒頭参照)。
             title_ja = "この古代文字、読めますか?"
-        elif is_long_sentence:
-            title_ja = "この文章、発音できますか?"
         else:
             lang_label_ja = config.LANGUAGE_LABELS_JA.get(lang_code)
             if lang_label_ja:
@@ -584,13 +580,11 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     if config.EXTRA_TITLE_LOCALIZATION_ENABLED:
         for extra_lang_code, template in config.EXTRA_TITLE_LOCALIZATIONS.items():
             localizations[extra_lang_code] = {
-                # is_pictograph_script/is_long_sentenceの場合、翻訳済みの汎用
-                # フレーズを言語数分用意する手間をかけるほどの頻度ではないため、
-                # 英語の汎用タイトルをそのまま使う(labelを埋め込まないことが
-                # 優先、本関数冒頭参照)。
+                # is_pictograph_scriptの場合、翻訳済みの汎用フレーズを言語数分
+                # 用意する手間をかけるほどの頻度ではないため、英語の汎用タイトル
+                # をそのまま使う(labelを埋め込まないことが優先、本関数冒頭参照)。
                 "title": (
                     f"{_PICTOGRAPH_TITLE} #Shorts" if is_pictograph_script
-                    else f"{_LONG_SENTENCE_TITLE} #Shorts" if is_long_sentence
                     else template.format(label=isolated_label)
                 ),
                 "description": description,

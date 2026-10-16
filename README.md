@@ -1122,6 +1122,25 @@ assets/
     と、63番で対応済みの動画フレーム(`_FRAME_MAX_BASE_CHARS`80文字)の
     どちらかで視聴者の目に必ず入るため、タイトルで省く形にしても文章の
     内容自体は失われない。
+65. **64番の対応後、運営者から「animaleseモードは文章リクエストが
+    多くなりそうなので、ほぼ全ての動画タイトルが`_LONG_SENTENCE_TITLE`
+    (`"Can You Pronounce This Full Sentence?"`)固定1パターンに揃って
+    しまい、画一的なタイトルを避けるために11パターン用意した
+    `_TITLE_TEMPLATES`の狙いが長文系では効かなくなる」と指摘があった**:
+    固定の汎用フレーズではなく、文の冒頭を単語の区切り(スペース)まで
+    埋め込む方式に変更した。`_LONG_SENTENCE_TITLE`等の固定フレーズ一式
+    (`_is_long_sentence()`含む)を削除し、代わりに
+    `_sentence_title_snippet(word)`を新設。`_TITLE_SENTENCE_SNIPPET_CHARS`
+    (20文字、YouTubeタイトル100文字制限のworst caseでも安全な23文字
+    以内)の予算内で、単語の途中ではなく直前のスペースで打ち切ったスニ
+    ペット(例:「Welcome to my island! ...」→「Welcome to my...」)を
+    返す。これを通常のtitle/caption_text/comment_text/localizations組み
+    立てコードの`label`としてそのまま差し込むことで、
+    `_TITLE_TEMPLATES`・`_COMMENT_TEMPLATES`等の既存のバリエーションが
+    長文リクエストでもそのまま活きるようになった(実機確認: 8回連続生成
+    して6種類のタイトル言い回しが出ることを確認)。短い文章(切り詰めが
+    発生しない)やスペースを含まない通常のZalgo単語は対象外で、従来通り
+    `readable_label()`の結果をそのまま使う。
 
 ## プロジェクト構成
 
