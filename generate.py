@@ -256,6 +256,15 @@ _PICTOGRAPH_COMMENT_TEMPLATES = [
     "Not a real word, just a pattern of ancient symbols! Can you read it? \U0001F604",
 ]
 
+# 動画フレーム(サムネイル含む)表示専用の文字数上限。readable_label()の
+# デフォルト(12文字)はYouTubeタイトルの100文字制限を守るためのもので、
+# フレーム画像自体にはそのような技術的上限が無い(frame_builder.py側の
+# _word_font_size()がフォントサイズを文字数に応じて縮小するだけで済む)。
+# そのため、長い文章の--wordリクエスト(animaleseモード等)でも
+# フレーム上で「Welcome to m...」のように途中で切れないよう、こちらは
+# 別枠でより大きい値にしている(README「ハマった罠」63番参照)。
+_FRAME_MAX_BASE_CHARS = 80
+
 
 def _is_long_sentence(word):
     """wordが複数単語からなる「文章」(--wordでの視聴者リクエスト等、
