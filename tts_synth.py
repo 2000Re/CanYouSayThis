@@ -123,6 +123,39 @@ def synthesize_tts_extreme(word, wav_path, voice="en"):
         os.remove(filtered_wav)
 
 
+def synthesize_oneoff_combo(word, wav_path, voice="en"):
+    """[--mode _oneoff_combo] 視聴者リクエスト「banana」への一回限りの対応用。
+    tts_extreme -> 逆再生(reverseと同じ処理) -> リング変調(robot_voiceと同じ
+    処理)の順で3つの既存エフェクトを連結する。本チャンネルの恒久的な登録
+    モードにする意図はなく、使い捨てブランチ(claude/oneoff-banana-combo)
+    でのみ使い、生成後にこのブランチ自体を削除する運用(README「ハマった罠」
+    69番参照)。"""
+    extreme_wav = wav_path + ".extreme.wav"
+    synthesize_tts_extreme(word, extreme_wav, voice=voice)
+
+    reversed_wav = wav_path + ".reversed.wav"
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", extreme_wav, "-af", "areverse", reversed_wav],
+        check=True, capture_output=True,
+    )
+    os.remove(extreme_wav)
+
+    duration = _probe_duration(reversed_wav)
+    carrier_freq = random.randint(30, 120)
+    carrier_src = f"sine=frequency={carrier_freq}:duration={duration}"
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-i", reversed_wav,
+            "-f", "lavfi", "-i", carrier_src,
+            "-filter_complex", "[0:a][1:a]amultiply,volume=10,alimiter=limit=0.95[out]",
+            "-map", "[out]", wav_path,
+        ],
+        check=True, capture_output=True,
+    )
+    os.remove(reversed_wav)
+
+
 def synthesize_tts_reverse(word, wav_path, voice="en", speed=150, pitch=None):
     """espeak-ngで単語を読ませた音声を、そのまま逆再生する [--mode reverse]。
 
