@@ -3614,5 +3614,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "try_to_say"
+  },
+  {
+    "word": "Ŋk҈ rͦż\\●jྉ¤E⧙rͦྉ¤Ĝ⧙y͟/☆°°ðy_>**☆",
+    "label": "Ŋk҈ rż\\●jྉ¤E...",
+    "video_id": "zNneDLYRKAw",
+    "mode": "_oneoff_weird_strip",
+    "run_id": "38993188454",
+    "uploaded_at": "2026-10-17T02:05:44.128475+00:00",
+    "voice_label": "Korean (Female)",
+    "lang_code": "ko",
+    "title_template": "is_pronounceable"
   }
 ]
