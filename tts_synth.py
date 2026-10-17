@@ -28,6 +28,37 @@ EXTREME_VOICE_VARIANTS = [
     "klatt", "klatt2", "robosoft", "robosoft3", "robosoft6",
 ]
 
+# CJK統合漢字(基本U+4E00-U+9FFF + 拡張AのU+3400-U+4DBF)。中国語の漢字・
+# 日本語の漢字が共有するブロック(--wordリクエストで日本語の文字列を手動
+# 指定された場合も対象)。
+_CJK_HAN_RANGES = [(0x4E00, 0x9FFF), (0x3400, 0x4DBF)]
+
+
+def _voice_handles_cjk(voice):
+    """voice(espeak-ngのボイスコード)が中国語系(普通話の内部コード"cmn"/
+    広東語"yue")かどうか。config.VOICE_LANGUAGES["zh"]は"zh"ではなく内部の
+    "cmn"を使っている(config.py参照)。"""
+    return voice.split("+")[0] in ("cmn", "yue")
+
+
+def strip_unspeakable_cjk(word, voice):
+    """voiceが中国語系(cmn/yue)でない場合、CJK統合漢字を取り除いた文字列を
+    返す。
+
+    [罠] espeak-ngはCJK統合漢字を、中国語系ボイス以外では発音せず
+    「Chinese letter」のように文字種名を読み上げてしまうことを実機確認
+    した(--ipaオプションで検証、例: 英語ボイスで「椒」が
+    "tʃˈaɪniːz lˈetə"=Chinese letterになる。日本語の漢字でも同様に
+    "Japanese letter"になる)。これは_speakable_word()が対象にしている
+    楔形文字等とは別の罠で、中国語系ボイス(cmn/yue)なら正しく発音できる
+    ため、ボイスに応じて条件付きで取り除く(README「ハマった罠」72番)。"""
+    if _voice_handles_cjk(voice):
+        return word
+    return "".join(
+        ch for ch in word
+        if not any(start <= ord(ch) <= end for start, end in _CJK_HAN_RANGES)
+    )
+
 
 def synthesize_tts(word, wav_path, voice="en", speed=150, pitch=None):
     """espeak-ngに単語を読ませ、生の音声(パディング無し)をwav_pathへ書き出す。
@@ -188,7 +219,15 @@ def synthesize_tts_chorus(word, wav_path, n_voices=(3, 4)):
 
     候補言語はconfig.VOICE_LANGUAGES全体ではなくconfig.CHORUS_VOICE_LANGUAGE_CODES
     (ヘブライ語を除いたもの)を使う。ヘブライ語ボイスでZalgo単語を読ませると
-    他言語の3倍近い長さになることを実機で確認したため(config.py参照)。"""
+    他言語の3倍近い長さになることを実機で確認したため(config.py参照)。
+
+    [罠] 複数言語を同時に読ませるchorusの性質上、CJK統合漢字(中国語・
+    日本語の漢字)混じりの--wordリクエストでは、選ばれたボイスの大半が
+    中国語系(cmn/yue)以外になる。strip_unspeakable_cjk()でボイスごとに
+    判定し、非対応ボイスだけ該当文字を取り除いてから読ませる(README
+    「ハマった罠」72番)。全ボイス共通で単語を一括で取り除くのではなく
+    ボイスごとに判定することで、中国語系ボイスが選ばれた回ではそのまま
+    正しく発音させられる。"""
     n = random.randint(*n_voices)
     lang_codes = random.sample(
         config.CHORUS_VOICE_LANGUAGE_CODES, k=min(n, len(config.CHORUS_VOICE_LANGUAGE_CODES))
@@ -199,8 +238,12 @@ def synthesize_tts_chorus(word, wav_path, n_voices=(3, 4)):
         entry = config.VOICE_LANGUAGES[lang_code]
         genders = ["male"] + (["female"] if entry["female"] else [])
         gender = random.choice(genders)
+        voice_code = entry[gender]
         raw_path = f"{wav_path}.chorus{i}.wav"
-        synthesize_tts(word, raw_path, voice=entry[gender], speed=config.DEFAULT_SPEED)
+        synthesize_tts(
+            strip_unspeakable_cjk(word, voice_code), raw_path,
+            voice=voice_code, speed=config.DEFAULT_SPEED,
+        )
         raw_paths.append(raw_path)
 
     cmd = ["ffmpeg", "-y"]
