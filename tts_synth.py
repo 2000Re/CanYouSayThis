@@ -28,35 +28,68 @@ EXTREME_VOICE_VARIANTS = [
     "klatt", "klatt2", "robosoft", "robosoft3", "robosoft6",
 ]
 
-# CJK統合漢字(基本U+4E00-U+9FFF + 拡張AのU+3400-U+4DBF)。中国語の漢字・
-# 日本語の漢字が共有するブロック(--wordリクエストで日本語の文字列を手動
-# 指定された場合も対象)。
-_CJK_HAN_RANGES = [(0x4E00, 0x9FFF), (0x3400, 0x4DBF)]
+# 特定の文字体系を「対応するボイス以外に読ませると、文字を発音せず
+# 'Xxx letter'のように文字種名を読み上げてしまう」罠が実機で確認された
+# 文字体系の一覧(README「ハマった罠」72・73番)。(Unicodeコードポイント
+# 範囲のリスト, その文字体系を正しく発音できるボイスコードの先頭一致
+# タプル) のペア。範囲は各言語のcharsプール(config.py)だけでなく、同じ
+# ブロック内の記号・アクセント記号も含めて実機確認した
+# (例: アラビア語の母音記号も英語ボイスでは"Arabic X"と読み上げられる)。
+#
+# 中国語の漢字(CJK統合漢字、基本U+4E00-U+9FFF + 拡張AのU+3400-U+4DBF)は
+# 中国語・日本語の漢字が共有するブロック(--wordリクエストで日本語の文字列
+# を手動指定された場合も対象)。中国語系ボイスは"zh"ではなく内部コード
+# "cmn"を使っている(VOICE_LANGUAGES参照)。
+#
+# ウイグル語(ug)はアラビア文字のUnicodeブロックをそのまま使っている
+# (UYGHUR_LETTERSはARABIC_LETTERSの文字を20個流用)ため、アラビア語の
+# ブロックと同じ範囲・同じボイス扱いにしている。
+#
+# 一方、キリル文字(ロシア語)やギリシャ文字は別の罠
+# (「Chinese letter」のような文字種名の読み上げではなく、"p-e-i-ve-ye-te"
+# のように1文字ずつアルファベットの文字名で綴ってしまう)があるが、
+# 「Xxx letter」という形とは異なるため今回は対象外。ハングル(韓国語)・
+# デーヴァナーガリー(ヒンディー語)はespeak-ngが自動で言語を切り替えて
+# 正しく発音できることを実機確認済みで、この罠の対象外。
+_FOREIGN_SCRIPT_VOICE_RULES = [
+    ([(0x4E00, 0x9FFF), (0x3400, 0x4DBF)], ("cmn", "yue")),  # CJK統合漢字
+    ([(0x0E00, 0x0E7F)], ("th",)),  # タイ文字
+    ([(0x0600, 0x06FF), (0x0750, 0x077F)], ("ar", "ug")),  # アラビア文字(ウイグル語含む)
+    ([(0x0590, 0x05FF)], ("he",)),  # ヘブライ文字
+    ([(0x1200, 0x137F)], ("am",)),  # エチオピア文字(アムハラ語)
+]
 
 
-def _voice_handles_cjk(voice):
-    """voice(espeak-ngのボイスコード)が中国語系(普通話の内部コード"cmn"/
-    広東語"yue")かどうか。config.VOICE_LANGUAGES["zh"]は"zh"ではなく内部の
-    "cmn"を使っている(config.py参照)。"""
-    return voice.split("+")[0] in ("cmn", "yue")
+def _voice_handles_script(voice, allowed_prefixes):
+    """voice(espeak-ngのボイスコード)がallowed_prefixesのいずれかで
+    始まるかどうか。"+"以降のバリアント指定(例: "ar+f3")は無視する。"""
+    base = voice.split("+")[0]
+    return any(base == prefix or base.startswith(prefix) for prefix in allowed_prefixes)
 
 
-def strip_unspeakable_cjk(word, voice):
-    """voiceが中国語系(cmn/yue)でない場合、CJK統合漢字を取り除いた文字列を
-    返す。
+def strip_unspeakable_foreign_script(word, voice):
+    """voiceが対応していない文字体系(_FOREIGN_SCRIPT_VOICE_RULES参照)の
+    文字を取り除いた文字列を返す。
 
-    [罠] espeak-ngはCJK統合漢字を、中国語系ボイス以外では発音せず
-    「Chinese letter」のように文字種名を読み上げてしまうことを実機確認
-    した(--ipaオプションで検証、例: 英語ボイスで「椒」が
-    "tʃˈaɪniːz lˈetə"=Chinese letterになる。日本語の漢字でも同様に
-    "Japanese letter"になる)。これは_speakable_word()が対象にしている
-    楔形文字等とは別の罠で、中国語系ボイス(cmn/yue)なら正しく発音できる
-    ため、ボイスに応じて条件付きで取り除く(README「ハマった罠」72番)。"""
-    if _voice_handles_cjk(voice):
+    [罠] espeak-ngはCJK統合漢字・タイ文字・アラビア文字・ヘブライ文字・
+    エチオピア文字を、対応するボイス以外では発音せず「Chinese letter」
+    「Thai letter」のように文字種名を読み上げてしまうことを実機確認した
+    (--ipaオプションで検証)。最初は視聴者リクエストで発覚した中国語の
+    漢字だけを対象にしていたが(72番)、運営者から「他に同じ罠がある言語
+    があれば直してほしい」と要望があり、実機で候補を一通り検証して対象を
+    広げた(73番)。対応するボイスなら正しく発音できるため、ボイスに応じて
+    条件付きで取り除く。"""
+    applicable_ranges = [
+        rng
+        for ranges, allowed_prefixes in _FOREIGN_SCRIPT_VOICE_RULES
+        if not _voice_handles_script(voice, allowed_prefixes)
+        for rng in ranges
+    ]
+    if not applicable_ranges:
         return word
     return "".join(
         ch for ch in word
-        if not any(start <= ord(ch) <= end for start, end in _CJK_HAN_RANGES)
+        if not any(start <= ord(ch) <= end for start, end in applicable_ranges)
     )
 
 
@@ -221,13 +254,14 @@ def synthesize_tts_chorus(word, wav_path, n_voices=(3, 4)):
     (ヘブライ語を除いたもの)を使う。ヘブライ語ボイスでZalgo単語を読ませると
     他言語の3倍近い長さになることを実機で確認したため(config.py参照)。
 
-    [罠] 複数言語を同時に読ませるchorusの性質上、CJK統合漢字(中国語・
-    日本語の漢字)混じりの--wordリクエストでは、選ばれたボイスの大半が
-    中国語系(cmn/yue)以外になる。strip_unspeakable_cjk()でボイスごとに
-    判定し、非対応ボイスだけ該当文字を取り除いてから読ませる(README
-    「ハマった罠」72番)。全ボイス共通で単語を一括で取り除くのではなく
-    ボイスごとに判定することで、中国語系ボイスが選ばれた回ではそのまま
-    正しく発音させられる。"""
+    [罠] 複数言語を同時に読ませるchorusの性質上、特定の文字体系
+    (CJK統合漢字・タイ文字・アラビア文字・ヘブライ文字・エチオピア文字)
+    混じりの--wordリクエストでは、選ばれたボイスの大半がその文字体系に
+    対応していないボイスになる。strip_unspeakable_foreign_script()で
+    ボイスごとに判定し、非対応ボイスだけ該当文字を取り除いてから読ませる
+    (README「ハマった罠」72・73番)。全ボイス共通で単語を一括で取り除くの
+    ではなくボイスごとに判定することで、対応するボイスが選ばれた回では
+    そのまま正しく発音させられる。"""
     n = random.randint(*n_voices)
     lang_codes = random.sample(
         config.CHORUS_VOICE_LANGUAGE_CODES, k=min(n, len(config.CHORUS_VOICE_LANGUAGE_CODES))
@@ -241,7 +275,7 @@ def synthesize_tts_chorus(word, wav_path, n_voices=(3, 4)):
         voice_code = entry[gender]
         raw_path = f"{wav_path}.chorus{i}.wav"
         synthesize_tts(
-            strip_unspeakable_cjk(word, voice_code), raw_path,
+            strip_unspeakable_foreign_script(word, voice_code), raw_path,
             voice=voice_code, speed=config.DEFAULT_SPEED,
         )
         raw_paths.append(raw_path)
