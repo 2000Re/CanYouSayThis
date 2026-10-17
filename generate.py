@@ -87,7 +87,7 @@ from glitch_synth import synthesize_glitch_chunk
 from jst_time import jst_timestamp
 from morse_synth import synthesize_morse
 from tts_synth import (
-    strip_unspeakable_cjk,
+    strip_unspeakable_foreign_script,
     synthesize_tts,
     synthesize_tts_8d_audio,
     synthesize_tts_chorus,
@@ -881,13 +881,14 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # (楔形文字等を取り除いた版。_speakable_word()参照)。動画フレーム・
         # label・upload_history.json記録にはword自体をそのまま使い続ける。
         tts_word = _speakable_word(word)
-        # 単一ボイスのモード専用に、さらにCJK統合漢字(中国語・日本語の漢字)
-        # を現在のactual_voiceに応じて取り除いた版を用意する
-        # (strip_unspeakable_cjk()参照、README「ハマった罠」72番)。
-        # chorusは複数ボイスを内部で選ぶため、ボイスごとの判定を
+        # 単一ボイスのモード専用に、さらに現在のactual_voiceが対応していない
+        # 文字体系(CJK統合漢字・タイ文字・アラビア文字・ヘブライ文字・
+        # エチオピア文字)を取り除いた版を用意する
+        # (strip_unspeakable_foreign_script()参照、README「ハマった罠」
+        # 72・73番)。chorusは複数ボイスを内部で選ぶため、ボイスごとの判定を
         # synthesize_tts_chorus()側で個別に行う(ここでは未加工のtts_wordを
         # そのまま渡す)。
-        single_voice_tts_word = strip_unspeakable_cjk(tts_word, actual_voice)
+        single_voice_tts_word = strip_unspeakable_foreign_script(tts_word, actual_voice)
 
         if actual_mode == "tts":
             # espeak-ngが吐く長さがそのまま採用される(パディングはしない)

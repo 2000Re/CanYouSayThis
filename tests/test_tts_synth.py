@@ -15,7 +15,7 @@ import tts_synth
 from tts_synth import (
     EXTREME_VOICE_VARIANTS,
     _random_extreme_filter_chain,
-    strip_unspeakable_cjk,
+    strip_unspeakable_foreign_script,
     synthesize_tts,
     synthesize_tts_8d_audio,
     synthesize_tts_chorus,
@@ -194,29 +194,74 @@ def test_synthesize_tts_chorus_never_uses_hebrew_voice(monkeypatch, tmp_path):
         calls.clear()
 
 
-def test_strip_unspeakable_cjk_removes_han_characters_for_non_chinese_voice():
+def test_strip_unspeakable_foreign_script_removes_han_characters_for_non_chinese_voice():
     # espeak-ngはCJK統合漢字を中国語系(cmn/yue)以外のボイスでは発音せず
     # 「Chinese letter」のように文字種名を読み上げてしまうことを実機確認した
     # (--ipaオプションで検証、視聴者リクエストで発覚。README「ハマった罠」
     # 72番)。該当文字だけを取り除き、それ以外はそのまま残すことを確認する。
     word = "koO椒和koO"
-    assert strip_unspeakable_cjk(word, "en") == "koOkoO"
-    assert strip_unspeakable_cjk(word, "ar+f3") == "koOkoO"
-    assert strip_unspeakable_cjk(word, "bs") == "koOkoO"
+    assert strip_unspeakable_foreign_script(word, "en") == "koOkoO"
+    assert strip_unspeakable_foreign_script(word, "ar+f3") == "koOkoO"
+    assert strip_unspeakable_foreign_script(word, "bs") == "koOkoO"
 
 
-def test_strip_unspeakable_cjk_keeps_han_characters_for_chinese_voices():
+def test_strip_unspeakable_foreign_script_keeps_han_characters_for_chinese_voices():
     # 中国語系ボイス(zh=内部コード"cmn"/yue=広東語)ならCJK統合漢字を正しく
     # 発音できるため取り除かない。
     word = "koO椒和koO"
-    assert strip_unspeakable_cjk(word, "cmn") == word
-    assert strip_unspeakable_cjk(word, "cmn+f3") == word
-    assert strip_unspeakable_cjk(word, "yue") == word
-    assert strip_unspeakable_cjk(word, "yue+f3") == word
+    assert strip_unspeakable_foreign_script(word, "cmn") == word
+    assert strip_unspeakable_foreign_script(word, "cmn+f3") == word
+    assert strip_unspeakable_foreign_script(word, "yue") == word
+    assert strip_unspeakable_foreign_script(word, "yue+f3") == word
 
 
-def test_strip_unspeakable_cjk_leaves_non_cjk_words_unchanged():
-    assert strip_unspeakable_cjk("hello world", "en") == "hello world"
+def test_strip_unspeakable_foreign_script_leaves_non_cjk_words_unchanged():
+    assert strip_unspeakable_foreign_script("hello world", "en") == "hello world"
+
+
+def test_strip_unspeakable_foreign_script_handles_thai_arabic_hebrew_amharic():
+    # 運営者から「中国語以外にも'xx letter'と発音する言語があれば直して
+    # ほしい」と要望があり、実機で候補を検証して対象を広げた
+    # (README「ハマった罠」73番)。タイ文字・アラビア文字・ヘブライ文字・
+    # エチオピア文字(アムハラ語)も同じ罠(対応ボイス以外では文字種名を
+    # 読み上げてしまう)があることを確認済み。
+    thai = "ก"  # タイ文字(コー・ガイ)
+    arabic = "ا"  # アラビア文字(アリフ)
+    hebrew = "א"  # ヘブライ文字(アレフ)
+    amharic = "ሀ"  # エチオピア文字(ハ)
+
+    assert strip_unspeakable_foreign_script(f"hi{thai}bye", "en") == "hibye"
+    assert strip_unspeakable_foreign_script(f"hi{thai}bye", "th") == f"hi{thai}bye"
+
+    assert strip_unspeakable_foreign_script(f"hi{arabic}bye", "en") == "hibye"
+    assert strip_unspeakable_foreign_script(f"hi{arabic}bye", "ar+f3") == f"hi{arabic}bye"
+
+    assert strip_unspeakable_foreign_script(f"hi{hebrew}bye", "en") == "hibye"
+    assert strip_unspeakable_foreign_script(f"hi{hebrew}bye", "he") == f"hi{hebrew}bye"
+
+    assert strip_unspeakable_foreign_script(f"hi{amharic}bye", "en") == "hibye"
+    assert strip_unspeakable_foreign_script(f"hi{amharic}bye", "am+f3") == f"hi{amharic}bye"
+
+
+def test_strip_unspeakable_foreign_script_uyghur_voice_keeps_arabic_block_characters():
+    # ウイグル語(ug)はアラビア文字のUnicodeブロックをそのまま使っている
+    # (UYGHUR_LETTERSはARABIC_LETTERSの文字を流用、config.py参照)ため、
+    # アラビア語と同じ扱いで取り除かれないことを確認する。
+    word = "hiابye"
+    assert strip_unspeakable_foreign_script(word, "ug") == word
+    assert strip_unspeakable_foreign_script(word, "ug+f3") == word
+    assert strip_unspeakable_foreign_script(word, "en") == "hiye"
+
+
+def test_strip_unspeakable_foreign_script_does_not_touch_hangul_or_devanagari():
+    # ハングル(韓国語)・デーヴァナーガリー(ヒンディー語)はespeak-ngが
+    # 自動で言語を切り替えて正しく発音できることを実機確認済み(--ipa検証)
+    # で、この罠の対象外。_FOREIGN_SCRIPT_VOICE_RULESに含めていないため、
+    # どのボイスでも取り除かれないことの回帰防止。
+    hangul = "안녕"
+    devanagari = "नमस्ते"
+    assert strip_unspeakable_foreign_script(hangul, "en") == hangul
+    assert strip_unspeakable_foreign_script(devanagari, "en") == devanagari
 
 
 def test_synthesize_tts_chorus_strips_cjk_only_for_non_chinese_voices(monkeypatch, tmp_path):
