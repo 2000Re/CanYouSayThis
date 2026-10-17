@@ -28,6 +28,7 @@ on:
           - 8d_audio
           - echo_cave
           - random
+          - _oneoff_chorus_bosnian
       voice:
         description: "[tts/tts_extreme/reverse/robot_voice/telephone/slowed_reverb/nightcore/underwater/8d_audio/echo_cave専用] 言語を選択(男性ボイス固定。性別・任意のespeak-ngコードを指定したい場合はローカルでgenerate.pyを直接実行してください)"
         required: false

@@ -251,7 +251,7 @@ def synthesize_tts_robot(word, wav_path, voice="en", speed=150, pitch=None, carr
     os.remove(raw_wav)
 
 
-def synthesize_tts_chorus(word, wav_path, n_voices=(3, 4)):
+def synthesize_tts_chorus(word, wav_path, n_voices=(3, 4), required_lang_codes=None):
     """同じ単語を複数言語のTTSボイスで同時に読み上げ、重ねてミックスする
     [--mode chorus]。「多言語で一斉に発音してみたら」という、単一の声を
     加工する他方式とは別角度のギミック。
@@ -277,11 +277,22 @@ def synthesize_tts_chorus(word, wav_path, n_voices=(3, 4)):
     ボイスごとに判定し、非対応ボイスだけ該当文字を取り除いてから読ませる
     (README「ハマった罠」72・73番)。全ボイス共通で単語を一括で取り除くの
     ではなくボイスごとに判定することで、対応するボイスが選ばれた回では
-    そのまま正しく発音させられる。"""
+    そのまま正しく発音させられる。
+
+    required_lang_codes: 視聴者リクエストへの一回限りの対応用(使い捨て
+    ブランチ限定、mainへは統合しない)。指定すると、通常のランダム抽選に
+    加えてこれらの言語コードを必ず含める(例: 「ボスニア語を必ず含めて
+    ほしい」という要望への対応)。"""
     n = random.randint(*n_voices)
-    lang_codes = random.sample(
-        config.CHORUS_VOICE_LANGUAGE_CODES, k=min(n, len(config.CHORUS_VOICE_LANGUAGE_CODES))
-    )
+    if required_lang_codes:
+        remaining_pool = [c for c in config.CHORUS_VOICE_LANGUAGE_CODES if c not in required_lang_codes]
+        n_remaining = max(0, min(n - len(required_lang_codes), len(remaining_pool)))
+        lang_codes = list(required_lang_codes) + random.sample(remaining_pool, k=n_remaining)
+        random.shuffle(lang_codes)
+    else:
+        lang_codes = random.sample(
+            config.CHORUS_VOICE_LANGUAGE_CODES, k=min(n, len(config.CHORUS_VOICE_LANGUAGE_CODES))
+        )
 
     raw_paths = []
     for i, lang_code in enumerate(lang_codes):
