@@ -3658,5 +3658,16 @@
     "voice_label": "Russian (Male)",
     "lang_code": "ru",
     "title_template": "say_out_loud"
+  },
+  {
+    "word": "-O҄҆҈҃҃҈҃O҇҄҈҃҆҅҇O֪֣֤֛֯֫֬֡֒֝EEE) ✯",
+    "label": "-O҈҈O҈OEEE) ...",
+    "video_id": "N29dreUSIQk",
+    "mode": "underwater",
+    "run_id": "39065067808",
+    "uploaded_at": "2026-10-17T20:04:26.578285+00:00",
+    "voice_label": "French (Male)",
+    "lang_code": "fr",
+    "title_template": "can_you_pronounce"
   }
 ]
