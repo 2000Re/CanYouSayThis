@@ -760,13 +760,22 @@ def _word_generator_for(actual_mode, actual_voice):
 
     楔形文字・エジプト/アナトリア象形文字の「絵のような」単語
     (_pictograph_word_generator()参照)は、config.PICTOGRAPH_VISUAL_CHANCE
-    の確率で選ぶ。以前はglitchモード限定だった(これらの文字をespeak-ngに
-    読ませると無音にならず、コードポイントを桁ごとに読み上げる長い音声に
-    なってしまうため)が、_speakable_word()でTTS合成の直前にこれらの文字を
-    取り除くようになった(README「ハマった罠」58番)ことで、tts/
-    tts_extreme/reverse/robot_voice/telephone/slowed_reverb/nightcore/
-    underwater/8d_audio/echo_caveでも安全に扱えるようになったため解禁した
-    (視聴者からの要望)。chorus/morse/animaleseは下記の理由で対象外。
+    の確率でglitchモードにのみ選ぶ。
+
+    [罠] 一時期(README「ハマった罠」58番)、_speakable_word()がTTS合成
+    直前にこれらの文字を取り除くようになったことで、tts/tts_extreme/
+    reverse/robot_voice/telephone/slowed_reverb/nightcore/underwater/
+    8d_audio/echo_caveでも「安全」と判断して解禁していた(視聴者からの
+    要望)。しかし_pictograph_word_generator()が生成する単語は1つの文字
+    体系の文字のみで構成されるため、_speakable_word()適用後は100%の
+    確率で空文字列になる。espeak-ngは空文字列でもエラーを出さず
+    _stretch_to_min_duration()が最低尺まで引き伸ばすため「実害は無い」と
+    見込んでいたが、実際には引き伸ばされるのは完全な無音(-91dB、実機で
+    確認済み)であり、動画全体が無音になる実害のある不具合だった
+    (視聴者からの報告で発覚、README「ハマった罠」参照)。glitchモードは
+    単語の内容と無関係な合成音を使うため、これらの文字体系と安全に
+    組み合わせられる唯一のモード。chorus/morse/animaleseは下記の理由で
+    対象外。
 
     chorus/morse/animaleseは、それぞれ「複数言語のボイスで同時に同じ単語を
     読む」「単語の文字をモールス符号のビープ音に変換する」「a〜zの文字
@@ -787,7 +796,7 @@ def _word_generator_for(actual_mode, actual_voice):
     それ以外(および上記の確率に外れた場合)は従来通り、実在文字体系の
     ボイスならそちらの単語生成(_native_script_for_voice()参照)、無ければ
     Zalgo単語(random_zalgo_word())を使う。"""
-    if actual_mode not in ("chorus", "morse", "animalese") and random.random() < config.PICTOGRAPH_VISUAL_CHANCE:
+    if actual_mode == "glitch" and random.random() < config.PICTOGRAPH_VISUAL_CHANCE:
         return _pictograph_word_generator()
     if actual_mode in ("chorus", "morse", "animalese"):
         return random_zalgo_word

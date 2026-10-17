@@ -207,17 +207,19 @@ def test_pictograph_word_generator_weighting_matches_script_weights():
         assert abs(actual_ratio - expected_ratio) < 0.03
 
 
-def test_word_generator_for_can_use_pictograph_in_tts_modes():
-    # _speakable_word()でTTS合成直前に楔形文字等を取り除くようになった
-    # (README「ハマった罠」58番)ことで、glitch以外のTTS系モードでも
-    # ピクトグラフ生成(random_zalgo_word以外)が選ばれるようになったことの
-    # 確認(確率的な挙動なので統計的に確認する)。
+def test_word_generator_for_never_uses_pictograph_in_tts_modes():
+    # ピクトグラフ生成の単語は_speakable_word()でTTS合成直前に文字が
+    # 全て取り除かれ空文字列になる(1つの文字体系のみで構成されるため)。
+    # これをglitch以外のTTS系モードで使うと動画全体が無音になる不具合が
+    # 実機で確認された(README「ハマった罠」参照)ため、glitch限定に戻した。
+    # 常にrandom_zalgo_wordが使われることを確認する(確率的な挙動では
+    # ないので、試行回数を抑えて確認すれば十分)。
     random.seed(11)
     en_voice = config.VOICE_LANGUAGES["en"]["male"]
-    for mode in ("tts", "tts_extreme", "reverse", "robot_voice", "telephone"):
-        picks = [_word_generator_for(mode, en_voice) for _ in range(80)]
-        assert any(g is not random_zalgo_word for g in picks), mode
-        assert any(g is random_zalgo_word for g in picks), mode
+    for mode in ("tts", "tts_extreme", "reverse", "robot_voice", "telephone",
+                 "slowed_reverb", "nightcore", "underwater", "8d_audio", "echo_cave"):
+        for _ in range(80):
+            assert _word_generator_for(mode, en_voice) is random_zalgo_word, mode
 
 
 def test_word_generator_for_can_use_pictograph_in_glitch_mode():
