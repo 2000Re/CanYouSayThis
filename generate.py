@@ -248,6 +248,26 @@ def _speakable_word(word):
     return "".join(ch for ch in word if ch not in _PICTOGRAPH_SCRIPT_CHARS)
 
 
+_METADATA_SAFE_PUNCTUATION = " .,!?'\"-:;()/_"
+
+
+def _sanitize_for_youtube_metadata(word):
+    """[--mode _oneoff_weird_strip専用] 記号・結合文字混在の視聴者リクエスト
+    (「¤」「⧙」等)をそのままYouTube Data APIに渡すと、
+    snippet.descriptionが「無効な説明」(HttpError 400、
+    reason: invalidDescription)として拒否されることを実機で確認した。
+    動画フレーム表示用のwordは変えず、タイトル・説明欄・字幕・コメントに
+    載せる文字列だけを、文字カテゴリがLetter/Mark(結合文字含む)+基本的な
+    半角スペース・句読点に絞って安全側に倒す。"""
+    import unicodedata
+
+    sanitized = "".join(
+        ch for ch in word
+        if unicodedata.category(ch)[0] in ("L", "M") or ch in _METADATA_SAFE_PUNCTUATION
+    )
+    return sanitized or "???"
+
+
 _PICTOGRAPH_TITLE = "Can You Read These Ancient Symbols?"
 _PICTOGRAPH_DESCRIPTION_LINE = "A sequence of ancient pictographic symbols"
 _PICTOGRAPH_CAPTION_TEXT = (
@@ -460,6 +480,11 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
         label = sentence_snippet
 
     mode_label = config.MODE_LABELS.get(mode, mode)
+    if mode == "_oneoff_weird_strip":
+        # config.MODE_LABELSには登録しない(登録すると--mode randomの抽選
+        # 対象に入ってしまう、_resolve_mode()参照)。表示用のラベルだけ
+        # ここで個別に上書きし、内部モード名を説明欄に出さないようにする。
+        mode_label = "Text-to-Speech"
     if is_pictograph_script:
         title = _PICTOGRAPH_TITLE
     else:
@@ -943,9 +968,18 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # 組み立て直せるよう、upload_history.jsonにも記録する。
         actual_title_template = _resolve_title_template("random")
 
+        # _oneoff_weird_strip専用: メタデータに載せる文字列だけ安全側に倒す
+        # (_sanitize_for_youtube_metadata()参照)。動画フレーム自体の表示や
+        # upload_history.json記録用のword/labelは変えない。
+        if actual_mode == "_oneoff_weird_strip":
+            metadata_word = _sanitize_for_youtube_metadata(word)
+            metadata_label = _sanitize_for_youtube_metadata(label)
+        else:
+            metadata_word, metadata_label = word, label
+
         title, description, tags, caption_text, comment_text, localizations = _youtube_metadata(
-            word, label, actual_mode, playlist_id=shorts_playlist_id, voice_label=voice_label,
-            is_native_script=used_native_script, lang_code=lang_code,
+            metadata_word, metadata_label, actual_mode, playlist_id=shorts_playlist_id,
+            voice_label=voice_label, is_native_script=used_native_script, lang_code=lang_code,
             title_template=actual_title_template,
         )
         # glitch/chorus/morseは単一言語の音声読み上げではない(glitchは合成音
