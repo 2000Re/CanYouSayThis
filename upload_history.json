@@ -3614,5 +3614,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "try_to_say"
+  },
+  {
+    "word": "banana",
+    "label": "banana",
+    "video_id": "pFjARaClazg",
+    "mode": "_oneoff_combo",
+    "run_id": "38990938497",
+    "uploaded_at": "2026-10-17T01:32:57.749797+00:00",
+    "voice_label": "Russian (Male)",
+    "lang_code": "ru",
+    "title_template": "try_to_say"
   }
 ]
