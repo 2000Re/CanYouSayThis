@@ -264,6 +264,36 @@ def test_strip_unspeakable_foreign_script_does_not_touch_hangul_or_devanagari():
     assert strip_unspeakable_foreign_script(devanagari, "en") == devanagari
 
 
+def test_strip_unspeakable_foreign_script_handles_cyrillic_and_greek():
+    # 運営者から「ギリシャ文字も修正してほしい」と追加要望があった
+    # (README「ハマった罠」74番)。キリル文字・ギリシャ文字は
+    # 「Xxx letter」型ではなく、1文字ずつアルファベットの文字名で綴って
+    # しまう(例: ロシア語の「привет」を英語ボイスに渡すと"pe, er, i, ve,
+    # ye, te"になる)別パターンの罠だが、正しく発音できていない点は同じ
+    # なので対象に含めた。
+    cyrillic = "привет"  # ロシア語ボイス(ru)なら正しく発音できる
+    greek = "γεια"  # 本チャンネルのボイスプールにギリシャ語ボイスは無い
+
+    assert strip_unspeakable_foreign_script(f"hi{cyrillic}bye", "en") == "hibye"
+    assert strip_unspeakable_foreign_script(f"hi{cyrillic}bye", "ru") == f"hi{cyrillic}bye"
+    assert strip_unspeakable_foreign_script(f"hi{cyrillic}bye", "ru+f3") == f"hi{cyrillic}bye"
+
+    # ギリシャ語ボイスはVOICE_LANGUAGESに存在しないため、どのボイスでも
+    # 常に取り除かれる(楔形文字等のピクトグラフ文字体系と同じ扱い)。
+    assert strip_unspeakable_foreign_script(f"hi{greek}bye", "en") == "hibye"
+    assert strip_unspeakable_foreign_script(f"hi{greek}bye", "ru") == "hibye"
+
+
+def test_strip_unspeakable_foreign_script_kazakh_voice_keeps_cyrillic_characters():
+    # config.py上はカザフ語(kk)のVOICE_LANGUAGESエントリはscript=None
+    # (ランダム生成時はラテン文字のZalgo単語を使う)だが、espeak-ngのkk
+    # ボイス自体はキリル文字を正しく発音できることを実機確認済みのため、
+    # --wordでキリル文字を手動指定された場合は取り除かないことを確認する。
+    word = "hiприветbye"
+    assert strip_unspeakable_foreign_script(word, "kk") == word
+    assert strip_unspeakable_foreign_script(word, "kk+f3") == word
+
+
 def test_synthesize_tts_chorus_strips_cjk_only_for_non_chinese_voices(monkeypatch, tmp_path):
     # chorusは複数ボイスを内部で選ぶため、CJK統合漢字混じりの単語でも
     # ボイスごとに正しく判定され、中国語系ボイスが選ばれた回だけ漢字が
