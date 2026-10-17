@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pytest
 
 import audio_utils
-from audio_utils import _atempo_chain_for_factor, _stretch_to_min_duration, finalize_audio, repeat_audio
+from audio_utils import _atempo_chain_for_factor, _is_silent_audio, _stretch_to_min_duration, finalize_audio, repeat_audio
 
 
 def test_atempo_chain_for_factor_within_range_needs_no_chaining():
@@ -174,6 +174,56 @@ def test_repeat_audio_preserves_stereo_channel_layout(monkeypatch, tmp_path):
     assert "channel_layouts=mono" not in filter_complex
     assert "cl=stereo" in " ".join(cmd)
     assert dst.exists()
+
+
+def _fake_volumedetect_stderr(monkeypatch, mean_volume_text):
+    """ffmpegのvolumedetectフィルタが吐くstderr出力を模したCompletedProcess
+    風オブジェクトを返すフェイクにsubprocess.runを差し替える。"""
+    class _FakeResult:
+        stderr = (
+            f"[Parsed_volumedetect_0 @ 0x0] mean_volume: {mean_volume_text}\n"
+            "[Parsed_volumedetect_0 @ 0x0] max_volume: -10.0 dB\n"
+        )
+
+    def fake_run(cmd, capture_output, text):
+        return _FakeResult()
+
+    monkeypatch.setattr(audio_utils.subprocess, "run", fake_run)
+
+
+def test_is_silent_audio_true_for_volume_below_threshold(monkeypatch):
+    # 楔形文字等のピクトグラフ単語をTTS系モードで使うと、TTS合成直前に
+    # 単語が空文字列になり完全な無音(-91dB)が生成される不具合が実機で
+    # 確認された(README「ハマった罠」69・70番)。その値を再現して検知
+    # できることを確認する。
+    _fake_volumedetect_stderr(monkeypatch, "-91.0 dB")
+    assert _is_silent_audio("dummy.wav") is True
+
+
+def test_is_silent_audio_false_for_normal_speech_volume(monkeypatch):
+    # 通常のTTS音声のmean_volumeは-30dB程度までに収まることが多い
+    # (実機確認済み)。閾値(デフォルト-50dB)を下回らないので無音とは
+    # 判定しない。
+    _fake_volumedetect_stderr(monkeypatch, "-24.3 dB")
+    assert _is_silent_audio("dummy.wav") is False
+
+
+def test_is_silent_audio_respects_custom_threshold(monkeypatch):
+    _fake_volumedetect_stderr(monkeypatch, "-40.0 dB")
+    assert _is_silent_audio("dummy.wav", threshold_db=-50.0) is False
+    assert _is_silent_audio("dummy.wav", threshold_db=-35.0) is True
+
+
+def test_is_silent_audio_false_when_mean_volume_cannot_be_parsed(monkeypatch):
+    # mean_volumeが取れない(解析失敗)場合は、無音として誤検知して
+    # 通常の音声生成を止めてしまわないよう、安全側(無音ではない)に倒す。
+    def fake_run(cmd, capture_output, text):
+        class _FakeResult:
+            stderr = "some unexpected ffmpeg output without mean_volume"
+        return _FakeResult()
+
+    monkeypatch.setattr(audio_utils.subprocess, "run", fake_run)
+    assert _is_silent_audio("dummy.wav") is False
 
 
 def test_repeat_audio_skips_channel_probe_when_times_is_one(monkeypatch, tmp_path):
