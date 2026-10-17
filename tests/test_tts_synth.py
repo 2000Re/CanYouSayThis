@@ -15,6 +15,7 @@ import tts_synth
 from tts_synth import (
     EXTREME_VOICE_VARIANTS,
     _random_extreme_filter_chain,
+    strip_unspeakable_cjk,
     synthesize_tts,
     synthesize_tts_8d_audio,
     synthesize_tts_chorus,
@@ -191,6 +192,62 @@ def test_synthesize_tts_chorus_never_uses_hebrew_voice(monkeypatch, tmp_path):
         voices_used = {c[c.index("-v") + 1] for c in espeak_calls}
         assert voices_used.isdisjoint(excluded_voices)
         calls.clear()
+
+
+def test_strip_unspeakable_cjk_removes_han_characters_for_non_chinese_voice():
+    # espeak-ngはCJK統合漢字を中国語系(cmn/yue)以外のボイスでは発音せず
+    # 「Chinese letter」のように文字種名を読み上げてしまうことを実機確認した
+    # (--ipaオプションで検証、視聴者リクエストで発覚。README「ハマった罠」
+    # 72番)。該当文字だけを取り除き、それ以外はそのまま残すことを確認する。
+    word = "koO椒和koO"
+    assert strip_unspeakable_cjk(word, "en") == "koOkoO"
+    assert strip_unspeakable_cjk(word, "ar+f3") == "koOkoO"
+    assert strip_unspeakable_cjk(word, "bs") == "koOkoO"
+
+
+def test_strip_unspeakable_cjk_keeps_han_characters_for_chinese_voices():
+    # 中国語系ボイス(zh=内部コード"cmn"/yue=広東語)ならCJK統合漢字を正しく
+    # 発音できるため取り除かない。
+    word = "koO椒和koO"
+    assert strip_unspeakable_cjk(word, "cmn") == word
+    assert strip_unspeakable_cjk(word, "cmn+f3") == word
+    assert strip_unspeakable_cjk(word, "yue") == word
+    assert strip_unspeakable_cjk(word, "yue+f3") == word
+
+
+def test_strip_unspeakable_cjk_leaves_non_cjk_words_unchanged():
+    assert strip_unspeakable_cjk("hello world", "en") == "hello world"
+
+
+def test_synthesize_tts_chorus_strips_cjk_only_for_non_chinese_voices(monkeypatch, tmp_path):
+    # chorusは複数ボイスを内部で選ぶため、CJK統合漢字混じりの単語でも
+    # ボイスごとに正しく判定され、中国語系ボイスが選ばれた回だけ漢字が
+    # 残ることの回帰防止(README「ハマった罠」72番)。
+    calls = []
+
+    def fake_synthesize_tts(word, wav_path, voice="en", speed=150, pitch=None):
+        calls.append((word, voice))
+        Path(wav_path).touch()
+
+    monkeypatch.setattr(tts_synth, "synthesize_tts", fake_synthesize_tts)
+    monkeypatch.setattr(tts_synth.subprocess, "run", lambda cmd, check, capture_output: Path(cmd[-1]).touch())
+
+    word = "koO椒和koO"
+    seen_chinese_voice = False
+    seen_non_chinese_voice = False
+    for seed in range(100):
+        random.seed(seed)
+        calls.clear()
+        synthesize_tts_chorus(word, str(tmp_path / "out.wav"))
+        for spoken_word, voice in calls:
+            if voice.split("+")[0] in ("cmn", "yue"):
+                seen_chinese_voice = True
+                assert "椒和" in spoken_word, (spoken_word, voice)
+            else:
+                seen_non_chinese_voice = True
+                assert "椒和" not in spoken_word, (spoken_word, voice)
+    assert seen_chinese_voice, "テストの前提として中国語系ボイスが一度も選ばれなかった"
+    assert seen_non_chinese_voice, "テストの前提として非中国語系ボイスが一度も選ばれなかった"
 
 
 def test_synthesize_tts_telephone_applies_bandpass_filter(monkeypatch, tmp_path):

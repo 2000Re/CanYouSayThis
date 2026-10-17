@@ -87,6 +87,7 @@ from glitch_synth import synthesize_glitch_chunk
 from jst_time import jst_timestamp
 from morse_synth import synthesize_morse
 from tts_synth import (
+    strip_unspeakable_cjk,
     synthesize_tts,
     synthesize_tts_8d_audio,
     synthesize_tts_chorus,
@@ -880,20 +881,27 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # (楔形文字等を取り除いた版。_speakable_word()参照)。動画フレーム・
         # label・upload_history.json記録にはword自体をそのまま使い続ける。
         tts_word = _speakable_word(word)
+        # 単一ボイスのモード専用に、さらにCJK統合漢字(中国語・日本語の漢字)
+        # を現在のactual_voiceに応じて取り除いた版を用意する
+        # (strip_unspeakable_cjk()参照、README「ハマった罠」72番)。
+        # chorusは複数ボイスを内部で選ぶため、ボイスごとの判定を
+        # synthesize_tts_chorus()側で個別に行う(ここでは未加工のtts_wordを
+        # そのまま渡す)。
+        single_voice_tts_word = strip_unspeakable_cjk(tts_word, actual_voice)
 
         if actual_mode == "tts":
             # espeak-ngが吐く長さがそのまま採用される(パディングはしない)
-            synthesize_tts(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+            synthesize_tts(single_voice_tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
         elif actual_mode == "tts_extreme":
-            synthesize_tts_extreme(tts_word, raw_wav, voice=actual_voice)
+            synthesize_tts_extreme(single_voice_tts_word, raw_wav, voice=actual_voice)
         elif actual_mode == "glitch":
             # unit_durationが「1回分」の長さ。--repeatで指定した回数ぶん、
             # これがそのまま繰り返される(動画の総尺は自動的に決まる)
             synthesize_glitch_chunk(raw_wav, target_seconds=unit_duration)
         elif actual_mode == "reverse":
-            synthesize_tts_reverse(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+            synthesize_tts_reverse(single_voice_tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
         elif actual_mode == "robot_voice":
-            synthesize_tts_robot(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+            synthesize_tts_robot(single_voice_tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
         elif actual_mode == "chorus":
             synthesize_tts_chorus(tts_word, raw_wav)
         elif actual_mode == "morse":
@@ -904,17 +912,17 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
             # pitch未指定(None)ならsynthesize_animalese側で毎回ランダムに選ぶ
             synthesize_animalese(word, raw_wav, pitch=pitch)
         elif actual_mode == "telephone":
-            synthesize_tts_telephone(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+            synthesize_tts_telephone(single_voice_tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
         elif actual_mode == "slowed_reverb":
-            synthesize_tts_slowed_reverb(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+            synthesize_tts_slowed_reverb(single_voice_tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
         elif actual_mode == "nightcore":
-            synthesize_tts_nightcore(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+            synthesize_tts_nightcore(single_voice_tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
         elif actual_mode == "underwater":
-            synthesize_tts_underwater(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+            synthesize_tts_underwater(single_voice_tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
         elif actual_mode == "8d_audio":
-            synthesize_tts_8d_audio(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+            synthesize_tts_8d_audio(single_voice_tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
         elif actual_mode == "echo_cave":
-            synthesize_tts_echo_cave(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+            synthesize_tts_echo_cave(single_voice_tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
         else:
             raise ValueError(
                 f"unknown mode: {actual_mode!r} "
