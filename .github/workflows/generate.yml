@@ -78,10 +78,6 @@ on:
         description: "単語を指定する場合のみ(視聴者リクエスト対応用)。指定するとcountは1本に固定され、過去の単語との重複チェックも行わない。アップロード時はprivacy_statusの選択に関わらず必ず非公開(private)になる(内容確認後、手動でYouTube Studio側の公開設定を切り替える想定)。空欄ならランダム生成"
         required: false
         default: ""
-      seed:
-        description: "乱数シード(再現したい場合。空欄なら毎回ランダム)"
-        required: false
-        default: ""
       upload:
         description: "生成した動画をそのままYouTubeにアップロードする"
         required: false
@@ -194,9 +190,6 @@ jobs:
           voice_code="${{ inputs.voice }}"
           voice_code="${voice_code%% | *}"
           args=(--count "${{ inputs.count }}" --outdir ./out --mode "${{ inputs.mode }}" --voice "$voice_code")
-          if [ -n "${{ inputs.seed }}" ]; then
-            args+=(--seed "${{ inputs.seed }}")
-          fi
           # pitch入力はvoiceと同じ「<値> | <日本語名>」形式(random | ランダム等)
           # なので、ランダム以外が選ばれた場合のみ実際の値部分を取り出して渡す
           pitch_code="${{ inputs.pitch }}"
