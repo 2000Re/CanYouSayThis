@@ -81,7 +81,7 @@ import sys
 
 import config
 from animalese_synth import synthesize_animalese
-from audio_utils import _stretch_to_min_duration, finalize_audio, repeat_audio, wav_to_mp3
+from audio_utils import _is_silent_audio, _stretch_to_min_duration, finalize_audio, repeat_audio, wav_to_mp3
 from frame_builder import build_frame, close_browser
 from glitch_synth import synthesize_glitch_chunk
 from jst_time import jst_timestamp
@@ -264,6 +264,12 @@ _PICTOGRAPH_COMMENT_TEMPLATES = [
 # フレーム上で「Welcome to m...」のように途中で切れないよう、こちらは
 # 別枠でより大きい値にしている(README「ハマった罠」63番参照)。
 _FRAME_MAX_BASE_CHARS = 80
+
+# 完成した音声が実質無音(_is_silent_audio()参照)だった場合に、ランダム
+# 生成の単語を選び直して再合成を試みる最大回数(1回目を含む)。
+# build_thumbnail()の壊れたPNG再試行(max_attempts)と同じ考え方の安全網
+# (README「ハマった罠」69・70番参照)。
+_SILENCE_RETRY_ATTEMPTS = 3
 
 # タイトル用「文章スニペット」の文字数上限。YouTubeタイトルの100文字制限
 # のworst case(最長の言語名+最長のタイトルテンプレート+ジャンルサフィ
@@ -814,32 +820,18 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     word_generator = _word_generator_for(actual_mode, actual_voice)
     used_native_script = word_generator is not random_zalgo_word
 
-    if word is not None:
-        # --wordで単語を固定した回。コメント欄等からの個別リクエスト用で、
-        # 重複チェック(アップロード済み単語との被り防止)は対象外
-        # (同じ単語を再度指定したい場合もあるため)。
-        pass
-    elif upload:
+    # --wordで単語を固定した回(コメント欄等からの個別リクエスト対応)かどうかを
+    # 後段の無音リトライ判定でも使うため、上書きされる前のwordを覚えておく。
+    requested_word = word
+    existing_words = None
+    if requested_word is None and upload:
         # チャンネルへの重複投稿を避けるため、アップロード済みの単語と
         # 被らないものを選ぶ(--upload時のみ必要な依存関係の遅延importは
-        # このファイル内で完結しているのでここでも問題ない)
+        # このファイル内で完結しているのでここでも問題ない)。ループの
+        # 各試行で読み直す必要は無いため、ループの前で1回だけ取得する。
         from upload_history import load_upload_history
 
         existing_words = {entry["word"] for entry in load_upload_history()}
-        word = _random_unique_word(existing_words, word_generator=word_generator)
-    else:
-        word = word_generator()
-    label = readable_label(word)
-    # フレーム表示用は、タイトルのYouTube100文字制限(labelを使う側、言語名
-    # 付きテンプレートのworst caseでも実質23文字程度までしか安全に入らない)
-    # とは別の制約。フレーム画像自体には文字数の技術的な上限が無く、
-    # _word_font_size()側でフォントサイズを文字数に応じて縮小するだけで
-    # 済むため、こちらはより長い_FRAME_MAX_BASE_CHARSで別途truncateし直す
-    # (--word指定で文章丸ごとのリクエスト(animaleseモード等)が来ても、
-    # フレーム上で「Welcome to m...」のように途中で切れないようにするため。
-    # README「ハマった罠」63番参照)。
-    frame_label = readable_label(word, max_base_chars=_FRAME_MAX_BASE_CHARS)
-    frame_word = zalgo_display_word(word, max_base_chars=_FRAME_MAX_BASE_CHARS)
 
     base = os.path.join(outdir, f"{idx:03d}")
     txt_path = base + "_word.txt"
@@ -851,69 +843,118 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     frame_path = base + "_frame.png"
     video_path = base + ".mp4"
 
-    with open(txt_path, "w", encoding="utf-8") as f:
-        f.write(word)
+    # 完成した音声が実質無音(_is_silent_audio()参照)だった場合、--word
+    # 指定(視聴者リクエスト)でなければ単語を選び直して再試行する
+    # (README「ハマった罠」69・70番参照)。glitch以外のTTS系モードで
+    # ピクトグラフ単語が選ばれると無音になる不具合が実際に発生したことが
+    # きっかけだが、今回判明した原因に限らず今後別の原因で無音の音声が
+    # できてしまった場合にも対応できるよう、原因を特定せず「無音なら
+    # 単語を変えて作り直す」安全網として汎用的に実装している。
+    for attempt in range(1, _SILENCE_RETRY_ATTEMPTS + 1):
+        if requested_word is not None:
+            # --word指定の回。重複チェック(アップロード済み単語との被り
+            # 防止)は対象外(同じ単語を再度指定したい場合もあるため)で、
+            # 単語を差し替えての再試行もしない(視聴者の意図と異なる単語を
+            # 勝手にアップロードすることになってしまうため)。
+            word = requested_word
+        elif upload:
+            word = _random_unique_word(existing_words, word_generator=word_generator)
+        else:
+            word = word_generator()
+        label = readable_label(word)
+        # フレーム表示用は、タイトルのYouTube100文字制限(labelを使う側、言語名
+        # 付きテンプレートのworst caseでも実質23文字程度までしか安全に入らない)
+        # とは別の制約。フレーム画像自体には文字数の技術的な上限が無く、
+        # _word_font_size()側でフォントサイズを文字数に応じて縮小するだけで
+        # 済むため、こちらはより長い_FRAME_MAX_BASE_CHARSで別途truncateし直す
+        # (--word指定で文章丸ごとのリクエスト(animaleseモード等)が来ても、
+        # フレーム上で「Welcome to m...」のように途中で切れないようにするため。
+        # README「ハマった罠」63番参照)。
+        frame_label = readable_label(word, max_base_chars=_FRAME_MAX_BASE_CHARS)
+        frame_word = zalgo_display_word(word, max_base_chars=_FRAME_MAX_BASE_CHARS)
 
-    # TTS系モードにはword自体ではなく_speakable_word(word)を渡す
-    # (楔形文字等を取り除いた版。_speakable_word()参照)。動画フレーム・
-    # label・upload_history.json記録にはword自体をそのまま使い続ける。
-    tts_word = _speakable_word(word)
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(word)
 
-    if actual_mode == "tts":
-        # espeak-ngが吐く長さがそのまま採用される(パディングはしない)
-        synthesize_tts(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
-    elif actual_mode == "tts_extreme":
-        synthesize_tts_extreme(tts_word, raw_wav, voice=actual_voice)
-    elif actual_mode == "glitch":
-        # unit_durationが「1回分」の長さ。--repeatで指定した回数ぶん、
-        # これがそのまま繰り返される(動画の総尺は自動的に決まる)
-        synthesize_glitch_chunk(raw_wav, target_seconds=unit_duration)
-    elif actual_mode == "reverse":
-        synthesize_tts_reverse(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
-    elif actual_mode == "robot_voice":
-        synthesize_tts_robot(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
-    elif actual_mode == "chorus":
-        synthesize_tts_chorus(tts_word, raw_wav)
-    elif actual_mode == "morse":
-        synthesize_morse(word, raw_wav)
-    elif actual_mode == "animalese":
-        # espeak-ngを使わないため_speakable_word()は不要(対応表に無い
-        # 文字は animalese_synth.py 側で無視される。morseと同じ方針)。
-        # pitch未指定(None)ならsynthesize_animalese側で毎回ランダムに選ぶ
-        synthesize_animalese(word, raw_wav, pitch=pitch)
-    elif actual_mode == "telephone":
-        synthesize_tts_telephone(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
-    elif actual_mode == "slowed_reverb":
-        synthesize_tts_slowed_reverb(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
-    elif actual_mode == "nightcore":
-        synthesize_tts_nightcore(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
-    elif actual_mode == "underwater":
-        synthesize_tts_underwater(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
-    elif actual_mode == "8d_audio":
-        synthesize_tts_8d_audio(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
-    elif actual_mode == "echo_cave":
-        synthesize_tts_echo_cave(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
-    else:
-        raise ValueError(
-            f"unknown mode: {actual_mode!r} "
-            "(tts / tts_extreme / glitch / reverse / robot_voice / chorus / morse / "
-            "animalese / telephone / slowed_reverb / nightcore / underwater / 8d_audio / "
-            "echo_cave)"
-        )
+        # TTS系モードにはword自体ではなく_speakable_word(word)を渡す
+        # (楔形文字等を取り除いた版。_speakable_word()参照)。動画フレーム・
+        # label・upload_history.json記録にはword自体をそのまま使い続ける。
+        tts_word = _speakable_word(word)
 
-    repeat_audio(raw_wav, rep_wav, times=repeat, gap=repeat_gap)
-    # 短い単語はモードを問わず(tts_extreme専用のTTS_EXTREME_MIN_DURATION_
-    # SECONDSとは別に)繰り返し後の最終的な尺が1〜2秒程度にしかならず、
-    # 「発音」として成立していないように見えることがあったため、
-    # MIN_FINAL_VIDEO_DURATION_SECONDSを下回る場合はここでさらに引き伸ばす
-    # (config.py参照)。
-    _stretch_to_min_duration(rep_wav, str_wav, config.MIN_FINAL_VIDEO_DURATION_SECONDS)
-    # 無音パディングはしない。中身の実際の長さのまま、末尾だけ短くフェード
-    # し、動画の尺もそれに合わせる(build_videoが -shortest で音声側に合わせる)
-    finalize_audio(str_wav, fin_wav, fade=fade, fade_in=config.DEFAULT_FADE_IN)
-    os.remove(raw_wav)
-    os.remove(rep_wav)
-    os.remove(str_wav)
+        if actual_mode == "tts":
+            # espeak-ngが吐く長さがそのまま採用される(パディングはしない)
+            synthesize_tts(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        elif actual_mode == "tts_extreme":
+            synthesize_tts_extreme(tts_word, raw_wav, voice=actual_voice)
+        elif actual_mode == "glitch":
+            # unit_durationが「1回分」の長さ。--repeatで指定した回数ぶん、
+            # これがそのまま繰り返される(動画の総尺は自動的に決まる)
+            synthesize_glitch_chunk(raw_wav, target_seconds=unit_duration)
+        elif actual_mode == "reverse":
+            synthesize_tts_reverse(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        elif actual_mode == "robot_voice":
+            synthesize_tts_robot(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        elif actual_mode == "chorus":
+            synthesize_tts_chorus(tts_word, raw_wav)
+        elif actual_mode == "morse":
+            synthesize_morse(word, raw_wav)
+        elif actual_mode == "animalese":
+            # espeak-ngを使わないため_speakable_word()は不要(対応表に無い
+            # 文字は animalese_synth.py 側で無視される。morseと同じ方針)。
+            # pitch未指定(None)ならsynthesize_animalese側で毎回ランダムに選ぶ
+            synthesize_animalese(word, raw_wav, pitch=pitch)
+        elif actual_mode == "telephone":
+            synthesize_tts_telephone(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        elif actual_mode == "slowed_reverb":
+            synthesize_tts_slowed_reverb(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        elif actual_mode == "nightcore":
+            synthesize_tts_nightcore(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        elif actual_mode == "underwater":
+            synthesize_tts_underwater(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        elif actual_mode == "8d_audio":
+            synthesize_tts_8d_audio(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        elif actual_mode == "echo_cave":
+            synthesize_tts_echo_cave(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+        else:
+            raise ValueError(
+                f"unknown mode: {actual_mode!r} "
+                "(tts / tts_extreme / glitch / reverse / robot_voice / chorus / morse / "
+                "animalese / telephone / slowed_reverb / nightcore / underwater / 8d_audio / "
+                "echo_cave)"
+            )
+
+        repeat_audio(raw_wav, rep_wav, times=repeat, gap=repeat_gap)
+        # 短い単語はモードを問わず(tts_extreme専用のTTS_EXTREME_MIN_DURATION_
+        # SECONDSとは別に)繰り返し後の最終的な尺が1〜2秒程度にしかならず、
+        # 「発音」として成立していないように見えることがあったため、
+        # MIN_FINAL_VIDEO_DURATION_SECONDSを下回る場合はここでさらに引き伸ばす
+        # (config.py参照)。
+        _stretch_to_min_duration(rep_wav, str_wav, config.MIN_FINAL_VIDEO_DURATION_SECONDS)
+        # 無音パディングはしない。中身の実際の長さのまま、末尾だけ短くフェード
+        # し、動画の尺もそれに合わせる(build_videoが -shortest で音声側に合わせる)
+        finalize_audio(str_wav, fin_wav, fade=fade, fade_in=config.DEFAULT_FADE_IN)
+        os.remove(raw_wav)
+        os.remove(rep_wav)
+        os.remove(str_wav)
+
+        if not _is_silent_audio(fin_wav):
+            break
+
+        os.remove(fin_wav)
+        if requested_word is not None:
+            raise RuntimeError(
+                f"{word!r}: 生成された音声が無音でした(--word指定のため、"
+                "単語を差し替えての再試行は行いません。運営者による確認が"
+                "必要です)"
+            )
+        if attempt == _SILENCE_RETRY_ATTEMPTS:
+            raise RuntimeError(
+                f"{word!r}: 生成された音声が{_SILENCE_RETRY_ATTEMPTS}回とも"
+                "無音でした(単語を選び直しても無音のため、モード側の問題の"
+                "可能性があります)"
+            )
+        print(f"[Warning] {word!r}: 生成された音声が無音でした"
+              f"({attempt}/{_SILENCE_RETRY_ATTEMPTS}回目)。単語を選び直して再試行します。")
 
     wav_to_mp3(fin_wav, mp3_path)
     build_frame(frame_label, frame_path, mode=actual_mode, display_word=frame_word,

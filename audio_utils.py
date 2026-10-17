@@ -13,9 +13,12 @@
                        tts_synth.synthesize_tts_extreme()専用だったが、
                        generate.pyが全モード共通の最終尺チェックにも使う
                        ため、ここに置いている)
+- _is_silent_audio  : 音声が実質無音かどうかをvolumedetectで判定する
+                       (generate.pyがアップロード前の安全網として使う)
 """
 
 import os
+import re
 import subprocess
 
 
@@ -25,6 +28,33 @@ def _probe_duration(wav_path):
         check=True, capture_output=True, text=True,
     ).stdout.strip()
     return float(out)
+
+
+def _is_silent_audio(wav_path, threshold_db=-50.0):
+    """wav_pathの音声が実質無音かどうかを判定する(ffmpegのvolumedetect
+    フィルタでmean_volumeを計測し、threshold_dbを下回れば無音とみなす)。
+
+    [罠] 楔形文字等のピクトグラフ単語をTTS系モードで使うと、TTS合成直前に
+    文字が全て取り除かれ空文字列になり、espeak-ngはエラーを出さず
+    「ほぼ無音」の音声を作る。_stretch_to_min_duration()がこれを最低尺まで
+    引き伸ばしても「実害は無い」と判断していたが、実機で計測すると
+    -91dB(完全な無音)だった(README「ハマった罠」69番)。この関数は、
+    今回判明した原因に限らず今後別の原因で無音の音声ができてしまった
+    場合にも検知できるよう、generate_one()がアップロード前の安全網として
+    使う。通常のTTS音声はmean_volumeが-30dB程度までに収まることが多く、
+    -50dBという閾値は誤検知を避けつつ実質的な無音を十分検知できる値として
+    実機確認した。"""
+    out = subprocess.run(
+        ["ffmpeg", "-i", wav_path, "-af", "volumedetect", "-f", "null", "-"],
+        capture_output=True, text=True,
+    ).stderr
+    match = re.search(r"mean_volume:\s*(-?[\d.]+)\s*dB", out)
+    if match is None:
+        # mean_volumeが取れない(万一の解析失敗)場合は、無音として扱って
+        # 安全側に倒すのではなく、判定不能として「無音ではない」扱いにする
+        # (通常の音声生成を誤って止めないため)。
+        return False
+    return float(match.group(1)) < threshold_db
 
 
 def _probe_channels(wav_path):
