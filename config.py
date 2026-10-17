@@ -117,6 +117,13 @@ TITLE_GENRE_MODES = {"nightcore", "8d_audio", "slowed_reverb"}
 # 正常に動くことを確認済みの言語のみ対応している。
 RUSSIAN_LETTERS = list("абвгдежзийклмнопрстуфхцчшщъыьэюя")
 
+# 1918年のロシア語正書法改革で廃止された文字(ѣ=yat, і=iдесятеричное,
+# ѳ=fita, ѵ=izhitsa)。現代ロシア語では使われないため「珍しい」見た目の
+# インパクトを狙って追加した(運営者要望、README「ハマった罠」71番参照)。
+# RUSSIAN_LETTERSと同様、espeak-ng(ruボイス)での無音確認・Chromium+Noto
+# フォントでの描画確認(tofuにならないこと)の両方を実機で確認済み。
+RUSSIAN_HISTORIC_LETTERS = list("ѣіѳѵ")
+
 
 def _assigned_chars(ranges):
     """Unicodeのコードポイント範囲(閉区間のタプルのリスト)から、未割り当て
@@ -275,7 +282,7 @@ VOICE_LANGUAGES = {
     "pt-br": {"label": "Portuguese (Brazil)", "male": "pt-br", "female": "mb-br4", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Pronúncia"},
     "pt":  {"label": "Portuguese (Portugal)", "male": "pt", "female": "mb-pt1", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Pronúncia"},
     "ro":  {"label": "Romanian",   "male": "ro",    "female": "ro+f3", "script": None, "chars": None, "consonants": None, "vowels": None, "hashtag_word": "Pronunție"},
-    "ru":  {"label": "Russian",    "male": "ru",    "female": "ru+f3", "script": "cluster", "chars": RUSSIAN_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "Произношение"},
+    "ru":  {"label": "Russian",    "male": "ru",    "female": "ru+f3", "script": "cluster", "chars": RUSSIAN_LETTERS + RUSSIAN_HISTORIC_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "Произношение"},
     "th":  {"label": "Thai",       "male": "th",    "female": "th+f3", "script": "abugida", "chars": None, "consonants": THAI_CONSONANTS, "vowels": THAI_VOWEL_MARKS, "hashtag_word": "การออกเสียง"},
     "ar":  {"label": "Arabic",     "male": "ar",    "female": "ar+f3", "script": "cluster", "chars": ARABIC_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "نطق"},
     "he":  {"label": "Hebrew",     "male": "he",    "female": "he+f3", "script": "cluster", "chars": HEBREW_LETTERS, "consonants": None, "vowels": None, "hashtag_word": "הגייה"},
@@ -358,8 +365,12 @@ NATIVE_SCRIPT_VOICE_CHANCE = 0.3
 # ってしまうため NG)
 BASE_CHARS = list("aeiouAEIOU") + list("vVvvOoOo") + list("nmrl")
 
-# 単語の区切りとして飾り的に挟む記号(結合文字は乗せず単体で使う)
-SEPARATOR_SYMBOLS = ["(", ")", ":", "-"]
+# 単語の区切りとして飾り的に挟む記号(結合文字は乗せず単体で使う)。
+# 「¿」(逆疑問符)はespeak-ngに単体で渡すと無音になることを実機確認済み
+# (README「ハマった罠」69・70番の無音検知で発覚)だが、ここでは必ず
+# random_zalgo_word()の土台(発音できる本体)を挟んで使われるため、単体で
+# 無音になる問題は起きない(運営者要望、71番参照)。
+SEPARATOR_SYMBOLS = ["(", ")", ":", "-", "¿"]
 
 # 積み重ねる結合文字の候補。
 #

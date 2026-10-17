@@ -48,11 +48,20 @@ def test_units_for_word_ignores_combining_marks_and_decorative_symbols():
 
 
 def test_units_for_word_maps_separator_symbols():
-    # word_generator.SEPARATOR_SYMBOLSの4記号も符号表に含まれていること
+    # word_generator.SEPARATOR_SYMBOLSのうちITU符号表に実在する4記号は
+    # 符号表に含まれていること
     for sep in ["(", ")", ":", "-"]:
         assert sep in MORSE_CODE
         units = _units_for_word(sep)
         assert len(units) > 0
+
+
+def test_units_for_word_ignores_inverted_question_mark_separator():
+    # 「¿」(SEPARATOR_SYMBOLS、71番で追加)はITU国際モールス符号表に
+    # 割り当てが無いため、結合文字・装飾記号と同じく無視されること
+    # (音が壊れたり例外になったりしないことの回帰防止)。
+    assert "¿" not in MORSE_CODE
+    assert _units_for_word("¿") == []
 
 
 def test_units_for_word_empty_for_unmapped_only_input():

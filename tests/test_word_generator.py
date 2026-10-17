@@ -215,3 +215,42 @@ def test_random_pictograph_word_respects_length_range():
     for _ in range(50):
         word = random_pictograph_word(chars, n_chars=(5, 5))
         assert len(word) == 5
+
+
+def test_russian_historic_letters_are_assigned_codepoints():
+    # 1918年のロシア語正書法改革で廃止された文字(ѣ/і/ѳ/ѵ)の回帰防止確認
+    # (運営者要望、README「ハマった罠」71番)。espeak-ng(ruボイス)での
+    # 無音確認・Chromiumでの描画確認は実機で別途確認済み。
+    assert len(config.RUSSIAN_HISTORIC_LETTERS) > 0
+    for ch in config.RUSSIAN_HISTORIC_LETTERS:
+        assert unicodedata.category(ch) != "Cn", f"unassigned codepoint: {hex(ord(ch))}"
+
+
+def test_russian_voice_chars_include_historic_letters():
+    # config.VOICE_LANGUAGES["ru"]["chars"]にRUSSIAN_HISTORIC_LETTERSが
+    # 混ざっていることの回帰防止(random_script_word()経由で単語に登場する)。
+    ru_chars = config.VOICE_LANGUAGES["ru"]["chars"]
+    for ch in config.RUSSIAN_HISTORIC_LETTERS:
+        assert ch in ru_chars
+
+
+def test_separator_symbols_includes_inverted_question_mark():
+    # 「¿」(逆疑問符)の追加確認(運営者要望、README「ハマった罠」71番)。
+    # espeak-ngに単体で渡すと無音になることを実機確認済みだが、
+    # random_zalgo_word()では必ず発音できる本体を挟んで使われるため
+    # 単体で無音になる問題は起きない(下記テストで回帰防止)。
+    assert "¿" in config.SEPARATOR_SYMBOLS
+
+
+def test_random_zalgo_word_never_uses_inverted_question_mark_alone():
+    # 「¿」が区切り記号として選ばれても、必ず発音できる本体(BASE_CHARS由来
+    # の土台文字)を挟んで使われ、単体(無音)にはならないことの回帰防止。
+    random.seed(0)
+    seen_question_mark = False
+    for _ in range(200):
+        word = random_zalgo_word()
+        if "¿" in word:
+            seen_question_mark = True
+            stripped = word.replace("¿", "").strip()
+            assert any(ch in config.BASE_CHARS for ch in stripped), word
+    assert seen_question_mark, "テストの前提として「¿」が一度も選ばれなかった(シード値を見直す必要あり)"
