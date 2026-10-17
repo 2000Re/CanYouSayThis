@@ -302,6 +302,27 @@ def test_youtube_metadata_omits_playlist_link_when_not_given():
     assert "playlist?list=" not in description
 
 
+def test_youtube_metadata_description_contains_request_length_notice():
+    # 761文字という極端に長い--wordリクエストが来たことがきっかけで、
+    # 視聴者向けに文字数上限(80文字)を常に案内するようにした
+    # (README「ハマった罠」68番)。モードに関わらず常に含める。
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "80 characters or less" in description
+
+
+def test_youtube_metadata_comment_contains_request_length_notice():
+    # descriptionと同じ趣旨の案内を、運営者コメントにも常に自動投稿する
+    # (README「ハマった罠」68番)。
+    _title, _description, _tags, _caption, comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "80 characters max" in comment
+
+
+def test_youtube_metadata_comment_request_length_notice_also_applies_to_pictograph_word():
+    word = config.CUNEIFORM_CHARS[0] + config.CUNEIFORM_CHARS[1]
+    _title, _description, _tags, _caption, comment, _localizations = _youtube_metadata(word, word, "glitch")
+    assert "80 characters max" in comment
+
+
 def test_youtube_metadata_includes_playlist_link_when_given():
     _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", playlist_id="PLexample123"
@@ -613,11 +634,15 @@ def test_random_comment_text_omits_language_name_when_not_given():
 def test_youtube_metadata_comment_is_separate_from_caption():
     # comment_textはcaption_textの使い回しではなく、_random_comment_text()
     # で独立に選ばれる(2026-10-13の分離、caption_textは引き続き字幕専用)。
+    # 文字数上限の案内(80文字以内、README「ハマった罠」68番)が末尾に
+    # 常に付くため、比較前にその分を取り除く。
+    suffix = " Requests: 80 characters max, please! \U0001F4AC"
     expected = {template("voOn", None) for template in _COMMENT_TEMPLATES}
     _title, _description, _tags, caption, comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts"
     )
-    assert comment in expected
+    assert comment.endswith(suffix)
+    assert comment[: -len(suffix)] in expected
     assert comment != caption
 
 
