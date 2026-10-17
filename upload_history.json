@@ -3614,5 +3614,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "try_to_say"
+  },
+  {
+    "word": "𓈱𓄺𓆀𓁇",
+    "label": "𓈱𓄺𓆀𓁇",
+    "video_id": "uVlqyifkfWU",
+    "mode": "reverse",
+    "run_id": "38997284236",
+    "uploaded_at": "2026-10-17T03:04:22.827878+00:00",
+    "voice_label": "Uyghur (Male)",
+    "lang_code": "ug",
+    "title_template": "say_out_loud"
   }
 ]
