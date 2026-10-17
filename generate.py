@@ -92,6 +92,7 @@ from tts_synth import (
     synthesize_tts_chorus,
     synthesize_tts_echo_cave,
     synthesize_tts_extreme,
+    synthesize_tts_weird_strip,
     synthesize_tts_nightcore,
     synthesize_tts_reverse,
     synthesize_tts_robot,
@@ -117,6 +118,7 @@ from word_generator import (
 _SINGLE_VOICE_MODES = (
     "tts", "tts_extreme", "reverse", "robot_voice",
     "telephone", "slowed_reverb", "nightcore", "underwater", "8d_audio", "echo_cave",
+    "_oneoff_weird_strip",
 )
 
 
@@ -884,6 +886,11 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         synthesize_tts_8d_audio(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     elif actual_mode == "echo_cave":
         synthesize_tts_echo_cave(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
+    elif actual_mode == "_oneoff_weird_strip":
+        # 記号・結合文字混在の視聴者リクエストへの一回限りの対応用
+        # (tts_synth.py synthesize_tts_weird_strip()参照)。使い捨てブランチ
+        # 限定で、mainへは統合しない。
+        synthesize_tts_weird_strip(tts_word, raw_wav, voice=actual_voice, speed=speed, pitch=voice_pitch)
     else:
         raise ValueError(
             f"unknown mode: {actual_mode!r} "
@@ -1053,7 +1060,8 @@ def main():
     ap.add_argument("--mode", type=str,
                      choices=["tts", "tts_extreme", "glitch", "reverse", "robot_voice",
                               "chorus", "morse", "animalese", "telephone", "slowed_reverb",
-                              "nightcore", "underwater", "8d_audio", "echo_cave", "random"],
+                              "nightcore", "underwater", "8d_audio", "echo_cave", "random",
+                              "_oneoff_weird_strip"],
                      default=config.DEFAULT_MODE,
                      help="音声の作り方: tts=espeak-ngに単語を読ませる(デフォルト) / "
                           "tts_extreme=奇妙な声+極端なピッチ・速度+ffmpegの歪みフィルタで読ませる / "

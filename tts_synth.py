@@ -123,6 +123,45 @@ def synthesize_tts_extreme(word, wav_path, voice="en"):
         os.remove(filtered_wav)
 
 
+def synthesize_tts_weird_strip(word, wav_path, voice="en", speed=150, pitch=None):
+    """[--mode _oneoff_weird_strip] 絵文字・記号・結合文字(Zalgo風のアクセント
+    記号)が混在する視聴者リクエストへの一回限りの対応用。
+
+    espeak-ngは発音できない文字に遭遇すると、エラーにはならず単に無音を
+    挟む(_speakable_word()が楔形文字を除去するのと同じ理屈)。記号だけで
+    なく結合文字(Unicodeカテゴリ Mn/Mc/Me)自体も音を持たず、同様に無音を
+    生むことを実機確認したため、文字カテゴリがLetter(L*)のものだけを
+    読み上げに残す(結合文字・記号・スペース等は全て除去)。それでも
+    ボイスが対応していない文字(例: このボイスでは発音できないチベット
+    文字)由来の小さな無音が残る場合があるため、ffmpegのsilenceremoveで
+    完全に消さず少しだけ残す形で軽くトリムする(無音ゼロだと逆に発音が
+    詰まって不自然に聞こえることを確認したため)。
+
+    本チャンネルの恒久的な登録モードにする意図はなく、使い捨てブランチ
+    (claude/oneoff-weird-strip)でのみ使う想定。画面表示用のwordは加工前の
+    ままなので、動画フレーム上の見た目は変わらない(呼び出し側で別々に
+    扱う、_speakable_word()と同じ方針)。"""
+    import unicodedata
+
+    stripped = "".join(
+        ch for ch in word
+        if unicodedata.category(ch)[0] == "L" and ch not in "ðÐ"
+    )
+    raw_wav = wav_path + ".raw.wav"
+    synthesize_tts(stripped, raw_wav, voice=voice, speed=speed, pitch=pitch)
+    subprocess.run(
+        [
+            "ffmpeg", "-y", "-i", raw_wav,
+            "-af",
+            "silenceremove=start_periods=1:start_duration=0:start_threshold=-35dB:"
+            "stop_periods=-1:stop_duration=0.08:stop_threshold=-35dB:stop_silence=0.05",
+            wav_path,
+        ],
+        check=True, capture_output=True,
+    )
+    os.remove(raw_wav)
+
+
 def synthesize_tts_reverse(word, wav_path, voice="en", speed=150, pitch=None):
     """espeak-ngで単語を読ませた音声を、そのまま逆再生する [--mode reverse]。
 

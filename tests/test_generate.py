@@ -56,6 +56,7 @@ def test_single_voice_modes_excludes_multi_or_no_voice_modes():
     assert set(_SINGLE_VOICE_MODES) == {
         "tts", "tts_extreme", "reverse", "robot_voice",
         "telephone", "slowed_reverb", "nightcore", "underwater", "8d_audio", "echo_cave",
+        "_oneoff_weird_strip",
     }
     assert "glitch" not in _SINGLE_VOICE_MODES
     assert "chorus" not in _SINGLE_VOICE_MODES
