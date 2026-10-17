@@ -3603,5 +3603,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "how_to_pronounce"
+  },
+  {
+    "word": "banana",
+    "label": "banana",
+    "video_id": "RAaXdqmICAo",
+    "mode": "chorus",
+    "run_id": "38988988721",
+    "uploaded_at": "2026-10-17T01:06:14.448325+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "try_to_say"
   }
 ]
