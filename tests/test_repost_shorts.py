@@ -207,6 +207,23 @@ def test_build_repost_metadata_comment_includes_request_length_notice():
     assert pictograph_metadata["comment_text"].endswith(generate._REQUEST_LENGTH_NOTICE)
 
 
+def test_build_repost_metadata_sanitizes_symbol_characters_from_label():
+    # generate.py _youtube_metadata()と同じく、タイトル・コメントに使う
+    # labelから音楽記号・はさみ記号等のSymbol系文字を取り除く
+    # (README「ハマった罠」79番)。entry["label"]自体(サムネイル表示用に
+    # 別途使われる)は変更しないことも確認する。
+    label = "\U0001D1DA✂iv"  # 音楽記号+はさみ記号+通常の文字
+    entry = {
+        "word": label, "label": label, "mode": "glitch",
+        "voice_label": None, "lang_code": None,
+    }
+    metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
+    assert "✂" not in metadata["title"]
+    assert "\U0001D1DA" not in metadata["title"]
+    assert "iv" in metadata["title"]
+    assert entry["label"] == label  # entry自体は変更しない(サムネイル用)
+
+
 def test_build_repost_metadata_omits_word_for_pictograph_entry():
     # 楔形文字等(generate._is_pictograph_word()参照)はYouTube自身のフォントが
     # 対応しておらずタイトル等に生で埋め込むと「豆腐」になるため(2026-10-14に

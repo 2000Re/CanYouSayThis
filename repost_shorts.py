@@ -89,6 +89,7 @@ from generate import (
     _random_comment_text,
     _random_pictograph_comment_text,
     _resolve_title_template,
+    _sanitize_label_for_display,
 )
 from jst_time import jst_timestamp
 from repost_state import (
@@ -243,7 +244,12 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
     コメントに単語そのものを埋め込まない(generate.py _youtube_metadata()
     のdocstring参照。YouTube自身のフォントがこれらの文字体系に対応しておらず
     「豆腐」になるため)。"""
-    label = entry["label"]
+    # タイトル・コメントで豆腐/意図しない絵文字表示にならないよう
+    # Symbol系文字を取り除く(generate.py _sanitize_label_for_display()、
+    # README「ハマった罠」79番)。サムネイル(entry["label"]を直接使う
+    # build_thumbnail()呼び出し)はこのローカル変数とは別経路のため、
+    # 崩れた単語の見た目には影響しない。
+    label = _sanitize_label_for_display(entry["label"])
     mode = entry.get("mode", "")
     mode_label = config.MODE_LABELS.get(mode, mode)
     lang_code = entry.get("lang_code")

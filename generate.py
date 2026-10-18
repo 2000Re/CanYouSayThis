@@ -78,6 +78,7 @@ import argparse
 import os
 import random
 import sys
+import unicodedata
 
 import config
 from animalese_synth import synthesize_animalese
@@ -219,6 +220,29 @@ def _random_comment_text(label, lang_label):
 # にだけ付かないという不整合があった(運営者からの指摘で発覚、README
 # 「ハマった罠」76番)。
 _REQUEST_LENGTH_NOTICE = " Requests: 80 characters max, please! \U0001F4AC"
+
+# readable_label()が残す「結合文字を除いた土台の文字」には、音楽記号・
+# チェス駒記号・はさみ記号等のSymbol系文字も含まれうる(視聴者リクエストの
+# バムン文字+チェスのクイーン記号+音楽記号混在の単語で発覚)。これらは
+# YouTube自身のタイトル表示フォントが対応しておらず「❓」(豆腐)になるか、
+# はさみ記号(✂)のように意図せず絵文字として表示されてしまう
+# (README「ハマった罠」79番)。動画フレーム(サムネイル)は別経路
+# (frame_label/zalgo_display_word())でこの処理を通さないため、崩れた
+# 単語の見た目自体には影響しない。
+_SAFE_LABEL_PUNCTUATION = set("!?.,:;'\"()-_/\\ ")
+
+
+def _sanitize_label_for_display(label):
+    """タイトル・字幕・コメントに使うlabelから、Letter/Number以外の
+    Symbol系Unicodeカテゴリ(Sm/Sc/Sk/So。音楽記号・チェス駒記号・はさみ
+    記号等)を取り除く。安全なASCII記号・空白(_SAFE_LABEL_PUNCTUATION)は
+    残す。全て取り除かれて空になった場合はreadable_label()と同じ
+    フォールバックで"???"を返す。"""
+    kept = [
+        ch for ch in label
+        if unicodedata.category(ch)[0] in ("L", "N") or ch in _SAFE_LABEL_PUNCTUATION
+    ]
+    return "".join(kept).strip() or "???"
 
 
 # 楔形文字・エジプト/アナトリア象形文字・線文字B(config.PICTOGRAPH_SCRIPTS)の
@@ -473,6 +497,10 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     sentence_snippet = _sentence_title_snippet(word)
     if sentence_snippet is not None:
         label = sentence_snippet
+    # タイトル・字幕・コメントで豆腐/意図しない絵文字表示にならないよう
+    # Symbol系文字を取り除く(README「ハマった罠」79番、_sanitize_label_
+    # for_display()参照)。動画フレームの見た目には影響しない。
+    label = _sanitize_label_for_display(label)
 
     mode_label = config.MODE_LABELS.get(mode, mode)
     if is_pictograph_script:
