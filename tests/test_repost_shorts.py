@@ -2,6 +2,7 @@
 select_targets() に対するユニットテスト。requests.getをモックし、実際の
 GitHub API呼び出しは行わない(軽いテストのみ)。"""
 
+import random
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -87,10 +88,12 @@ def test_build_repost_metadata_mirrors_short_title_without_shorts_tag():
     }
     metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
 
-    # title_templateが記録されていない(機能追加前の)エントリは
-    # "how_to_pronounce"にフォールバックする。lang_labelが無いこの
-    # テンプレートは"?"を付けない(generate.py _lang_suffixed()参照)。
-    assert metadata["title"] == 'How to Pronounce "abc123"'
+    # title_templateが記録されていない(機能追加前の)エントリは、
+    # generate.py側と同じ重み付けランダム選択で言い回しを選ぶため
+    # (README「ハマった罠」77番)、全テンプレートのいずれかと一致することを
+    # 確認する。
+    expected_titles = {template("abc123", None) for template in generate._TITLE_TEMPLATES.values()}
+    assert metadata["title"] in expected_titles
     assert "#Shorts" not in metadata["title"]
     assert "#Shorts" not in metadata["description"]
     assert "https://youtu.be/xyz" in metadata["description"]
@@ -121,6 +124,25 @@ def test_build_repost_metadata_skips_language_suffix_for_english():
     entry = {"word": "abc", "label": "abc", "mode": "tts", "voice_label": None, "lang_code": "en"}
     metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
     assert "in English" not in metadata["title"]
+
+
+def test_build_repost_metadata_without_recorded_title_template_varies_across_calls():
+    # title_templateが記録されていない古いエントリ(2026-10-18時点で
+    # upload_history.jsonの424件中360件が該当)を再投稿すると、以前は常に
+    # "how_to_pronounce"固定だったため、バックログの再投稿分でタイトルの
+    # 言い回しがほとんど多様化していなかった(運営者の指摘で発覚、README
+    # 「ハマった罠」77番)。generate.py _resolve_title_template("random")を
+    # 使うようになったことで複数パターンに分散することを確認する。
+    random.seed(0)
+    entry = {
+        "word": "abc123", "label": "abc123", "mode": "glitch",
+        "voice_label": None, "lang_code": None,
+    }
+    titles = {
+        repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")["title"]
+        for _ in range(100)
+    }
+    assert len(titles) > 1
 
 
 def test_build_repost_metadata_uses_recorded_title_template():

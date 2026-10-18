@@ -1389,6 +1389,28 @@ assets/
     `build_repost_metadata()`の両方から参照するようにして、今後また
     どちらか一方だけ更新されて不整合が起きないようにした。
 
+77. **運営者から、通常動画のタイトルが「How to Pronounce」ばかりに
+    感じると指摘があった**: 実際に確認すると、同じ時間帯に投稿された
+    8件の通常動画のうち6件が「How to Pronounce」だった。
+
+    調査したところ、`upload_history.json`の424件中360件は、タイトルの
+    言い回し(`title_template`)を記録する機能を追加する前にアップロード
+    された古いエントリだった。`repost_shorts.py`の`build_repost_metadata()`
+    は、元Shortsの`title_template`が記録されていればそれに揃えるが
+    (ユーザーからの「通常動画もhow to pronounce以外になるか」という以前の
+    問いへの対応、現在のコメント参照)、記録が無い場合は常に固定で
+    `"how_to_pronounce"`にフォールバックしていた。
+
+    再投稿(repost)処理は主にこの古いバックログ(記録の無いエントリ)を
+    順次処理しているため、通常動画のタイトルがほぼ毎回「How to
+    Pronounce」になってしまい、2026-10-13に運営者の指示で均等配分へ
+    変更した言い回しローテーション方針(`config.TITLE_TEMPLATE_WEIGHTS`、
+    「reused content」判定対策)が通常動画側では実質機能していなかった。
+
+    固定フォールバックを`generate.py`の`_resolve_title_template("random")`
+    (重み付けランダム選択、generate.py側の通常生成と同じロジック)に
+    差し替え、記録の無い古いエントリでも言い回しが分散するようにした。
+
 ## プロジェクト構成
 
 ```
