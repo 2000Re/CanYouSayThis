@@ -88,6 +88,7 @@ from generate import (
     _mode_genre_suffix,
     _random_comment_text,
     _random_pictograph_comment_text,
+    _resolve_title_template,
 )
 from jst_time import jst_timestamp
 from repost_state import (
@@ -225,8 +226,15 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
 
     タイトルの言い回し(generate.py _TITLE_TEMPLATES参照)も、元Shortsが
     実際に使ったもの(entry["title_template"])と揃える。これが記録されて
-    いない古いエントリ(この項目を追加する前にアップロードされた回)は
-    "how_to_pronounce"にフォールバックする(generate.py側の既定の言い回し)。
+    いない古いエントリ(この項目を追加する前にアップロードされた回。
+    2026-10-18時点でupload_history.jsonの424件中360件が該当)は、
+    generate.py側と同じ重み付けランダム選択(_resolve_title_template()、
+    config.TITLE_TEMPLATE_WEIGHTS)で選ぶ。以前は固定で"how_to_pronounce"に
+    フォールバックしていたが、再投稿処理がこの古いバックログを中心に
+    処理しているため、通常動画のタイトルがほぼ毎回「How to Pronounce」に
+    偏ってしまい、2026-10-13に均等配分へ変更した言い回しローテーション
+    方針(config.py参照)が通常動画側では実質機能していなかった(運営者の
+    指摘で発覚、README「ハマった罠」77番)。
 
     nightcore/8d_audio/slowed_reverbのいずれかのモードの場合、タイトル末尾
     のジャンル名も同様に揃える(generate.py _mode_genre_suffix()参照)。
@@ -246,7 +254,7 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
     if is_pictograph_script:
         title = _PICTOGRAPH_TITLE
     else:
-        title_template = entry.get("title_template") or "how_to_pronounce"
+        title_template = entry.get("title_template") or _resolve_title_template("random")
         title = _TITLE_TEMPLATES[title_template](label, lang_label)
     title += _mode_genre_suffix(mode)
 
