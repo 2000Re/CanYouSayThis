@@ -318,6 +318,32 @@ def test_strip_unspeakable_foreign_script_keeps_latin1_supplement_letters():
     assert strip_unspeakable_foreign_script(word, "en") == word
 
 
+def test_strip_unspeakable_foreign_script_removes_bamum_letters():
+    # 視聴者からの--wordリクエスト(バムン文字+チェスのクイーン記号+
+    # エジプト聖刻文字の混在)で、バムン文字(カメルーンの文字体系)が
+    # 本チャンネルのどのボイスの文字テーブルにも無く、espeak-ngが
+    # Unicodeコードポイントを数字読み上げしてしまうことが発覚した
+    # (README「ハマった罠」78番)。対応するボイスが存在しないため、
+    # どのボイスでも常に取り除く。
+    word = "hi\U00016936\U00016940bye"  # "hi𖤶𖥀bye"
+    assert strip_unspeakable_foreign_script(word, "en") == "hibye"
+    assert strip_unspeakable_foreign_script(word, "ru") == "hibye"
+    assert strip_unspeakable_foreign_script(word, "cmn") == "hibye"
+
+    # Bamum基本ブロック(U+A6A0-A6FF)も同様に取り除く
+    assert strip_unspeakable_foreign_script("aꚠb꛿c", "en") == "abc"
+
+
+def test_strip_unspeakable_foreign_script_keeps_musical_symbols_and_dingbats():
+    # 音楽記号(Musical Symbols)は実機確認で全件無音、その他記号
+    # (Miscellaneous Symbols)・装飾記号(Dingbats)も大半が無音か実際の
+    # 意味の単語読み("☀"→"sun"等)であり、ラテン文字拡張・バムン文字の
+    # ような「コードポイントの数字読み上げ」の罠とは異なる正常な動作
+    # だったため対象外のまま(README「ハマった罠」78番)。
+    word = "hi\U0001D1DA✂bye"  # "hi𝇚✂bye"(音楽記号+はさみ記号)
+    assert strip_unspeakable_foreign_script(word, "en") == word
+
+
 def test_synthesize_tts_chorus_strips_cjk_only_for_non_chinese_voices(monkeypatch, tmp_path):
     # chorusは複数ボイスを内部で選ぶため、CJK統合漢字混じりの単語でも
     # ボイスごとに正しく判定され、中国語系ボイスが選ばれた回だけ漢字が
