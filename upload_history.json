@@ -3713,5 +3713,16 @@
     "voice_label": "Finnish (Male)",
     "lang_code": "fi",
     "title_template": "impossible_to_say"
+  },
+  {
+    "word": "u҆҄҉҉mmmmmo҄҃҈I᷽᷷᷉ᷝ᷅᷉᷌ᷘ᷼᷼r᷻ᷡ᷃ᷕo ✪",
+    "label": "u҉҉mmmmmo҈Ir...",
+    "video_id": "kOVOe-PIgE4",
+    "mode": "glitch",
+    "run_id": "39161526287",
+    "uploaded_at": "2026-10-18T20:04:30.589666+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "can_you_say"
   }
 ]
