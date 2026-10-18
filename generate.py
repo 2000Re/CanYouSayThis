@@ -211,6 +211,16 @@ def _random_comment_text(label, lang_label):
     return random.choice(_COMMENT_TEMPLATES)(label, lang_label)
 
 
+# 761文字という極端に長い--wordリクエストが来たことがきっかけで追加した
+# 文字数上限の案内(README「ハマった罠」68番)。_youtube_metadata()
+# (通常のShorts投稿)・repost_shorts.py build_repost_metadata()(Shortsを
+# 通常動画に変換して再投稿する際のコメント)の両方で共通して使う定数化
+# したもの。以前はrepost_shorts.py側にこの注記が無く、再投稿されたコメント
+# にだけ付かないという不整合があった(運営者からの指摘で発覚、README
+# 「ハマった罠」76番)。
+_REQUEST_LENGTH_NOTICE = " Requests: 80 characters max, please! \U0001F4AC"
+
+
 # 楔形文字・エジプト/アナトリア象形文字・線文字B(config.PICTOGRAPH_SCRIPTS)の
 # 単語は、動画のフレーム画像(このプロジェクト自身のChromium+Notoフォントで
 # 描画)では問題無く表示されるが、タイトル・説明欄・字幕・コメントの
@@ -557,7 +567,7 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     # 視聴画面のコメント欄プレビューの行数制限で「実在の単語ではない」の
     # 注記ごと切り詰められてしまう(本関数前述のコメント参照)ため、
     # 追加分は最小限の長さ(40文字弱)に抑えている。
-    comment_text += " Requests: 80 characters max, please! \U0001F4AC"
+    comment_text += _REQUEST_LENGTH_NOTICE
 
     # タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド)。
     # YouTube側の視聴環境が日本語の視聴者には、通常のtitle/descriptionの

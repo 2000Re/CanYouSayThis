@@ -1369,6 +1369,26 @@ assets/
     単位では問題の無い残り144件も含めてブロックごと除外しているが、
     本チャンネルの単語生成はこれらのブロックを元々使わないため実害は無い。
 
+76. **運営者から、Shortsを自動投稿しているコメントの一部に「80文字以内で
+    リクエストしてください」という案内文が無いと指摘があった**:
+    スクリーンショットで確認すると、同じ時間帯に投稿された4件のコメントの
+    うち3件に案内文が無く、1件にだけ付いていた。
+
+    調査したところ、`generate.py`の`_youtube_metadata()`(通常のShorts
+    投稿用)はコメント文面の末尾に68番で追加した「Requests: 80 characters
+    max, please! 💬」を無条件で付けているが、`repost_shorts.py`の
+    `build_repost_metadata()`(Shortsを通常動画に変換して再投稿する処理)は
+    同じ`_random_comment_text()`/`_random_pictograph_comment_text()`を
+    使ってコメント文面を組み立てているものの、この案内文を追加していな
+    かった。そのため、通常のShorts投稿のコメントには必ず付くのに、
+    再投稿(repost)された動画のコメントには付かない、という不整合が
+    起きていた(68番の対応時にrepost_shorts.py側の追従が漏れていた)。
+
+    「80文字以内で」の文言を`generate.py`の`_REQUEST_LENGTH_NOTICE`定数に
+    切り出し、`_youtube_metadata()`・`repost_shorts.py`
+    `build_repost_metadata()`の両方から参照するようにして、今後また
+    どちらか一方だけ更新されて不整合が起きないようにした。
+
 ## プロジェクト構成
 
 ```
