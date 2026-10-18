@@ -3669,5 +3669,16 @@
     "voice_label": "French (Male)",
     "lang_code": "fr",
     "title_template": "can_you_pronounce"
+  },
+  {
+    "word": "banana",
+    "label": "banana",
+    "video_id": "L0pOjsrvKsU",
+    "mode": "_oneoff_banana_destroyed",
+    "run_id": "39081170635",
+    "uploaded_at": "2026-10-18T00:06:11.572291+00:00",
+    "voice_label": null,
+    "lang_code": "en",
+    "title_template": "pronunciation_challenge"
   }
 ]
