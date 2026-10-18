@@ -14,9 +14,11 @@
 単語の内容とは無関係な合成音を当てるglitch_synth.py/morse_synth.pyとは
 性質が異なる。"""
 
+import array
 import os
 import random
 import subprocess
+import wave
 
 import config
 from audio_utils import _probe_duration, _stretch_to_min_duration
@@ -428,3 +430,97 @@ def synthesize_tts_echo_cave(word, wav_path, voice="en", speed=150, pitch=None):
         capture_output=True,
     )
     os.remove(raw_wav)
+
+
+def _granular_shuffle_reverse(src_path, dst_path, chunk_ms=35):
+    """16bit PCM wavを細切れ(chunk_ms単位)にして、各断片を逆再生したうえで
+    順序をシャッフルする(numpy非依存、標準ライブラリのwave/arrayのみ使用)。
+    音素の並び自体を破壊するための処理で、ffmpegのフィルタだけでは
+    「元の単語の音の並び」が残ってしまい聞き取れてしまうことに対応するため
+    (運営者要望「もっともっと崩してください」)。"""
+    with wave.open(src_path, "rb") as wf:
+        sr = wf.getframerate()
+        n_channels = wf.getnchannels()
+        sampwidth = wf.getsampwidth()
+        raw = wf.readframes(wf.getnframes())
+    assert sampwidth == 2, f"16bit PCM以外は未対応: sampwidth={sampwidth}"
+
+    samples = array.array("h")
+    samples.frombytes(raw)
+    frame_count = len(samples) // n_channels
+    chunk_frames = max(1, int(sr * chunk_ms / 1000))
+
+    chunks = []
+    for i in range(0, frame_count, chunk_frames):
+        start, end = i * n_channels, min(frame_count, i + chunk_frames) * n_channels
+        frame_values = samples[start:end]
+        frames = [frame_values[j:j + n_channels] for j in range(0, len(frame_values), n_channels)]
+        frames.reverse()
+        chunk = array.array("h")
+        for frame in frames:
+            chunk.extend(frame)
+        chunks.append(chunk)
+    random.shuffle(chunks)
+
+    out = array.array("h")
+    for chunk in chunks:
+        out.extend(chunk)
+
+    with wave.open(dst_path, "wb") as wf:
+        wf.setnchannels(n_channels)
+        wf.setsampwidth(sampwidth)
+        wf.setframerate(sr)
+        wf.writeframes(out.tobytes())
+
+
+def synthesize_oneoff_banana_destroyed(word, wav_path, voice="en"):
+    """視聴者リクエスト「banana」への一回限りの対応用 [--mode
+    _oneoff_banana_destroyed]。「bananaと聞こえないようにしてほしい(どんな
+    音になってもよい)」という要望に対し、tts_extreme -> 逆再生 -> 細切れに
+    して逆再生+シャッフル(グラニュラー、_granular_shuffle_reverse()参照) ->
+    リング変調(robot_voice相当) -> ビットクラッシュ+ピッチシフト+
+    フランジャー+トレモロ、の順で重ねて元の音素の並びごと破壊する。
+
+    使い捨てブランチ(claude/oneoff-banana-destroyed)限定の一回限りモードで、
+    mainへは統合しない。"""
+    extreme_wav = wav_path + ".01_extreme.wav"
+    synthesize_tts_extreme(word, extreme_wav, voice=voice)
+
+    reversed_wav = wav_path + ".02_reversed.wav"
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", extreme_wav, "-af", "areverse", reversed_wav],
+        check=True, capture_output=True,
+    )
+    os.remove(extreme_wav)
+
+    granular_wav = wav_path + ".03_granular.wav"
+    _granular_shuffle_reverse(reversed_wav, granular_wav, chunk_ms=35)
+    os.remove(reversed_wav)
+
+    duration = _probe_duration(granular_wav)
+    carrier_freq = random.randint(150, 400)
+    robot_wav = wav_path + ".04_robot.wav"
+    carrier_src = f"sine=frequency={carrier_freq}:duration={duration}"
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-i", granular_wav,
+            "-f", "lavfi", "-i", carrier_src,
+            "-filter_complex", "[0:a][1:a]amultiply,volume=10,alimiter=limit=0.95[out]",
+            "-map", "[out]", robot_wav,
+        ],
+        check=True, capture_output=True,
+    )
+    os.remove(granular_wav)
+
+    pitch_factor = random.choice([0.6, 0.65, 1.5, 1.6])
+    mangle_filter = (
+        f"acrusher=bits=3:mode=lin:aa=0,"
+        f"asetrate=44100*{pitch_factor},atempo={1 / pitch_factor},"
+        "aresample=44100,flanger,tremolo=f=12:d=0.8"
+    )
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", robot_wav, "-af", mangle_filter, wav_path],
+        check=True, capture_output=True,
+    )
+    os.remove(robot_wav)
