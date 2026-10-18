@@ -453,3 +453,19 @@ def synthesize_tts_echo_cave(word, wav_path, voice="en", speed=150, pitch=None):
         capture_output=True,
     )
     os.remove(raw_wav)
+
+
+def synthesize_oneoff_ne62d_extreme_reverse(word, wav_path, voice="en"):
+    """視聴者リクエスト「Në$62ḑ」への一回限りの対応用 [--mode
+    _oneoff_ne62d_extreme_reverse]。「もっと崩してほしい」という要望に
+    対し、tts_extreme -> 逆再生の2段構成で重ねる。使い捨てブランチ
+    (claude/oneoff-ne62d-extreme-reverse)限定のモードで、mainへは統合
+    しない。"""
+    extreme_wav = wav_path + ".01_extreme.wav"
+    synthesize_tts_extreme(word, extreme_wav, voice=voice)
+
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", extreme_wav, "-af", "areverse", wav_path],
+        check=True, capture_output=True,
+    )
+    os.remove(extreme_wav)
