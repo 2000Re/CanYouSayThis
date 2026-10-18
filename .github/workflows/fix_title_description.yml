@@ -1,0 +1,36 @@
+name: fix-title-description
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_ids:
+        description: "修正対象の動画ID(カンマ区切り、例: ABC123,DEF456)"
+        required: true
+
+jobs:
+  fix-title-description:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Fix title/description
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+        run: |
+          # 動画IDは "-" で始まることがあり、先頭のIDがそうだと
+          # "--video-ids VALUE"(空白区切り)ではargparseがVALUEを新しい
+          # オプションだと誤認してエラーになる(youtube_fix_localization.yml
+          # と同じ理由、"--video-ids=VALUE"の形で回避する)。
+          python3 youtube_fix_title_description.py --video-ids="${{ inputs.video_ids }}"
