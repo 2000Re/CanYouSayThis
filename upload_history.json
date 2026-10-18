@@ -3682,6 +3682,17 @@
     "title_template": "can_you_say"
   },
   {
+    "word": "шгрооооп",
+    "label": "шгрооооп",
+    "video_id": "o_kc9wvH_Jc",
+    "mode": "tts",
+    "run_id": "39112607164",
+    "uploaded_at": "2026-10-18T08:50:01.013616+00:00",
+    "voice_label": null,
+    "lang_code": "ru",
+    "title_template": "can_you_say"
+  },
+  {
     "word": "¿V֛֤֥֪֠vvvvļ̶̨͍̫̤r᷑ᷟᷤO҃҉҉҇҉҅҅҅҈( ✵ ❉ ✰",
     "label": "¿VvvvvlrO҉҉҉...",
     "video_id": "jdwbfK4GdxU",
@@ -3724,5 +3735,60 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "can_you_say"
+  },
+  {
+    "word": "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch",
+    "label": "Llanfairpwll...",
+    "video_id": "lTX2NYJwkAw",
+    "mode": "tts",
+    "run_id": "39169849440",
+    "uploaded_at": "2026-10-18T21:59:07.169840+00:00",
+    "voice_label": null,
+    "lang_code": "en",
+    "title_template": "say_out_loud"
+  },
+  {
+    "word": "𒐖𒀀𒋫 𒊭𒉌𒅗𒉌 𒁹𒄀𒂗𒍪",
+    "label": "𒐖𒀀𒋫 𒊭𒉌𒅗𒉌 𒁹𒄀𒂗...",
+    "video_id": "s2fiKx7KIiA",
+    "mode": "glitch",
+    "run_id": "39169886020",
+    "uploaded_at": "2026-10-18T22:04:20.593998+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "nobody_can_pronounce"
+  },
+  {
+    "word": "!uhUYIHeyoooooooq rb ,HIHih oyoy",
+    "label": "!uhUYIHeyooo...",
+    "video_id": "KfB4f_-Oj20",
+    "mode": "animalese",
+    "run_id": "39171080118",
+    "uploaded_at": "2026-10-18T22:16:06.745367+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "nobody_can_pronounce"
+  },
+  {
+    "word": "𖤶𖥀𖥂𖥃𖥓𖥸♕𓐭",
+    "label": "𖤶𖥀𖥂𖥃𖥓𖥸♕𓐭",
+    "video_id": "8HzAqFH-rO4",
+    "mode": "glitch",
+    "run_id": "39171593552",
+    "uploaded_at": "2026-10-18T22:23:11.923478+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "can_you_say"
+  },
+  {
+    "word": "𝇚✂𝅘𝅥𝅲⚷⚷i̴͙̺͚͈͓̗̓̇͐̍̑̓͌̒̅͘͜͠ͅǫ̷̨̘̞͗͗͛̅͝ú̶̙͚̥̑̐͛̽ụ̴̡̦̻̿̍̈́̀̐̃͑͑̌̒͘ủ̵͍̼͎̩͚̪̱̘͉̣̀̃͑v̴̡̺̼̙̺͔̻̟͉̖̖̇̇̂̽͆̐͒̔̒͝",
+    "label": "𝇚✂𝅘⚷⚷iǫúụủv",
+    "video_id": "4g9u-Y21hqo",
+    "mode": "glitch",
+    "run_id": "39172110482",
+    "uploaded_at": "2026-10-18T22:29:58.183746+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "is_pronounceable"
   }
 ]
