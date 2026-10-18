@@ -3746,5 +3746,16 @@
     "voice_label": null,
     "lang_code": "en",
     "title_template": "say_out_loud"
+  },
+  {
+    "word": "𒐖𒀀𒋫 𒊭𒉌𒅗𒉌 𒁹𒄀𒂗𒍪",
+    "label": "𒐖𒀀𒋫 𒊭𒉌𒅗𒉌 𒁹𒄀𒂗...",
+    "video_id": "s2fiKx7KIiA",
+    "mode": "glitch",
+    "run_id": "39169886020",
+    "uploaded_at": "2026-10-18T22:04:20.593998+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "nobody_can_pronounce"
   }
 ]
