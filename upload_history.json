@@ -3680,5 +3680,16 @@
     "voice_label": "Icelandic (Female)",
     "lang_code": "is",
     "title_template": "can_you_say"
+  },
+  {
+    "word": "N̶̝͕̯̘͜͝ë̵̢͔̦͙̳́$̴͔̻̗̩̭͑͛͂̄6̴̯̞͑͘͜͝ͅ2̴͇̗̊͆̉̍̑͘ḑ̶̺̝̙͕͈̀̌̈̒̊͝͠",
+    "label": "Në$62ḑ",
+    "video_id": "83QI6HS9bhY",
+    "mode": "_oneoff_ne62d_extreme_reverse",
+    "run_id": "39086112568",
+    "uploaded_at": "2026-10-18T01:25:30.633180+00:00",
+    "voice_label": null,
+    "lang_code": "en",
+    "title_template": "say_out_loud"
   }
 ]
