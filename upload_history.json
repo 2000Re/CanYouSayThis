@@ -3702,5 +3702,16 @@
     "voice_label": "Arabic (Male)",
     "lang_code": "ar",
     "title_template": "pronunciation_challenge"
+  },
+  {
+    "word": "I᷹ᷜ᷉᷅᷵a҅҄҄҈҇҈҃҆҈ooovv ❀ ◜",
+    "label": "Ia҈҈҈ooovv ❀...",
+    "video_id": "yVrBUibhs7o",
+    "mode": "robot_voice",
+    "run_id": "39138722177",
+    "uploaded_at": "2026-10-18T15:04:28.412325+00:00",
+    "voice_label": "Finnish (Male)",
+    "lang_code": "fi",
+    "title_template": "impossible_to_say"
   }
 ]
