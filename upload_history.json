@@ -3691,5 +3691,16 @@
     "voice_label": "Finnish (Male)",
     "lang_code": "fi",
     "title_template": "can_you_pronounce"
+  },
+  {
+    "word": "ؼققققهر",
+    "label": "ؼققققهر",
+    "video_id": "DmFndBbMqcc",
+    "mode": "8d_audio",
+    "run_id": "39121670150",
+    "uploaded_at": "2026-10-18T11:04:10.627164+00:00",
+    "voice_label": "Arabic (Male)",
+    "lang_code": "ar",
+    "title_template": "pronunciation_challenge"
   }
 ]
