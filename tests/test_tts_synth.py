@@ -294,6 +294,30 @@ def test_strip_unspeakable_foreign_script_kazakh_voice_keeps_cyrillic_characters
     assert strip_unspeakable_foreign_script(word, "kk+f3") == word
 
 
+def test_strip_unspeakable_foreign_script_removes_extended_latin_letters():
+    # 視聴者からの--wordリクエスト(結合文字混じりの単語)で、ラテン文字拡張
+    # 追加ブロック(U+1E11 "ḑ" = d with cedilla)が本チャンネルのどのボイス
+    # の文字テーブルにも無く、espeak-ngがUnicodeコードポイントを数字読み
+    # 上げしてしまうこと、さらにその上に乗っていた結合文字(本来無音)まで
+    # 連鎖的に読み上げられてしまうことが発覚した(README「ハマった罠」
+    # 75番)。対応するボイスが存在しないため、どのボイスでも常に取り除く。
+    word = "hiḑbye"  # "hiḑbye"
+    assert strip_unspeakable_foreign_script(word, "en") == "hibye"
+    assert strip_unspeakable_foreign_script(word, "ru") == "hibye"
+    assert strip_unspeakable_foreign_script(word, "cmn") == "hibye"
+
+    # Latin Extended-A/B/Additionalの他のコードポイントも同様に取り除く
+    assert strip_unspeakable_foreign_script("aƀbɏcỿ", "en") == "abc"
+
+
+def test_strip_unspeakable_foreign_script_keeps_latin1_supplement_letters():
+    # Latin-1 Supplement(ë等の一般的なウムラウト/アクセント文字)は今回の
+    # 罠の対象ブロック外であり、espeak-ngが正しく発音できることを実機
+    # 確認済みのため、引き続き取り除かれないことの回帰防止。
+    word = "café naïve"  # "café naïve"
+    assert strip_unspeakable_foreign_script(word, "en") == word
+
+
 def test_synthesize_tts_chorus_strips_cjk_only_for_non_chinese_voices(monkeypatch, tmp_path):
     # chorusは複数ボイスを内部で選ぶため、CJK統合漢字混じりの単語でも
     # ボイスごとに正しく判定され、中国語系ボイスが選ばれた回だけ漢字が
