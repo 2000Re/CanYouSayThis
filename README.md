@@ -545,6 +545,26 @@ python3 youtube_fix_localization.py --video-ids ABC123,DEF456
 組み立て直します。既に新形式・`localizations.ja`が無い動画はスキップ。
 追加スコープ不要。GitHub Actionsは`fix_localization.yml`。
 
+## タイトル・説明欄に記号文字が紛れ込んだ動画の手動修正(`youtube_fix_title_description.py`)
+
+「ハマった罠」79番の対策(`_sanitize_label_for_display()`)は新規
+アップロード分にしか効かないため、対策前に公開した動画(音楽記号・
+チェス駒記号・はさみ記号等が紛れ込み、YouTube自身のタイトル表示フォント
+で豆腐や意図しない絵文字になっていた回)を個別に直すツールです。
+
+```bash
+python3 youtube_fix_title_description.py --video-ids ABC123,DEF456
+```
+
+`upload_history.json`に記録されているword/label/mode/lang_code/
+voice_label/title_templateから、現在の`generate.py` `_youtube_metadata()`
+(修正済み)でtitle/description/localizationsを組み立て直し、`videos.update`
+します。概要欄の再生リストリンクは記録が無いため、現在ライブの概要欄から
+正規表現で抽出して引き継ぎます。`title_template`が記録されていない古い
+エントリ(「ハマった罠」77番)は元の言い回しを再現できないためスキップ。
+既に最新の内容と一致する動画もスキップ。追加スコープ不要。GitHub Actions
+は`fix_title_description.yml`。
+
 ## YouTubeチャンネル用アセット(アイコン・バナー)
 
 ```bash
