@@ -28,6 +28,7 @@ from generate import (
     _resolve_mode,
     _resolve_title_template,
     _resolve_voice,
+    _sanitize_label_for_display,
     _sentence_title_snippet,
     _speakable_word,
     _unposted_lang_codes,
@@ -323,6 +324,39 @@ def test_youtube_metadata_comment_request_length_notice_also_applies_to_pictogra
     word = config.CUNEIFORM_CHARS[0] + config.CUNEIFORM_CHARS[1]
     _title, _description, _tags, _caption, comment, _localizations = _youtube_metadata(word, word, "glitch")
     assert "80 characters max" in comment
+
+
+def test_sanitize_label_for_display_removes_symbol_category_characters():
+    # 視聴者リクエスト(バムン文字+チェスのクイーン記号+音楽記号混在)で、
+    # タイトルに音楽記号・チェス駒記号・はさみ記号等が紛れ込み、YouTube自身
+    # のタイトル表示フォントで豆腐(❓)や意図しない絵文字表示になることが
+    # 発覚した(README「ハマった罠」79番)。Letter/Number以外のSymbol系
+    # Unicodeカテゴリを取り除くことの回帰防止。
+    label = "\U0001D1DA✂\U0001D158\U0001D165\U0001D172⚷⚷iǫúụủv"
+    assert _sanitize_label_for_display(label) == "iǫúụủv"
+
+
+def test_sanitize_label_for_display_keeps_safe_ascii_punctuation_and_spaces():
+    # animaleseモード等、--wordで文章丸ごとのリクエストが来た場合でも、
+    # 感嘆符・カンマ・空白のような通常のASCII記号は豆腐/絵文字化しない
+    # ため残す。
+    label = "!uhUYIHeyoooooooq rb ,HIHih oyoy"
+    assert _sanitize_label_for_display(label) == label
+
+
+def test_sanitize_label_for_display_falls_back_to_question_marks_when_empty():
+    assert _sanitize_label_for_display("✂⚷") == "???"
+
+
+def test_youtube_metadata_title_excludes_symbol_characters_from_label():
+    label = "\U0001D1DA✂iv"  # 音楽記号+はさみ記号+通常の文字
+    title, _description, _tags, caption, comment, _localizations = _youtube_metadata(
+        label, label, "glitch"
+    )
+    for text in (title, caption, comment):
+        assert "✂" not in text
+        assert "\U0001D1DA" not in text
+        assert "iv" in text
 
 
 def test_youtube_metadata_includes_playlist_link_when_given():
