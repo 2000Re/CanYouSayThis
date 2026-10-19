@@ -348,6 +348,17 @@ def test_sanitize_label_for_display_keeps_non_symbol_punctuation():
     assert _sanitize_label_for_display(label) == label
 
 
+def test_sanitize_label_for_display_falls_back_when_only_punctuation_remains():
+    # 装飾用の花・星記号(Symbolカテゴリ)のみで構成された単語は、
+    # readable_label()の12文字切り詰めで末尾に"..."が付与された後に
+    # Symbol文字を取り除くと、文字・数字が1つも残らず「"..."」という
+    # 内容の無いタイトルになってしまっていた(動画_-wkmpnDXWM・
+    # 0HK9SSUha3kの実例で発覚、README「ハマった罠」82番)。空文字列の
+    # 場合だけでなく、このように句読点しか残らない場合も"???"にする。
+    label = "✾✾✾✺✿✺✹❀✸✺✸✺..."
+    assert _sanitize_label_for_display(label) == "???"
+
+
 def test_sanitize_label_for_display_keeps_safe_ascii_punctuation_and_spaces():
     # animaleseモード等、--wordで文章丸ごとのリクエストが来た場合でも、
     # 感嘆符・カンマ・空白のような通常のASCII記号は豆腐/絵文字化しない
