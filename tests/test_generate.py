@@ -327,13 +327,25 @@ def test_youtube_metadata_comment_request_length_notice_also_applies_to_pictogra
 
 
 def test_sanitize_label_for_display_removes_symbol_category_characters():
-    # 視聴者リクエスト(バムン文字+チェスのクイーン記号+音楽記号混在)で、
-    # タイトルに音楽記号・チェス駒記号・はさみ記号等が紛れ込み、YouTube自身
+    # 視聴者リクエスト(音楽記号+はさみ記号+チェス記号混在)で、タイトルに
+    # 音楽記号・チェス駒記号・はさみ記号等が紛れ込み、YouTube自身
     # のタイトル表示フォントで豆腐(❓)や意図しない絵文字表示になることが
-    # 発覚した(README「ハマった罠」79番)。Letter/Number以外のSymbol系
-    # Unicodeカテゴリを取り除くことの回帰防止。
+    # 発覚した(README「ハマった罠」79番)。Symbol系Unicodeカテゴリ
+    # (Sm/Sc/Sk/So)だけを取り除くことの回帰防止。結合文字(Mcカテゴリの
+    # 音楽記号用コンビニングステム等)はSymbolではないため対象外で残る
+    # (README「ハマった罠」80番、除去範囲をSymbolカテゴリのみに絞った
+    # 際の仕様)。
     label = "\U0001D1DA✂\U0001D158\U0001D165\U0001D172⚷⚷iǫúụủv"
-    assert _sanitize_label_for_display(label) == "iǫúụủv"
+    assert _sanitize_label_for_display(label) == "\U0001D165\U0001D172iǫúụủv"
+
+
+def test_sanitize_label_for_display_keeps_non_symbol_punctuation():
+    # ꧁/꧂(JAVANESE LEFT/RIGHT RERENGGAN、インターネット上で広く使われる
+    # 装飾目的の括弧)はUnicodeカテゴリがPo(Symbolではなく句読点)のため、
+    # 豆腐化の実例が無いにも関わらず誤って削除されてしまっていた
+    # (README「ハマった罠」80番、動画VFGUo1CKJT8の実例で発覚)。
+    label = "꧁ඞ꧂"
+    assert _sanitize_label_for_display(label) == label
 
 
 def test_sanitize_label_for_display_keeps_safe_ascii_punctuation_and_spaces():

@@ -229,19 +229,17 @@ _REQUEST_LENGTH_NOTICE = " Requests: 80 characters max, please! \U0001F4AC"
 # (README「ハマった罠」79番)。動画フレーム(サムネイル)は別経路
 # (frame_label/zalgo_display_word())でこの処理を通さないため、崩れた
 # 単語の見た目自体には影響しない。
-_SAFE_LABEL_PUNCTUATION = set("!?.,:;'\"()-_/\\ ")
+_SYMBOL_CATEGORIES = ("Sm", "Sc", "Sk", "So")
 
 
 def _sanitize_label_for_display(label):
-    """タイトル・字幕・コメントに使うlabelから、Letter/Number以外の
-    Symbol系Unicodeカテゴリ(Sm/Sc/Sk/So。音楽記号・チェス駒記号・はさみ
-    記号等)を取り除く。安全なASCII記号・空白(_SAFE_LABEL_PUNCTUATION)は
-    残す。全て取り除かれて空になった場合はreadable_label()と同じ
-    フォールバックで"???"を返す。"""
-    kept = [
-        ch for ch in label
-        if unicodedata.category(ch)[0] in ("L", "N") or ch in _SAFE_LABEL_PUNCTUATION
-    ]
+    """タイトル・字幕・コメントに使うlabelから、Symbol系Unicodeカテゴリ
+    (Sm/Sc/Sk/So。音楽記号・チェス駒記号・はさみ記号等)だけを取り除く。
+    句読点・結合文字等、Symbol以外はそのまま残す(꧁꧂のような装飾目的の
+    句読点文字まで巻き込んで消してしまっていた実装上の不具合を修正。
+    README「ハマった罠」80番参照)。全て取り除かれて空になった場合は
+    readable_label()と同じフォールバックで"???"を返す。"""
+    kept = [ch for ch in label if unicodedata.category(ch) not in _SYMBOL_CATEGORIES]
     return "".join(kept).strip() or "???"
 
 

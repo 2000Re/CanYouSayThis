@@ -1486,6 +1486,50 @@ assets/
     (repost_shorts.py側もサムネイル生成には`entry["label"]`を直接
     使い続けており、ローカル変数のみサニタイズしている)。
 
+80. **79番の対策をバックフィルツール(`youtube_fix_title_description.py`)
+    で動画VFGUo1CKJT8(ラベル`꧁ඞ꧂`)に適用したところ、タイトルが
+    `꧁ඞ꧂`から`ඞ`に変わり、運営者から「おかしい」と指摘があった**:
+    調査したところ、`_sanitize_label_for_display()`の実装がdocstringの
+    説明(「Symbol系Unicodeカテゴリ(Sm/Sc/Sk/So)を取り除く」)と食い
+    違っていた。実際のコードは`category(ch)[0] in ("L", "N")`または
+    `_SAFE_LABEL_PUNCTUATION`に含まれない文字を全て取り除く実装に
+    なっており、Symbol以外のカテゴリ(句読点・結合文字等)まで広く
+    巻き込んでいた。`꧁`/`꧂`(JAVANESE LEFT/RIGHT RERENGGAN)は
+    Unicodeカテゴリが`Po`(句読点)で、インターネット上で広く使われる
+    装飾目的の文字であり豆腐化の実例は無いが、この広すぎる実装により
+    誤って削除されていた。
+
+    `_sanitize_label_for_display()`を、docstring通りSymbolカテゴリ
+    (Sm/Sc/Sk/So)のみを取り除く実装に修正した。これに伴い、安全な
+    ASCII記号を残すためだけに使っていた`_SAFE_LABEL_PUNCTUATION`定数は
+    不要になったため削除した。なお、この変更により結合文字(Mカテゴリ。
+    音楽記号用のコンビニングステム等)は対象外になり取り除かれなく
+    なったが、79番で実際に豆腐化が確認されたのはSymbolカテゴリの文字
+    (音楽記号の土台・チェスのクイーン記号・はさみ記号等)のみであり、
+    回帰防止テストにも反映済み。
+
+81. **79番のバックフィルを40件まとめて実行した際、YouTube APIの1日の
+    クォータ上限に達してエラー終了した。運営者から「クォータリセット後に
+    同じIDリストで再実行すれば直るか」と確認があり、調査したところ
+    `youtube_fix_title_description.py`のより根本的な設計ミスが見つかった**:
+    `fix_video_title_description()`はsnippet(title/description)と
+    localizations(日本語版等)を別々の`videos.update`呼び出しで更新するが、
+    判定は「snippetが既に最新の内容と一致していればlocalizationsを一切
+    確認せずreturn」という作りになっていた。そのため、クォータ切れ等で
+    snippetだけ更新できてlocalizationsが更新できなかった動画を同じ
+    スクリプトで再実行しても、snippetが既に一致しているという理由だけで
+    即スキップされ、localizationsのズレが**永久に見逃される**不具合が
+    あった(今回のクォータ切れでリストの最後に処理した動画が、まさに
+    この状態になっていた可能性がある)。
+
+    `videos.list`の取得パートに`localizations`も追加し(`snippet`と
+    同じ1回の呼び出しでまとめて取得でき、追加コストは無い)、snippetと
+    localizationsそれぞれについて現在値と期待値を独立に比較、必要な方
+    だけを個別に`update`するように修正した。両方一致していれば従来通り
+    「修正不要」としてスキップする。テストを追加(snippetは既に正しいが
+    localizationsだけ古い場合に、localizationsのみ更新されることの回帰
+    防止)。
+
 ## プロジェクト構成
 
 ```
