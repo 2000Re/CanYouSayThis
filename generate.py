@@ -231,22 +231,60 @@ _REQUEST_LENGTH_NOTICE = " Requests: 80 characters max, please! \U0001F4AC"
 # 単語の見た目自体には影響しない。
 _SYMBOL_CATEGORIES = ("Sm", "Sc", "Sk", "So")
 
+# 装飾目的の星・花びら系Dingbats(U+2700-27BF中の幾何学的な星・花びら
+# 記号のみ)は例外的に許可する。運営者から「花の模様はタイトルにも表示
+# したい」との要望があった(README「ハマった罠」83番、動画のWord:
+# ✾✾✾✺✿✺✹❀✸✺✸✺✿꙰❉꥟❉꥟꥟❉꙰❉꙰❉꙰が実例)。同じDingbatsブロックでも、
+# 現実のものを連想させ絵文字として誤解されやすい記号(はさみ✂、きらめき
+# ✨U+2728・✧U+2747・✦U+2748、雪の結晶❄U+2744-2746、79番の原因)や、
+# 宗教的な意味を持つダビデの星✡U+2721は対象外のまま。
+_DECORATIVE_STAR_FLORETTE_SYMBOLS = frozenset(
+    chr(cp)
+    for cp in list(range(0x2722, 0x2728)) + list(range(0x2729, 0x2744)) + [0x2749, 0x274A, 0x274B]
+)
+
 
 def _sanitize_label_for_display(label):
     """タイトル・字幕・コメントに使うlabelから、Symbol系Unicodeカテゴリ
-    (Sm/Sc/Sk/So。音楽記号・チェス駒記号・はさみ記号等)だけを取り除く。
-    句読点・結合文字等、Symbol以外はそのまま残す(꧁꧂のような装飾目的の
-    句読点文字まで巻き込んで消してしまっていた実装上の不具合を修正。
+    (Sm/Sc/Sk/So。音楽記号・チェス駒記号・はさみ記号等)を取り除く。ただし
+    _DECORATIVE_STAR_FLORETTE_SYMBOLS(幾何学的な星・花びら記号)は例外的に
+    残す。句読点・結合文字等、Symbol以外はそのまま残す(꧁꧂のような装飾
+    目的の句読点文字まで巻き込んで消してしまっていた実装上の不具合を修正。
     README「ハマった罠」80番参照)。取り除いた結果、文字(Letter)・数字
-    (Number)が1つも残らない場合(全て取り除かれて空になった場合だけでなく、
-    readable_label()が付与する省略記号"..."のような句読点だけが残った
-    場合も含む。装飾用の花・星記号のみで構成された単語で、タイトルが
-    内容の無い「"..."」になってしまっていたことが発覚。README「ハマった
-    罠」82番参照)は、readable_label()と同じフォールバックで"???"を返す。"""
-    kept = "".join(ch for ch in label if unicodedata.category(ch) not in _SYMBOL_CATEGORIES).strip()
-    if not any(unicodedata.category(ch)[0] in ("L", "N") for ch in kept):
+    (Number)・許可された装飾記号が1つも残らない場合(全て取り除かれて
+    空になった場合だけでなく、readable_label()が付与する省略記号"..."の
+    ような句読点だけが残った場合も含む。README「ハマった罠」82番参照)は、
+    readable_label()と同じフォールバックで"???"を返す。"""
+    kept = "".join(
+        ch for ch in label
+        if unicodedata.category(ch) not in _SYMBOL_CATEGORIES or ch in _DECORATIVE_STAR_FLORETTE_SYMBOLS
+    ).strip()
+    if not any(
+        unicodedata.category(ch)[0] in ("L", "N") or ch in _DECORATIVE_STAR_FLORETTE_SYMBOLS
+        for ch in kept
+    ):
         return "???"
     return kept
+
+
+def _is_decorative_symbol_word(word):
+    """wordに_DECORATIVE_STAR_FLORETTE_SYMBOLS(星・花びら系Dingbats)が
+    含まれており、かつ_sanitize_label_for_display()で実際に取り除かれる
+    文字(許可リスト外のSymbolカテゴリ)が無いかどうかを判定する(結合文字
+    は判定対象外。꙰のような囲み結合文字(Meカテゴリ)や꥟のような句読点は
+    元々sanitizeで取り除かれないため問題無い)。該当する場合、通常の
+    readable_label()の12文字切り詰めではなく、説明欄の「Word:」行と同じ
+    内容が見えるようもう少し長く表示する(運営者から「タイトルも説明欄と
+    同じにしたい」との要望、README「ハマった罠」84番。ただしYouTubeタイトル
+    100文字制限の安全マージンとして確立済みの_TITLE_SENTENCE_SNIPPET_CHARS
+    (20文字)は超えない)。"""
+    base_chars = [ch for ch in word if not unicodedata.combining(ch)]
+    if not any(ch in _DECORATIVE_STAR_FLORETTE_SYMBOLS for ch in base_chars):
+        return False
+    return all(
+        unicodedata.category(ch) not in _SYMBOL_CATEGORIES or ch in _DECORATIVE_STAR_FLORETTE_SYMBOLS
+        for ch in base_chars
+    )
 
 
 # 楔形文字・エジプト/アナトリア象形文字・線文字B(config.PICTOGRAPH_SCRIPTS)の
@@ -904,7 +942,14 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
             word = _random_unique_word(existing_words, word_generator=word_generator)
         else:
             word = word_generator()
-        label = readable_label(word)
+        # 星・花びら系Dingbatsのみで構成された単語(_is_decorative_symbol_word()
+        # 参照)は、通常の12文字切り詰めではなく、100文字制限の安全マージン
+        # として確立済みの_TITLE_SENTENCE_SNIPPET_CHARS(20文字)まで見せる
+        # (README「ハマった罠」84番)。
+        if _is_decorative_symbol_word(word):
+            label = readable_label(word, max_base_chars=_TITLE_SENTENCE_SNIPPET_CHARS)
+        else:
+            label = readable_label(word)
         # フレーム表示用は、タイトルのYouTube100文字制限(labelを使う側、言語名
         # 付きテンプレートのworst caseでも実質23文字程度までしか安全に入らない)
         # とは別の制約。フレーム画像自体には文字数の技術的な上限が無く、
