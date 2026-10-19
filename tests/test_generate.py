@@ -349,14 +349,34 @@ def test_sanitize_label_for_display_keeps_non_symbol_punctuation():
 
 
 def test_sanitize_label_for_display_falls_back_when_only_punctuation_remains():
-    # 装飾用の花・星記号(Symbolカテゴリ)のみで構成された単語は、
+    # はさみ記号(Symbolカテゴリ、許可リスト対象外)のみで構成された単語は、
     # readable_label()の12文字切り詰めで末尾に"..."が付与された後に
-    # Symbol文字を取り除くと、文字・数字が1つも残らず「"..."」という
-    # 内容の無いタイトルになってしまっていた(動画_-wkmpnDXWM・
-    # 0HK9SSUha3kの実例で発覚、README「ハマった罠」82番)。空文字列の
-    # 場合だけでなく、このように句読点しか残らない場合も"???"にする。
-    label = "✾✾✾✺✿✺✹❀✸✺✸✺..."
+    # Symbol文字を取り除くと、文字・数字・許可された装飾記号が1つも残らず
+    # 「"..."」という内容の無いタイトルになってしまっていた(動画
+    # _-wkmpnDXWM・0HK9SSUha3kの実例で発覚、README「ハマった罠」82番)。
+    # 空文字列の場合だけでなく、このように句読点しか残らない場合も"???"
+    # にする。
+    label = "✂✂✂✂✂✂✂✂✂✂✂✂..."
     assert _sanitize_label_for_display(label) == "???"
+
+
+def test_sanitize_label_for_display_keeps_decorative_star_florette_symbols():
+    # 運営者から「花の模様はタイトルにも表示したい」との要望があった
+    # (動画_-wkmpnDXWMの実例、README「ハマった罠」83番)。幾何学的な
+    # 星・花びら記号(Dingbatsブロックの一部)は例外的にSymbol除去の
+    # 対象外とする。
+    label = "✾✾✾✺✿✺✹❀✸✺✸✺..."
+    assert _sanitize_label_for_display(label) == label
+
+
+def test_sanitize_label_for_display_still_removes_emoji_like_dingbats():
+    # 同じDingbatsブロックでも、現実のものを連想させ絵文字として誤解
+    # されやすい記号(きらめき✨・雪の結晶❄)や宗教的な意味を持つ記号
+    # (ダビデの星✡)は、星・花びら記号の許可リストには含めず引き続き
+    # 除去する(README「ハマった罠」83番)。
+    assert _sanitize_label_for_display("✡✡✡...") == "???"
+    assert _sanitize_label_for_display("✨✨✨...") == "???"
+    assert _sanitize_label_for_display("❄❄❄...") == "???"
 
 
 def test_sanitize_label_for_display_keeps_safe_ascii_punctuation_and_spaces():
