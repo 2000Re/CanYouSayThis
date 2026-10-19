@@ -765,6 +765,18 @@ def test_is_decorative_symbol_word_false_for_ordinary_word_with_trailing_star():
     assert not _is_decorative_symbol_word(":llllU҉҉҉҉VEAAA( ؞ ❁")
 
 
+def test_sanitize_label_for_display_keeps_block_elements():
+    # Block Elements(█▀▄░▒▓等、U+2580-259F)のみで構成された単語
+    # (████の実例)のタイトルが"???"になっていたのを見た運営者から、
+    # 星・花びらと同様に表示したいとの要望があった(README「ハマった罠」
+    # 86番)。純粋な図形記号で現実のものを連想させないため許可する。
+    assert _sanitize_label_for_display("████") == "████"
+
+
+def test_is_decorative_symbol_word_true_for_block_elements():
+    assert _is_decorative_symbol_word("████")
+
+
 def test_decorative_symbol_word_title_shows_more_than_default_truncation():
     # 運営者から「タイトルも説明欄と同じにしたい」との要望があった(動画
     # _-wkmpnDXWMの実例、README「ハマった罠」84番)。_is_decorative_symbol_
