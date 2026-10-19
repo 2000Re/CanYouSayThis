@@ -237,10 +237,16 @@ def _sanitize_label_for_display(label):
     (Sm/Sc/Sk/So。音楽記号・チェス駒記号・はさみ記号等)だけを取り除く。
     句読点・結合文字等、Symbol以外はそのまま残す(꧁꧂のような装飾目的の
     句読点文字まで巻き込んで消してしまっていた実装上の不具合を修正。
-    README「ハマった罠」80番参照)。全て取り除かれて空になった場合は
-    readable_label()と同じフォールバックで"???"を返す。"""
-    kept = [ch for ch in label if unicodedata.category(ch) not in _SYMBOL_CATEGORIES]
-    return "".join(kept).strip() or "???"
+    README「ハマった罠」80番参照)。取り除いた結果、文字(Letter)・数字
+    (Number)が1つも残らない場合(全て取り除かれて空になった場合だけでなく、
+    readable_label()が付与する省略記号"..."のような句読点だけが残った
+    場合も含む。装飾用の花・星記号のみで構成された単語で、タイトルが
+    内容の無い「"..."」になってしまっていたことが発覚。README「ハマった
+    罠」82番参照)は、readable_label()と同じフォールバックで"???"を返す。"""
+    kept = "".join(ch for ch in label if unicodedata.category(ch) not in _SYMBOL_CATEGORIES).strip()
+    if not any(unicodedata.category(ch)[0] in ("L", "N") for ch in kept):
+        return "???"
+    return kept
 
 
 # 楔形文字・エジプト/アナトリア象形文字・線文字B(config.PICTOGRAPH_SCRIPTS)の
