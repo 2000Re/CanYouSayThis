@@ -3867,5 +3867,16 @@
     "voice_label": "Cantonese (Male)",
     "lang_code": "yue",
     "title_template": "can_you_pronounce"
+  },
+  {
+    "word": "Ψ( ` 皿 ´ )Ψ",
+    "label": "Ψ( ` 皿 ´ )Ψ",
+    "video_id": "bZlxtBvqyXI",
+    "mode": "glitch",
+    "run_id": "39252969452",
+    "uploaded_at": "2026-10-19T12:44:16.466894+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "nobody_can_pronounce"
   }
 ]
