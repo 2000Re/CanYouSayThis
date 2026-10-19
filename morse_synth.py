@@ -6,25 +6,33 @@ glitch_synth.pyと同じく単語の「発音」とは無関係だが、glitch_s
 完全にランダムな効果音なのに対し、こちらは単語の中身(文字)がそのまま
 音のパターンに決定論的に反映される、という別角度のギミック。
 
-結合文字(Zalgoの見た目)・装飾記号は符号表に無いため無視する
-(word_generator.random_zalgo_word()の土台(BASE_CHARS)はラテン文字の
-みなので、実際にはほぼ全ての「土台文字」が変換対象になる)。
+結合文字(Zalgoの見た目)は符号表に無いため無視する(word_generator.
+random_zalgo_word()の土台(BASE_CHARS)はラテン文字のみなので、実際には
+ほぼ全ての「土台文字」が変換対象になる)。一方、符号表に無い記号・非
+ラテン文字は無視するのではなく、word_generator.expand_unknown_chars_to_
+names()でUnicode正式名称に展開してから符号化する(README「ハマった罠」
+89番)。
 """
 
 import random
 import subprocess
+import unicodedata
 
-# 国際モールス符号表。ラテン文字(大文字小文字問わず)と、
-# word_generator.SEPARATOR_SYMBOLSのうちITU符号表に実在する4記号のみを
+from word_generator import expand_unknown_chars_to_names
+
+# 国際モールス符号表。ラテン文字(大文字小文字問わず)・数字(0-9)と、
+# word_generator.SEPARATOR_SYMBOLSのうちITU符号表に実在する4記号を
 # 対象にする。「¿」(71番で追加)はITU国際モールス符号表に割り当てが
-# 無いため対象外(結合文字・装飾記号と同じく対応表に無い文字として無視
-# される。_units_for_word()参照)。
+# 無いため対象外(_units_for_word()がUnicode正式名称"INVERTED QUESTION
+# MARK"に展開して符号化する)。
 MORSE_CODE = {
     "A": ".-", "B": "-...", "C": "-.-.", "D": "-..", "E": ".", "F": "..-.",
     "G": "--.", "H": "....", "I": "..", "J": ".---", "K": "-.-", "L": ".-..",
     "M": "--", "N": "-.", "O": "---", "P": ".--.", "Q": "--.-", "R": ".-.",
     "S": "...", "T": "-", "U": "..-", "V": "...-", "W": ".--", "X": "-..-",
     "Y": "-.--", "Z": "--..",
+    "0": "-----", "1": ".----", "2": "..---", "3": "...--", "4": "....-",
+    "5": ".....", "6": "-....", "7": "--...", "8": "---..", "9": "----.",
     "(": "-.--.", ")": "-.--.-", ":": "---...", "-": "-....-",
 }
 
@@ -37,7 +45,15 @@ def _units_for_word(word):
     同一文字内の要素間=1ユニットの無音、文字間=3ユニットの無音、
     単語間(スペース文字)=7ユニットの無音。
 
-    対応表に無い文字(結合文字・装飾記号)は無視する(音にも反映されない)。"""
+    結合文字(Zalgoの見た目)は符号表に無いため無視する。それ以外の
+    符号表に無い文字(記号・非ラテン文字等)は、expand_unknown_chars_to_
+    names()でUnicode正式名称に展開してから符号化する(README「ハマった
+    罠」89番。例: "☼"→"WHITE SUN WITH RAYS"のモールス符号)。名前が
+    存在しないコードポイント(未割り当て領域・制御文字等)だけが、
+    展開後も対応表に無い文字として最終的に無視される。"""
+    word = expand_unknown_chars_to_names(
+        word, lambda ch: ch == " " or unicodedata.combining(ch) != 0 or ch.upper() in MORSE_CODE
+    )
     units = []
     prev_was_letter = False
     for ch in word:

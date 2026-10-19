@@ -103,6 +103,7 @@ from tts_synth import (
 )
 from video_builder import build_video
 from word_generator import (
+    expand_unknown_chars_to_names,
     random_abugida_word,
     random_pictograph_word,
     random_script_word,
@@ -363,6 +364,28 @@ def _speakable_word(word):
     専用だったPICTOGRAPH_VISUAL_CHANCEや--word直接指定時と同様、実害は
     無い)。"""
     return "".join(ch for ch in word if ch not in _PICTOGRAPH_SCRIPT_CHARS)
+
+
+def _speak_symbols_by_name(word):
+    """TTSに渡す直前に、Symbol系Unicodeカテゴリ(Sm/Sc/Sk/So。はさみ✂・
+    音楽記号・顔文字の目印の`´等、_sanitize_label_for_display()が参照する
+    のと同じ_SYMBOL_CATEGORIES)の文字を、word_generator.expand_unknown_
+    chars_to_names()でUnicode正式名称の読み上げに変換する(例:
+    "✂"→" BLACK SCISSORS "、"´"→" ACUTE ACCENT ")。
+
+    これらの文字はespeak-ngにそのまま渡しても発音されず、無視されるか
+    単語全体が実質無音になる。視聴者リクエストの顔文字(Ψ( ` 皿 ´ )Ψ等)
+    のように単語の大半がSymbol文字の場合、無音を避けるためglitchモード
+    以外の選択肢が実質無くなってしまっていた。技術的な正式名称を読ませる
+    ことで、無音を避けつつ「もっともらしいのに変な読み方」というこの
+    チャンネルの趣旨に沿った形で音声化できる(README「ハマった罠」89番)。
+
+    結合文字(Zalgoの見た目)はSymbolカテゴリに含まれないため対象外
+    (従来通りそのままTTSに渡る)。楔形文字等(_speakable_word()が別途
+    取り除く対象)もLetterカテゴリのため対象外、こちらの挙動は変えない。"""
+    return expand_unknown_chars_to_names(
+        word, lambda ch: unicodedata.category(ch) not in _SYMBOL_CATEGORIES
+    )
 
 
 _PICTOGRAPH_TITLE = "Can You Read These Ancient Symbols?"
@@ -1007,9 +1030,12 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
             f.write(word)
 
         # TTS系モードにはword自体ではなく_speakable_word(word)を渡す
-        # (楔形文字等を取り除いた版。_speakable_word()参照)。動画フレーム・
-        # label・upload_history.json記録にはword自体をそのまま使い続ける。
-        tts_word = _speakable_word(word)
+        # (楔形文字等を取り除いた版。_speakable_word()参照)。さらに
+        # _speak_symbols_by_name()で、はさみ・音楽記号等のSymbol文字を
+        # Unicode正式名称の読み上げに変換する(README「ハマった罠」89番)。
+        # 動画フレーム・label・upload_history.json記録にはword自体を
+        # そのまま使い続ける。
+        tts_word = _speak_symbols_by_name(_speakable_word(word))
         # 単一ボイスのモード専用に、さらに現在のactual_voiceが対応していない
         # 文字体系(CJK統合漢字・タイ文字・アラビア文字・ヘブライ文字・
         # エチオピア文字)を取り除いた版を用意する

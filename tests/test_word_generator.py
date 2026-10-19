@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import config
 from config import DECORATIVE_SYMBOLS, SAFE_COMBINING_BLOCKS, THAI_CONSONANTS, THAI_VOWEL_MARKS
 from word_generator import (
+    expand_unknown_chars_to_names,
     random_abugida_word,
     random_pictograph_word,
     random_script_word,
@@ -254,3 +255,31 @@ def test_random_zalgo_word_never_uses_inverted_question_mark_alone():
             stripped = word.replace("¿", "").strip()
             assert any(ch in config.BASE_CHARS for ch in stripped), word
     assert seen_question_mark, "テストの前提として「¿」が一度も選ばれなかった(シード値を見直す必要あり)"
+
+
+def test_expand_unknown_chars_to_names_keeps_native_chars_unchanged():
+    assert expand_unknown_chars_to_names("abc", lambda ch: True) == "abc"
+
+
+def test_expand_unknown_chars_to_names_expands_non_native_chars():
+    # README「ハマった罠」89番: 対応表に無い文字を無視する代わりに、
+    # Unicode正式名称の読み上げに変換する(morse_synth.py・
+    # animalese_synth.py・generate.py共通のヘルパー)。
+    is_ascii_letter = lambda ch: ch.isascii() and ch.isalpha()  # noqa: E731
+    assert expand_unknown_chars_to_names("a✂b", is_ascii_letter) == "a BLACK SCISSORS b"
+
+
+def test_expand_unknown_chars_to_names_ignores_unnamed_codepoints():
+    # 未割り当て領域(私用領域等)はUnicode正式名称が存在しないため、
+    # 展開できずそのまま消える(結果に含めない)。
+    never_native = lambda ch: False  # noqa: E731
+    assert expand_unknown_chars_to_names(chr(0xE000), never_native) == ""
+
+
+def test_expand_unknown_chars_to_names_relies_on_caller_for_combining_marks():
+    # 結合文字(Zalgoの見た目)を展開対象外にするのは呼び出し側の責務
+    # (is_nativeが結合文字に常にTrueを返すことを前提とする)。ここでは
+    # ヘルパー自身がis_native任せであることだけを確認する。
+    combining = chr(0x0301)
+    assert expand_unknown_chars_to_names(combining, lambda ch: True) == combining
+    assert expand_unknown_chars_to_names(combining, lambda ch: False) != combining
