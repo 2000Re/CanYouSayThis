@@ -758,6 +758,13 @@ def test_is_decorative_symbol_word_false_for_no_symbols_at_all():
     assert not _is_decorative_symbol_word("...")
 
 
+def test_is_decorative_symbol_word_false_for_ordinary_word_with_trailing_star():
+    # 通常のZalgo単語(文字主体)の末尾に区切り記号として星が1つ付いている
+    # だけのケース(upload_history.jsonの実例)まで「装飾記号のみの単語」
+    # と誤判定していた不具合の回帰防止(README「ハマった罠」85番)。
+    assert not _is_decorative_symbol_word(":llllU҉҉҉҉VEAAA( ؞ ❁")
+
+
 def test_decorative_symbol_word_title_shows_more_than_default_truncation():
     # 運営者から「タイトルも説明欄と同じにしたい」との要望があった(動画
     # _-wkmpnDXWMの実例、README「ハマった罠」84番)。_is_decorative_symbol_

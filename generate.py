@@ -268,11 +268,16 @@ def _sanitize_label_for_display(label):
 
 
 def _is_decorative_symbol_word(word):
-    """wordに_DECORATIVE_STAR_FLORETTE_SYMBOLS(星・花びら系Dingbats)が
-    含まれており、かつ_sanitize_label_for_display()で実際に取り除かれる
-    文字(許可リスト外のSymbolカテゴリ)が無いかどうかを判定する(結合文字
-    は判定対象外。꙰のような囲み結合文字(Meカテゴリ)や꥟のような句読点は
-    元々sanitizeで取り除かれないため問題無い)。該当する場合、通常の
+    """wordが星・花びら系Dingbats(_DECORATIVE_STAR_FLORETTE_SYMBOLS)のみの
+    「装飾記号だけで構成された単語」(動画_-wkmpnDXWMが実例)かどうかを
+    判定する。文字(Letter)・数字(Number)が1文字でも含まれていたり、
+    許可リスト外のSymbol文字(はさみ等)が含まれていれば対象外(結合文字は
+    判定対象外。꙰のような囲み結合文字(Meカテゴリ)や꥟のような句読点は
+    元々sanitizeで取り除かれないため、含まれていても対象のまま)。
+
+    末尾に区切り記号として星が1つ付いているだけの通常のZalgo単語
+    (大半が文字で構成されている)まで対象になってしまっていた実装上の
+    不具合を修正(README「ハマった罠」85番)。該当する場合、通常の
     readable_label()の12文字切り詰めではなく、説明欄の「Word:」行と同じ
     内容が見えるようもう少し長く表示する(運営者から「タイトルも説明欄と
     同じにしたい」との要望、README「ハマった罠」84番。ただしYouTubeタイトル
@@ -281,8 +286,9 @@ def _is_decorative_symbol_word(word):
     base_chars = [ch for ch in word if not unicodedata.combining(ch)]
     if not any(ch in _DECORATIVE_STAR_FLORETTE_SYMBOLS for ch in base_chars):
         return False
-    return all(
-        unicodedata.category(ch) not in _SYMBOL_CATEGORIES or ch in _DECORATIVE_STAR_FLORETTE_SYMBOLS
+    return not any(
+        unicodedata.category(ch)[0] in ("L", "N")
+        or (unicodedata.category(ch) in _SYMBOL_CATEGORIES and ch not in _DECORATIVE_STAR_FLORETTE_SYMBOLS)
         for ch in base_chars
     )
 
