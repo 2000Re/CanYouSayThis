@@ -177,3 +177,38 @@ def zalgo_display_word(word, max_base_chars=12, max_marks_per_cluster=4):
     if len(units) > max_base_chars:
         return "".join(units[:max_base_chars]) + "..."
     return "".join(units) or "???"
+
+
+def expand_unknown_chars_to_names(word, is_native):
+    """is_native(ch)がFalseを返す文字を、unicodedata.name()で得られる
+    正式名称に展開して返す(例: "Ψ"→" GREEK SMALL LETTER PSI "、
+    "✂"→" BLACK SCISSORS ")。
+
+    morse_synth.py(ラテン文字+一部記号のみの符号表)・animalese_synth.py
+    (a-z+th/sh/space/periodのみの音声)・TTS系モード(espeak-ngが発音
+    できない記号類)はいずれも、対応表に無い文字を単に無視するだけだと
+    視聴者リクエストの顔文字(Ψ( ` 皿 ´ )Ψ等)や特殊記号混在の単語が
+    ほぼ無音になり、glitchモード以外の選択肢が実質無くなってしまう
+    問題があった。「読めない記号を無視する」代わりに「技術的な正式名称を
+    読ませる」ことで、無音になるのを防ぎつつ、このチャンネルの趣旨である
+    「もっともらしいのに変な読み方」に合う形で音声化できる(README
+    「ハマった罠」89番)。
+
+    前後に半角スペースを入れることで、隣接するネイティブな文字(例:
+    "✂iv"の"iv")と結合して意図しない1語になるのを防ぐ。名前が存在しない
+    コードポイント(未割り当て領域・制御文字・私用領域等)は読み方が無い
+    ため、そのまま無視する(結果に含めない)。
+
+    is_native側で結合文字(Zalgoの見た目、unicodedata.combining()が真の
+    文字)を常にTrueにしておくこと(呼び出し側の責務。展開すると土台文字
+    ごとに"COMBINING ..."が延々と挿入され、通常のZalgo単語の音声・リズムが
+    破綻するため)。"""
+    parts = []
+    for ch in word:
+        if is_native(ch):
+            parts.append(ch)
+            continue
+        name = unicodedata.name(ch, "")
+        if name:
+            parts.append(f" {name} ")
+    return "".join(parts)

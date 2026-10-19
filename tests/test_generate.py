@@ -32,6 +32,7 @@ from generate import (
     _sanitize_label_for_display,
     _sentence_title_snippet,
     _single_voice_metadata,
+    _speak_symbols_by_name,
     _speakable_word,
     _unposted_lang_codes,
     _voice_pitch_for,
@@ -845,6 +846,24 @@ def test_speakable_word_returns_empty_string_for_pure_pictograph_word():
 def test_speakable_word_leaves_ordinary_words_unchanged():
     assert _speakable_word("voOn") == "voOn"
     assert _speakable_word("v́oOn") == "v́oOn"
+
+
+def test_speak_symbols_by_name_expands_symbol_chars():
+    # 視聴者リクエストの顔文字(Ψ( ` 皿 ´ )Ψ等)のように、はさみ・音楽記号・
+    # 顔文字の目印(`´)等のSymbol文字(_SYMBOL_CATEGORIES)が単語の大半を
+    # 占める場合、espeak-ngにそのまま渡しても発音されず無音になり、
+    # glitchモード以外の選択肢が実質無くなってしまっていた。Unicode正式
+    # 名称の読み上げに変換することでこれを防ぐ(README「ハマった罠」89番)。
+    assert _speak_symbols_by_name("✂iv") == " BLACK SCISSORS iv"
+    assert _speak_symbols_by_name("`") == " GRAVE ACCENT "
+
+
+def test_speak_symbols_by_name_leaves_letters_and_combining_marks_unchanged():
+    # 結合文字(Zalgoの見た目)・楔形文字等(Letterカテゴリ、_speakable_word()
+    # が別途取り除く対象)はSymbolカテゴリに含まれないため対象外。既存の
+    # TTS読み上げ・リズムが変わらないことの回帰防止。
+    assert _speak_symbols_by_name("voOn") == "voOn"
+    assert _speak_symbols_by_name("v́oOn") == "v́oOn"
 
 
 def test_youtube_metadata_omits_word_from_title_for_pictograph_word():

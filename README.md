@@ -1676,6 +1676,63 @@ assets/
     どちらもこの集合を直接参照しているため、修正箇所は定数の追加のみ。
     テストを追加。
 
+89. **視聴者リクエストの顔文字(`Ψ( ` 皿 ´ )Ψ`)のように単語の大半が
+    特殊記号の場合、morse/animalese/chorus/tts系モードに渡してもほぼ
+    無音になってしまい、glitchモード以外の選択肢が実質無くなっていた。
+    運営者から「幅が広がるなら他のモードも選べるようにしたい」と要望が
+    あり、設計を検討した**: morse(ラテン文字+一部記号のみの符号表)・
+    animalese(a-z+th/sh/space/periodのみの録音済み音声)・TTS系モード
+    (espeak-ngが発音できないSymbol文字)はいずれも、対応表に無い文字を
+    単に無視するだけだった。「読めない文字を無視する」代わりに
+    「Unicode公式文字名(`unicodedata.name()`)を読ませる」ことで、無音を
+    防ぎつつ、このチャンネルの趣旨である「もっともらしいのに変な読み方」
+    に合う形で音声化できると考え、運営者の了承を得て実装した(当初検討した
+    コードポイントの数値化よりも、技術的な正式名称をそのまま読ませる方が
+    「ネタ」として強いという判断、かつmorse/animaleseの既存のラテン文字
+    対応表にそのまま乗せられるため改修が軽い)。
+
+    `word_generator.py`に`expand_unknown_chars_to_names(word, is_native)`
+    を追加した。`is_native(ch)`がFalseを返す文字を、
+    `unicodedata.name(ch, "")`で得られる正式名称に展開する(前後に半角
+    スペースを入れ、隣接する文字と結合しないようにする)。名前が存在しない
+    コードポイント(未割り当て領域・制御文字等)はそのまま無視される。
+    結合文字(Zalgoの見た目)を展開対象外にするのは呼び出し側の
+    `is_native`の責務(展開すると土台文字ごとに"COMBINING ..."が延々と
+    挿入され、通常のZalgo単語の音声・リズムが破綻するため)。
+
+    各モジュールでの適用:
+    - `morse_synth.py`: `MORSE_CODE`に数字0-9の正式なITU符号を追加した
+      うえで、`_units_for_word()`が`is_native=結合文字またはMORSE_CODEに
+      存在`で展開する。数字はそのまま符号化できるため追加の変換は不要。
+    - `animalese_synth.py`: 録音済み音声にa-z+th/sh/space/periodしか無く
+      数字の音が存在しないため、`_infiles_for_word()`は展開後、名称に
+      含まれる数字(CJK統合漢字の名称末尾のコードポイント表記等)を
+      `_DIGIT_WORDS`(0→"zero"等)で英単語に変換し、既存のa-zの音で
+      読ませる。
+    - `generate.py`: `_speak_symbols_by_name(word)`を追加し、
+      `_sanitize_label_for_display()`と同じ`_SYMBOL_CATEGORIES`
+      (Sm/Sc/Sk/So)に属する文字だけを展開対象にする(`tts_word =
+      _speak_symbols_by_name(_speakable_word(word))`)。chorus含む全ての
+      TTS系モードが`tts_word`を共有しているため、1箇所の変更で全モードに
+      反映される。
+
+    スコープ外として維持したもの: 楔形文字等(`_speakable_word()`が
+    別途取り除く対象、58番)はLetterカテゴリのためTTS系では対象外のまま
+    (既存の確立済みの挙動を変えない)。ギリシャ文字Ψ・CJK統合漢字皿の
+    ような「本物の文字」もTTS系では対象外(ボイスごとの既存の
+    `strip_unspeakable_foreign_script()`判定に任せる)。一方、
+    morse/animaleseは対応表がラテン文字+一部記号のみのため、これらの
+    「本物の文字」も含めて展開対象になる(既存の`test_infiles_for_word_
+    ignores_combining_marks_and_non_latin_chars`等、無視することを前提に
+    書かれていた回帰テストは、展開されることを確認するテストに更新した)。
+
+    実機確認: `_speak_symbols_by_name(_speakable_word("Ψ( \` 皿 ´ )Ψ"))`
+    → `"Ψ(  GRAVE ACCENT  皿  ACUTE ACCENT  )Ψ"`。同じ単語で
+    `_units_for_word()`は486ユニット(morseのunit_duration換算で約15〜
+    29秒、Shorts尺として問題無い範囲)、`_infiles_for_word()`は139個の
+    音声ファイルを生成することを確認(どちらも旧実装ではほぼ0件、
+    無音フォールバックのみだった)。テストを追加・更新。
+
 ## プロジェクト構成
 
 ```

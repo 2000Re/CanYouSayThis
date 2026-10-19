@@ -8,16 +8,25 @@ soundNN.wav)をピッチシフトしながらつなげるだけ。視聴者コ�
 animalese_sounds/LICENSE参照)の仕組みを、このプロジェクトの
 generate_one()から呼べる形に移植した。
 
-対応表に無い文字(結合文字・装飾記号・非ラテン文字・楔形文字等)は
-そのまま無視する(morse_synth.pyと同じ方針)。espeak-ngを使わないため、
+結合文字(Zalgoの見た目)はそのまま無視する(morse_synth.pyと同じ方針)。
+一方、対応表に無い記号・非ラテン文字・楔形文字等は無視するのではなく、
+word_generator.expand_unknown_chars_to_names()でUnicode正式名称に展開
+してから読ませる(README「ハマった罠」89番)。espeak-ngを使わないため、
 楔形文字等を読ませてコードポイントを桁ごとに読み上げてしまう問題
 (README「ハマった罠」58番)はそもそも起こらない。
+
+録音済み音声はa-z+th/sh/space/periodのみで数字の音が無いため、展開後の
+名称に含まれる数字(例: CJK統合漢字の名称末尾のコードポイント表記)は、
+_DIGIT_WORDSで英単語に変換したうえでa-zの音を使って読ませる。
 """
 
 import os
 import random
+import unicodedata
 
 from pydub import AudioSegment
+
+from word_generator import expand_unknown_chars_to_names
 
 _SOUNDS_DIR = os.path.join(os.path.dirname(__file__), "animalese_sounds")
 PITCH_PRESETS = ["lowest", "low", "med", "high"]
@@ -26,6 +35,13 @@ PITCH_PRESETS = ["lowest", "low", "med", "high"]
 # (soundNN.wavのNNがこの並びのインデックス+1に対応する、録音済みファイル
 # 自体の命名規則のため変更不可)。
 _KEYS = list("abcdefghijklmnopqrstuvwxyz") + ["th", "sh", " ", "."]
+
+# 録音済み音声に数字が無いため、英単語に変換してa-zの音で読ませる
+# (_infiles_for_word()参照)。
+_DIGIT_WORDS = {
+    "0": "zero", "1": "one", "2": "two", "3": "three", "4": "four",
+    "5": "five", "6": "six", "7": "seven", "8": "eight", "9": "nine",
+}
 
 
 def _sound_path(pitch, key):
@@ -38,8 +54,21 @@ def _infiles_for_word(word, pitch):
 
     "th"/"sh"の2文字組を優先的に検出し、カンマ・疑問符は句点と同じ音に
     丸める。直前と同じ文字が連続する場合はスキップ(animalese特有の
-    「同じ音の連打を避ける」挙動、元実装を踏襲)。対応表に無い文字
-    (結合文字・装飾記号・非ラテン文字等)は無視する。"""
+    「同じ音の連打を避ける」挙動、元実装を踏襲)。結合文字(Zalgoの見た目)
+    は対応表に無いため無視する。それ以外の対応表に無い文字(記号・非
+    ラテン文字・楔形文字等)は、expand_unknown_chars_to_names()でUnicode
+    正式名称に展開し、名称中の数字は_DIGIT_WORDSで英単語に変換したうえで
+    読ませる(README「ハマった罠」89番)。"""
+    word = expand_unknown_chars_to_names(
+        word,
+        lambda ch: (
+            unicodedata.combining(ch) != 0
+            or ch.lower() in _KEYS
+            or ch in (",", "?")
+            or ch in _DIGIT_WORDS
+        ),
+    )
+    word = "".join(f" {_DIGIT_WORDS[ch]} " if ch in _DIGIT_WORDS else ch for ch in word)
     stringy = word.lower()
     infiles = []
     for i, char in enumerate(stringy):
