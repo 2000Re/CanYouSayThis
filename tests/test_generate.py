@@ -17,6 +17,7 @@ from generate import (
     _SINGLE_VOICE_MODES,
     _TITLE_SENTENCE_SNIPPET_CHARS,
     _TITLE_TEMPLATES,
+    _is_decorative_symbol_word,
     _is_pictograph_word,
     _lang_code_for_voice,
     _mode_genre_suffix,
@@ -733,6 +734,51 @@ def test_is_pictograph_word_detects_cuneiform_and_hieroglyphs():
 def test_is_pictograph_word_false_for_ordinary_words():
     assert not _is_pictograph_word("voOn")
     assert not _is_pictograph_word("v́oOn")
+
+
+def test_is_decorative_symbol_word_true_for_pure_decorative_symbols():
+    # 動画_-wkmpnDXWMの実例(花・星記号+結合文字+句読点)。結合文字(꙰)・
+    # 句読点(꥟)はsanitizeで元々取り除かれないため、判定には影響しない。
+    word = "✾✾✾✺✿✺✹❀✸✺✸✺✿꙰❉꥟❉꥟꥟❉꙰❉꙰❉꙰"
+    assert _is_decorative_symbol_word(word)
+
+
+def test_is_decorative_symbol_word_false_for_ordinary_words():
+    assert not _is_decorative_symbol_word("voOn")
+
+
+def test_is_decorative_symbol_word_false_when_symbols_outside_allowlist():
+    # はさみ(✂)は星・花びら系の許可リストに含まれないため、花記号と
+    # 混在していても対象外(README「ハマった罠」83番、はさみは引き続き
+    # 除去対象)。
+    assert not _is_decorative_symbol_word("✾✂✿")
+
+
+def test_is_decorative_symbol_word_false_for_no_symbols_at_all():
+    assert not _is_decorative_symbol_word("...")
+
+
+def test_decorative_symbol_word_title_shows_more_than_default_truncation():
+    # 運営者から「タイトルも説明欄と同じにしたい」との要望があった(動画
+    # _-wkmpnDXWMの実例、README「ハマった罠」84番)。_is_decorative_symbol_
+    # word()に該当する単語は、呼び出し側(generate_one())で通常の
+    # readable_label()(12文字)ではなく_TITLE_SENTENCE_SNIPPET_CHARS
+    # (20文字、YouTubeタイトル100文字制限の安全マージンとして確立済み)
+    # まで見せる。
+    word = "✾✾✾✺✿✺✹❀✸✺✸✺✿꙰❉꥟❉꥟꥟❉꙰❉꙰❉꙰"
+    assert _is_decorative_symbol_word(word)
+
+    default_label = readable_label(word)
+    widened_label = readable_label(word, max_base_chars=_TITLE_SENTENCE_SNIPPET_CHARS)
+    assert len(widened_label) > len(default_label)
+
+    title, _description, _tags, _caption, _comment, _localizations = _youtube_metadata(
+        word, widened_label, "tts", title_template="impossible_to_say"
+    )
+    assert widened_label in title
+    # 100文字制限に対して十分な余裕があることを確認(README「ハマった罠」
+    # 65番と同じ考え方)。
+    assert len(title) <= 100
 
 
 def test_random_pictograph_comment_text_never_contains_placeholder_braces():
