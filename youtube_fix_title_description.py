@@ -50,12 +50,13 @@ def fix_video_title_description(video_id):
         return False
 
     youtube = get_youtube_client()
-    resp = youtube.videos().list(part="snippet", id=video_id).execute()
+    resp = youtube.videos().list(part="snippet,localizations", id=video_id).execute()
     items = resp.get("items", [])
     if not items:
         print(f"  {video_id}: 動画が見つかりません(削除された可能性があります)")
         return False
     snippet = items[0]["snippet"]
+    current_localizations = items[0].get("localizations", {})
 
     playlist_match = _PLAYLIST_LINK_PATTERN.search(snippet.get("description", ""))
     playlist_id = playlist_match.group(1) if playlist_match else None
@@ -68,20 +69,32 @@ def fix_video_title_description(video_id):
         title_template=entry["title_template"],
     )
 
-    if snippet.get("title") == title and snippet.get("description") == description:
+    # snippet(title/description)とlocalizationsは別々のAPI呼び出し(update)
+    # になるため、それぞれ独立に現在値と比較する。以前はsnippetが一致した
+    # 時点で即returnしていたため、クォータ切れ等でsnippetだけ更新できて
+    # localizationsが更新できなかった動画を再実行しても、snippetが既に
+    # 一致しているという理由でlocalizationsのズレが永久に見逃されていた
+    # (README「ハマった罠」81番)。
+    snippet_changed = snippet.get("title") != title or snippet.get("description") != description
+    localizations_changed = bool(localizations) and current_localizations != localizations
+
+    if not snippet_changed and not localizations_changed:
         print(f"  {video_id}: 修正不要(既に最新の内容と一致)")
         return False
 
-    print(f"  {video_id}: title {snippet.get('title')!r} -> {title!r}")
-    snippet["title"] = title
-    snippet["description"] = description
+    if snippet_changed:
+        print(f"  {video_id}: title {snippet.get('title')!r} -> {title!r}")
+        snippet["title"] = title
+        snippet["description"] = description
+        youtube.videos().update(part="snippet", body={"id": video_id, "snippet": snippet}).execute()
 
-    youtube.videos().update(part="snippet", body={"id": video_id, "snippet": snippet}).execute()
-    if localizations:
+    if localizations_changed:
+        print(f"  {video_id}: localizations(日本語版等)を更新します")
         youtube.videos().update(
             part="localizations",
             body={"id": video_id, "localizations": localizations},
         ).execute()
+
     return True
 
 

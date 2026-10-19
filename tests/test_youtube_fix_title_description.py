@@ -109,13 +109,16 @@ def test_fix_video_title_description_skips_when_already_correct(monkeypatch):
     monkeypatch.setattr(youtube_fix_title_description, "load_upload_history", lambda: [entry])
 
     from generate import _youtube_metadata
-    title, description, _tags, _caption, _comment, _localizations = _youtube_metadata(
+    title, description, _tags, _caption, _comment, localizations = _youtube_metadata(
         "voOn", "voOn", "tts", title_template="how_to_pronounce",
     )
 
     youtube = MagicMock()
     youtube.videos.return_value.list.return_value.execute.return_value = {
-        "items": [{"snippet": {"title": title, "description": description}}]
+        "items": [{
+            "snippet": {"title": title, "description": description},
+            "localizations": localizations,
+        }]
     }
     monkeypatch.setattr(youtube_fix_title_description, "get_youtube_client", lambda: youtube)
 
@@ -123,6 +126,42 @@ def test_fix_video_title_description_skips_when_already_correct(monkeypatch):
 
     assert result is False
     youtube.videos.return_value.update.assert_not_called()
+
+
+def test_fix_video_title_description_updates_localizations_even_when_snippet_already_correct(monkeypatch):
+    # クォータ切れ等でsnippet(title/description)だけ更新できてlocalizations
+    # が更新できなかった動画を再実行した場合、snippetが既に一致している
+    # という理由だけでlocalizationsのズレを見逃さないことの回帰防止
+    # (README「ハマった罠」81番)。
+    entry = {
+        "word": "voOn", "label": "voOn", "video_id": "v1", "mode": "tts",
+        "voice_label": None, "lang_code": None, "title_template": "how_to_pronounce",
+    }
+    monkeypatch.setattr(youtube_fix_title_description, "load_upload_history", lambda: [entry])
+
+    from generate import _youtube_metadata
+    title, description, _tags, _caption, _comment, localizations = _youtube_metadata(
+        "voOn", "voOn", "tts", title_template="how_to_pronounce",
+    )
+    assert localizations  # このテストが意味を持つには非空である必要がある
+
+    youtube = MagicMock()
+    youtube.videos.return_value.list.return_value.execute.return_value = {
+        "items": [{
+            "snippet": {"title": title, "description": description},
+            # localizationsは古いまま(前回クォータ切れで未更新)
+            "localizations": {},
+        }]
+    }
+    monkeypatch.setattr(youtube_fix_title_description, "get_youtube_client", lambda: youtube)
+
+    result = fix_video_title_description("v1")
+
+    assert result is True
+    calls = youtube.videos.return_value.update.call_args_list
+    assert not any(c.kwargs["part"] == "snippet" for c in calls)
+    localizations_call = next(c for c in calls if c.kwargs["part"] == "localizations")
+    assert localizations_call.kwargs["body"] == {"id": "v1", "localizations": localizations}
 
 
 def test_fix_video_title_description_handles_missing_video(monkeypatch):
