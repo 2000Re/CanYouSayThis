@@ -122,6 +122,25 @@ _SINGLE_VOICE_MODES = (
 )
 
 
+def _single_voice_metadata(actual_mode, voice_label, lang_code):
+    """actual_modeが_SINGLE_VOICE_MODESに含まれない(glitch/chorus/morse等)
+    場合は、対応する単一の音声言語が存在しないため、voice_label/lang_codeを
+    (None, None)に戻して返す。
+
+    以前はgenerate_one()がここでNoneに戻さずvoice_label/lang_codeを
+    _youtube_metadata()にそのまま渡していたため、たまたま解決されたボイスの
+    lang_labelがタイトル・タグに「in X語」として紛れ込む一方、
+    upload_history.jsonにはNoneで記録される不整合があった。この不整合の
+    せいで、後からtitle_templateを使ってタイトルを再構築する
+    youtube_fix_title_description.pyが元のタイトルにあった「in X語」を
+    復元できず欠落させてしまう実害が実際に発生した(README「ハマった罠」
+    参照)。_youtube_metadata()への入力とupload_history.jsonへの記録を
+    常に同じ値にすることで、この種の不整合が再発しないようにする。"""
+    if actual_mode in _SINGLE_VOICE_MODES:
+        return voice_label, lang_code
+    return None, None
+
+
 def _lang_suffixed(base, lang_label):
     """base(末尾に"?"を付けない状態の文)に、lang_labelがあれば
     " in {lang_label}?" を付けて返す(無ければbaseのまま、"?"も付けない)。
@@ -1090,6 +1109,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # する処理はアップロード成功後(video_id確定後)に別途行う。
         shorts_playlist_id = os.environ.get("YOUTUBE_SHORTS_PLAYLIST_ID")
         lang_code = _lang_code_for_voice(actual_voice)
+        voice_label, lang_code = _single_voice_metadata(actual_mode, voice_label, lang_code)
         # ここで先に確定させ、_youtube_metadata()には確定済みの値を渡す
         # (title_template="random"のままだと_youtube_metadata()内部でも
         # 改めて抽選されてしまい、実際に使われたテンプレートが分からなく
@@ -1102,15 +1122,9 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
             is_native_script=used_native_script, lang_code=lang_code,
             title_template=actual_title_template,
         )
-        # glitch/chorus/morseは単一言語の音声読み上げではない(glitchは合成音
-        # のみ、chorusは複数言語同時、morseはビープ音)ため、対応する音声言語
-        # が無くdefault_audio_languageは設定しない(YouTube側の自動判定に
-        # 任せる)。_SINGLE_VOICE_MODESのみ、実際に読み上げた言語をメタデータに
-        # 反映する(タイトル・タグへの言語名追加とは別軸のSEO施策、README参照)。
-        default_audio_language = lang_code if actual_mode in _SINGLE_VOICE_MODES else None
         youtube_url = upload_video(
             video_path, title=title, description=description, tags=tags,
-            privacy_status=privacy_status, default_audio_language=default_audio_language,
+            privacy_status=privacy_status, default_audio_language=lang_code,
             localizations=localizations,
         )
         result["youtube_url"] = youtube_url
@@ -1182,13 +1196,13 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         from upload_history import append_upload
 
         # glitch/chorus/morseは単一の音声言語を持たないため、voice_label/
-        # lang_codeを記録しても意味を持たない(default_audio_languageと
-        # 同じ扱い、_SINGLE_VOICE_MODES参照)。
+        # lang_codeは既にNoneに戻してある(_SINGLE_VOICE_MODES参照)。ここで
+        # 記録する値は、実際に_youtube_metadata()へ渡してタイトル等の生成に
+        # 使った値と常に一致する。
         append_upload(
             word=word, label=label, video_id=video_id, mode=actual_mode,
             run_id=os.environ.get("GITHUB_RUN_ID"),
-            voice_label=voice_label if actual_mode in _SINGLE_VOICE_MODES else None,
-            lang_code=lang_code if actual_mode in _SINGLE_VOICE_MODES else None,
+            voice_label=voice_label, lang_code=lang_code,
             title_template=actual_title_template,
         )
 

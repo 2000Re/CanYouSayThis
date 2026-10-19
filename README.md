@@ -1626,6 +1626,39 @@ assets/
     許可リストに追加した。`_sanitize_label_for_display()`・
     `_is_decorative_symbol_word()`双方で参照箇所を更新。テストを追加。
 
+87. **視聴者リクエスト動画`FcJNvYiRwtU`(glitchモード)で、タイトルに
+    あった「in Kazakh」が、バックフィルツール
+    (`youtube_fix_title_description.py`)の実行で消えてしまったのを運営者が
+    手動で修正した**: `generate_one()`は`_resolve_voice()`でモードに関わらず
+    無条件にvoice_label/lang_codeを解決し、`_youtube_metadata()`にも
+    無条件にそのまま渡していた(=実際のアップロード時のタイトル・タグには、
+    たまたま解決されたボイスの言語名が「in X語」として反映される)。一方
+    `upload_history.json`へは`_SINGLE_VOICE_MODES`(単一言語で実際に
+    「発音」を読み上げるモードのみ)でガードしてvoice_label/lang_codeを
+    記録していたため、glitch/chorus/morse(単一言語の音声読み上げではない
+    モード)では常にNoneで記録されていた。`youtube_fix_title_description.py`
+    は`upload_history.json`に記録された値だけを頼りにタイトルを再構築する
+    ため、実際には「in Kazakh」付きだった元のタイトルから、再構築時には
+    それが抜け落ちてしまった。
+
+    38件のバックフィル(81番)でglitch/chorus/morseモードだった11件を
+    調査したところ、実害があったのは`FcJNvYiRwtU`の1件のみだった(他の
+    10件は元々「in X語」が付いていない状態で生成されていたため、
+    バックフィルでも変化がなかった)。`FcJNvYiRwtU`は
+    `upload_history.json`のvoice_label/lang_codeを元のアップロード実行
+    ログ(`[glitch] [Kazakh (Female)] ...`)から復元し、バックフィルを
+    再実行して「in Kazakh」を復元した。
+
+    根本修正として`_single_voice_metadata(actual_mode, voice_label,
+    lang_code)`を追加し、`actual_mode`が`_SINGLE_VOICE_MODES`に含まれない
+    場合はvoice_label/lang_codeを(None, None)に戻すようにした。
+    `generate_one()`は`_youtube_metadata()`呼び出しと`append_upload()`への
+    記録の両方で、この関数を通した後の同じ値を使うようにし、
+    「実際にタイトル生成に使った値」と「履歴に記録する値」が常に一致する
+    ようにした(以前の`default_audio_language`・`append_upload()`呼び出しに
+    あった、同じ条件を別々に書いていた冗長な三項演算もこの関数に統一)。
+    テストを追加。
+
 ## プロジェクト構成
 
 ```
