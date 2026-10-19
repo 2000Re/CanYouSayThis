@@ -31,6 +31,7 @@ from generate import (
     _resolve_voice,
     _sanitize_label_for_display,
     _sentence_title_snippet,
+    _single_voice_metadata,
     _speakable_word,
     _unposted_lang_codes,
     _voice_pitch_for,
@@ -63,6 +64,21 @@ def test_single_voice_modes_excludes_multi_or_no_voice_modes():
     assert "chorus" not in _SINGLE_VOICE_MODES
     assert "morse" not in _SINGLE_VOICE_MODES
     assert "animalese" not in _SINGLE_VOICE_MODES
+
+
+def test_single_voice_metadata_keeps_values_for_single_voice_modes():
+    assert _single_voice_metadata("tts", "Kazakh (Female)", "kk") == ("Kazakh (Female)", "kk")
+
+
+def test_single_voice_metadata_clears_values_for_glitch_chorus_morse():
+    # generate_one()はモードに関わらず_resolve_voice()でvoice_label/
+    # lang_codeを解決してしまうため、ここでNoneに戻さないと、glitch/chorus/
+    # morseでもたまたま解決されたボイスのlang_labelがタイトル・タグに
+    # 「in X語」として紛れ込む一方、upload_history.jsonにはNoneで記録される
+    # 不整合が起き、youtube_fix_title_description.pyによる再修正でその
+    # 「in X語」が復元できず欠落してしまう(README「ハマった罠」参照)。
+    for mode in ("glitch", "chorus", "morse"):
+        assert _single_voice_metadata(mode, "Kazakh (Female)", "kk") == (None, None)
 
 
 def test_resolve_mode_passes_through_tts():
