@@ -793,6 +793,15 @@ def test_is_decorative_symbol_word_true_for_block_elements():
     assert _is_decorative_symbol_word("████")
 
 
+def test_sanitize_label_for_display_keeps_kaomoji_accent_marks():
+    # 視聴者リクエストの顔文字Ψ( ` 皿 ´ )Ψで、目・眉を表すバックティック
+    # (`、U+0060)とアキュートアクセント(´、U+00B4)がタイトルから脱落して
+    # いたのを見た運営者から、表示したいとの要望があった(README「ハマった
+    # 罠」88番)。単独の記号としては発音区別符号(結合文字)ではなく、
+    # 現実のものを連想させるリスクも低いため許可する。
+    assert _sanitize_label_for_display("Ψ( ` 皿 ´ )Ψ") == "Ψ( ` 皿 ´ )Ψ"
+
+
 def test_decorative_symbol_word_title_shows_more_than_default_truncation():
     # 運営者から「タイトルも説明欄と同じにしたい」との要望があった(動画
     # _-wkmpnDXWMの実例、README「ハマった罠」84番)。_is_decorative_symbol_
