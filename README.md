@@ -1610,6 +1610,22 @@ assets/
     なってしまう)、バックフィル対象の有無に関わらず修正が必要だった。
     テストを追加。
 
+86. **視聴者リクエスト(`████`、Block Elementsのみで構成された単語)の
+    動画で、タイトルが`"???" — ...`になっていたのを運営者が手動で修正し、
+    「星・花びらと同様にBlock Elements(█▀▄░▒▓等)もタイトルに表示したい」
+    と要望があった**: `█`(U+2588 FULL BLOCK)はDingbatsの星・花びら許可
+    リスト(83番)には含まれない別のUnicodeブロック(Block Elements、
+    U+2580-259F)のSymbol文字のため除去対象になり、他に文字が残らず
+    "???"にフォールバックしていた(設計通りの動作で、82番のバグではない)。
+    Block Elementsは全32文字とも純粋な図形(網掛け・ブロックの一部表示)
+    で、はさみのように現実のものを連想させたり絵文字と誤解されるリスクが
+    低いと判断した。
+
+    `_DECORATIVE_STAR_FLORETTE_SYMBOLS`を`_DECORATIVE_SYMBOLS`に改名し、
+    Block Elements(U+2580-259F)全32文字を星・花びら系Dingbatsと合わせて
+    許可リストに追加した。`_sanitize_label_for_display()`・
+    `_is_decorative_symbol_word()`双方で参照箇所を更新。テストを追加。
+
 ## プロジェクト構成
 
 ```
