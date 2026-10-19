@@ -3834,5 +3834,16 @@
     "voice_label": "Uyghur (Male)",
     "lang_code": "ug",
     "title_template": "try_to_say"
+  },
+  {
+    "word": "████",
+    "label": "████",
+    "video_id": "FcJNvYiRwtU",
+    "mode": "glitch",
+    "run_id": "39241565821",
+    "uploaded_at": "2026-10-19T11:06:12.820839+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "is_pronounceable"
   }
 ]
