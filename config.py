@@ -520,10 +520,13 @@ CAPTION_LANGUAGE = "en"
 # タイトルの日本語ローカライズ(LANGUAGE_LABELS_JA参照)自体のON/OFF。
 # videos.insertのlocalizationsフィールドはyoutube.upload/youtubeスコープで
 # 完結し(captions.insert/commentThreads.insertのようなyoutube.force-ssl
-# スコープの問題は無い)、追加のAPI呼び出し・クォータ消費も無いが、万一
-# 想定外の挙動があった場合にすぐ切り戻せるよう、他の機能と同じくトグルに
-# しておく。
-JAPANESE_TITLE_LOCALIZATION_ENABLED = True
+# スコープの問題は無い)、追加のAPI呼び出し・クォータ消費も無い。
+#
+# このチャンネルの視聴者に運営者以外の日本語環境の視聴者はほぼいないと
+# 判断した運営者の指示により無効化した(README「ハマった罠」97番)。
+# 他の機能と同じくトグルにしてあるコード自体は残しているため、方針が
+# 変わればTrueに戻すだけで復活する。
+JAPANESE_TITLE_LOCALIZATION_ENABLED = False
 
 # 字幕アップロード機能自体のON/OFF。captions.insertが必要とするyoutube.
 # force-sslスコープは「制限付きスコープ」で、このプロジェクトのOAuth同意
