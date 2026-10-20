@@ -377,10 +377,10 @@ def test_sanitize_label_for_display_falls_back_when_only_punctuation_remains():
     # Symbol文字を取り除くと、文字・数字・許可された装飾記号が1つも残らず
     # 「"..."」という内容の無いタイトルになってしまっていた(動画
     # _-wkmpnDXWM・0HK9SSUha3kの実例で発覚、README「ハマった罠」82番)。
-    # 空文字列の場合だけでなく、このように句読点しか残らない場合も"???"
-    # にする。
+    # 空文字列の場合だけでなく、このように句読点しか残らない場合も
+    # "this word"にする(README「ハマった罠」96番)。
     label = "✂✂✂✂✂✂✂✂✂✂✂✂..."
-    assert _sanitize_label_for_display(label) == "???"
+    assert _sanitize_label_for_display(label) == "this word"
 
 
 def test_sanitize_label_for_display_keeps_decorative_star_florette_symbols():
@@ -397,9 +397,9 @@ def test_sanitize_label_for_display_still_removes_emoji_like_dingbats():
     # されやすい記号(きらめき✨・雪の結晶❄)や宗教的な意味を持つ記号
     # (ダビデの星✡)は、_BLOCKED_SYMBOLSに含めて引き続き除去する
     # (README「ハマった罠」83・92番)。
-    assert _sanitize_label_for_display("✡✡✡...") == "???"
-    assert _sanitize_label_for_display("✨✨✨...") == "???"
-    assert _sanitize_label_for_display("❄❄❄...") == "???"
+    assert _sanitize_label_for_display("✡✡✡...") == "this word"
+    assert _sanitize_label_for_display("✨✨✨...") == "this word"
+    assert _sanitize_label_for_display("❄❄❄...") == "this word"
 
 
 def test_sanitize_label_for_display_removes_angle_brackets():
@@ -410,7 +410,7 @@ def test_sanitize_label_for_display_removes_angle_brackets():
     # 失敗するため、ブロックリスト方式の例外として除去する。
     assert "<" not in _sanitize_label_for_display("a<b>c")
     assert ">" not in _sanitize_label_for_display("a<b>c")
-    assert _sanitize_label_for_display("-%@><_><@%-") == "???"
+    assert _sanitize_label_for_display("-%@><_><@%-") == "this word"
 
 
 def test_strip_api_unsafe_symbols_removes_only_angle_brackets():
@@ -444,12 +444,12 @@ def test_sanitize_label_for_display_keeps_safe_ascii_punctuation_and_spaces():
     assert _sanitize_label_for_display(label) == label
 
 
-def test_sanitize_label_for_display_falls_back_to_question_marks_when_empty():
-    # ⚷(Chiron、So)はブロック対象外のため残り、"???"にはならない
+def test_sanitize_label_for_display_falls_back_to_this_word_when_empty():
+    # ⚷(Chiron、So)はブロック対象外のため残り、"this word"にはならない
     # (_BLOCKED_SYMBOLSのみで構成された場合だけが対象、README「ハマった
     # 罠」92番)。
     assert _sanitize_label_for_display("✂⚷") == "⚷"
-    assert _sanitize_label_for_display("✂✡") == "???"
+    assert _sanitize_label_for_display("✂✡") == "this word"
 
 
 def test_youtube_metadata_title_excludes_blocked_symbols_from_label():

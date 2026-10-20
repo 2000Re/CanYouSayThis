@@ -298,10 +298,10 @@ _API_UNSAFE_SYMBOLS = frozenset({"<", ">"})
 
 def _strip_api_unsafe_symbols(text):
     """YouTube Data APIがHTMLタグと誤認して拒否する文字(_API_UNSAFE_
-    SYMBOLS)だけを取り除く。_sanitize_label_for_display()と違い"???"への
-    フォールバックは行わない(タイトル単体ではなく、常に他の文章の一部に
-    埋め込まれる説明欄向けのため、除去した結果空になってもそのまま許容
-    する)。"""
+    SYMBOLS)だけを取り除く。_sanitize_label_for_display()と違い"this
+    word"へのフォールバックは行わない(タイトル単体ではなく、常に他の
+    文章の一部に埋め込まれる説明欄向けのため、除去した結果空になっても
+    そのまま許容する)。"""
     return "".join(ch for ch in text if ch not in _API_UNSAFE_SYMBOLS)
 
 
@@ -315,14 +315,18 @@ def _sanitize_label_for_display(label):
     80番参照、は引き続き維持)。取り除いた結果、文字(Letter)・数字
     (Number)・Symbol文字が1つも残らない場合(全て取り除かれて空になった
     場合だけでなく、readable_label()が付与する省略記号"..."のような句読点
-    だけが残った場合も含む。README「ハマった罠」82番参照)は、
-    readable_label()と同じフォールバックで"???"を返す。"""
+    だけが残った場合も含む。README「ハマった罠」82番参照)は、"this word"を
+    返す(README「ハマった罠」96番)。全テンプレートが`"{label}"`の形で
+    引用符内に埋め込むため、"???"のような記号の代わりにこの文字列を
+    使うと、How to Pronounce "this word"?・Bet you can't say "this word"
+    on the first try 😄のように、どのテンプレートでも不自然にならず
+    組み込める。"""
     kept = "".join(ch for ch in label if ch not in _BLOCKED_SYMBOLS).strip()
     if not any(
         unicodedata.category(ch)[0] in ("L", "N") or unicodedata.category(ch) in _SYMBOL_CATEGORIES
         for ch in kept
     ):
-        return "???"
+        return "this word"
     return kept
 
 
