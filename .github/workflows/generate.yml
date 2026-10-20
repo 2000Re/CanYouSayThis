@@ -209,7 +209,12 @@ jobs:
             args+=(--upload --privacy-status "$privacy_status")
           fi
           if [ -n "$WORD" ]; then
-            args+=(--word "$WORD")
+            # 単語が"-"で始まることがあり(視聴者リクエストの実例:
+            # "-%@><_><@%-")、"--word VALUE"(空白区切り)だとargparseが
+            # VALUEを新しいオプションだと誤認してエラーになる
+            # (fix_title_description.ymlの--video-idsと同じ理由、
+            # "--word=VALUE"の形で回避する)。
+            args+=(--word="$WORD")
           fi
           python3 generate.py "${args[@]}"
 

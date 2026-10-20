@@ -1796,7 +1796,17 @@ assets/
     記号が残ることを確認するテストに変更)。`youtube_fix_title_
     description.py`・`repost_shorts.py`側のテストも同様に更新。
 
-## プロジェクト構成
+93. **視聴者リクエストの単語(`-%@><_><@%-`)でgenerate.ymlが
+    `generate.py: error: argument --word: expected one argument`で
+    失敗した**: 単語が"-"で始まっており、`generate.yml`が
+    `args+=(--word "$WORD")`(空白区切りで`--word`と値を別々の引数として
+    渡す形)だったため、argparseが値を新しいオプションだと誤認した。
+    `fix_title_description.yml`は動画IDが"-"で始まる場合に備えて既に
+    `--video-ids="${{ inputs.video_ids }}"`(1つの引数にまとめる形)で
+    この問題を回避していたが、`generate.yml`の`--word`には同じ対策が
+    漏れていた。
+
+    `args+=(--word "$WORD")`を`args+=(--word="$WORD")`に変更した。
 
 ```
 config.py                    全モジュール共通の設定・定数
