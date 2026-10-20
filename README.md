@@ -1808,6 +1808,22 @@ assets/
 
     `args+=(--word "$WORD")`を`args+=(--word="$WORD")`に変更した。
 
+94. **視聴者リクエストの単語(`-%@><_><@%-`)で、93番の修正後も
+    `videos.insert`が`The request metadata specifies an invalid or
+    empty video title.`(invalidTitle)で失敗した**: 原因は93番とは別の
+    問題で、タイトルに含まれる`<`・`>`(山括弧、U+003C/U+003E、Sm)を
+    YouTube Data API側がHTMLタグと誤認して拒否していた。見た目の問題
+    (豆腐化・絵文字誤表示)ではなくアップロード自体が失敗する、ブロック
+    リスト方式(92番)の中でも最も実害の大きいケースだった。
+
+    `_BLOCKED_SYMBOLS`に`<`・`>`を追加した。この単語は山括弧を除いた
+    残りの文字(`-%@_@%-`)がSymbol文字・文字・数字のいずれでもないため、
+    `_sanitize_label_for_display()`は既存の仕様通り"???"にフォールバック
+    する(アップロードは成功するが、タイトルには記号の内容が反映されない。
+    説明欄には元の単語がそのまま残る)。テストを追加。
+
+## プロジェクト構成
+
 ```
 config.py                    全モジュール共通の設定・定数
 word_generator.py            Zalgo風「発音不能な単語」の生成

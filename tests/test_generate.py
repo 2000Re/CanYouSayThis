@@ -401,6 +401,17 @@ def test_sanitize_label_for_display_still_removes_emoji_like_dingbats():
     assert _sanitize_label_for_display("❄❄❄...") == "???"
 
 
+def test_sanitize_label_for_display_removes_angle_brackets():
+    # "<"・">"(山括弧)はYouTube Data API側がHTMLタグと誤認するらしく、
+    # タイトルに含めるとvideos.insert/updateが"invalidTitle"エラーで
+    # 失敗する実機事故が発生した(視聴者リクエストの単語-%@><_><@%-、
+    # README「ハマった罠」94番)。見た目の問題ではなくアップロード自体が
+    # 失敗するため、ブロックリスト方式の例外として除去する。
+    assert "<" not in _sanitize_label_for_display("a<b>c")
+    assert ">" not in _sanitize_label_for_display("a<b>c")
+    assert _sanitize_label_for_display("-%@><_><@%-") == "???"
+
+
 def test_sanitize_label_for_display_keeps_safe_ascii_punctuation_and_spaces():
     # animaleseモード等、--wordで文章丸ごとのリクエストが来た場合でも、
     # 感嘆符・カンマ・空白のような通常のASCII記号は豆腐/絵文字化しない

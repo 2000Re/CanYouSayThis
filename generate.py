@@ -266,6 +266,13 @@ _SYMBOL_CATEGORIES = ("Sm", "Sc", "Sk", "So")
 # ✦U+2748・雪の結晶❄U+2744-2746は、同じDingbatsブロックの星・花びら系
 # 記号と違い現実の物を強く連想させ絵文字として誤解されやすい。ダビデの星
 # ✡U+2721は宗教的な意味を持つ。これらはいずれも引き続き除去する。
+#
+# "<"・">"(山括弧、U+003C/U+003E、Sm)はYouTube Data API側がHTMLタグと
+# 誤認するらしく、タイトルに含めるとvideos.insert/updateが
+# "The request metadata specifies an invalid or empty video title."
+# (invalidTitle)で失敗する実機事故が発生した(視聴者リクエストの単語
+# -%@><_><@%-、README「ハマった罠」94番)。見た目の問題ではなく
+# アップロード自体が失敗するため、ブロックリスト方式の例外として除去する。
 _BLOCKED_SYMBOLS = frozenset(
     chr(cp)
     for cp in (
@@ -273,6 +280,7 @@ _BLOCKED_SYMBOLS = frozenset(
         + [0x2728, 0x2747, 0x2748]  # きらめき✨✧✦
         + list(range(0x2744, 0x2747))  # 雪の結晶❄❅❆
         + [0x2721]  # ダビデの星✡(宗教的)
+        + [0x3C, 0x3E]  # 山括弧<>(YouTube側がHTMLタグと誤認しアップロードが失敗する)
     )
 )
 
