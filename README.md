@@ -1751,6 +1751,26 @@ assets/
     下がる。テストは`MODE_WEIGHTS`を動的に読み取る設計のため変更不要
     (`test_generate.py`参照)。
 
+91. **視聴者リクエストの単語(IPA国際音声記号をZalgo風に装飾したもの)で、
+    動画の尺が3分3秒になってしまい、YouTube Shorts判定の上限(縦型9:16・
+    3分以内)を超えて通常動画扱いになっていたのを運営者が発見した**:
+    `random_zalgo_word()`は1つの土台文字に乗せる結合文字(Zalgoの見た目)
+    の数をstack_depth最大10に制限しているが、この上限は生成時にしか
+    効かず、`--word`直接指定(視聴者リクエスト対応)では経由しない。
+    今回の単語は1箇所に結合文字が16個連続しており、espeak-ngがこれを
+    読み上げようとした結果、通常数秒〜十数秒で終わるはずの音声が
+    異常に長くなった(動画フレーム表示用の`zalgo_display_word()`には
+    既に同種の上限(`max_marks_per_cluster`、既定4)があったが、TTS合成に
+    渡す単語側には対応する上限が無かった)。
+
+    `word_generator.py`に`cap_combining_marks(word,
+    max_marks_per_cluster=10)`を追加した。1クラスターあたりの結合文字数を
+    `random_zalgo_word()`のstack_depth上限と同じ10に制限する(土台文字
+    自体は変えない)。`generate.py`の`tts_word`組み立て(`_speak_symbols_
+    by_name(_speakable_word(word))`の結果)にこれを適用し、TTS系全モード
+    (chorus含む、`tts_word`を共有)に反映した。動画フレーム・label・
+    upload_history.json記録用のwordはそのまま変更しない。テストを追加。
+
 ## プロジェクト構成
 
 ```
