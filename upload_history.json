@@ -3955,5 +3955,16 @@
     "voice_label": "Finnish (Male)",
     "lang_code": "fi",
     "title_template": "try_to_say"
+  },
+  {
+    "word": "Shemomedjamo",
+    "label": "Shemomedjamo",
+    "video_id": "wNLbZgMC_wE",
+    "mode": "tts",
+    "run_id": "39410806295",
+    "uploaded_at": "2026-10-20T10:56:04.181246+00:00",
+    "voice_label": "Bosnian (Female)",
+    "lang_code": "bs",
+    "title_template": "try_to_say"
   }
 ]
