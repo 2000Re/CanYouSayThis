@@ -1822,6 +1822,25 @@ assets/
     する(アップロードは成功するが、タイトルには記号の内容が反映されない。
     説明欄には元の単語がそのまま残る)。テストを追加。
 
+95. **94番の修正・マージ後も、同じ単語(`-%@><_><@%-`)で今度は
+    `videos.insert`が`The request metadata specifies an invalid video
+    description.`(invalidDescription)で失敗した**: 説明欄の
+    「Word: {word}」行は、タイトルで切り詰め・除去された記号も視聴者が
+    確認できるよう、`label`(`_sanitize_label_for_display()`適用済み)では
+    なく生の`word`をそのまま埋め込む設計(65番等)だったため、94番の
+    `_BLOCKED_SYMBOLS`への追加だけでは説明欄側の山括弧`<`・`>`が除去
+    されず残っていた。
+
+    `_BLOCKED_SYMBOLS`全体(はさみ等、タイトルでの見た目上の問題を理由に
+    除去)を説明欄にも適用すると、タイトルで切り詰められた記号を説明欄で
+    確認できるようにするという元々の設計意図が損なわれる。そこで
+    `_API_UNSAFE_SYMBOLS`(`<`・`>`のみ)と、それを取り除く
+    `_strip_api_unsafe_symbols()`を新設し、説明欄の「Word: {word}」行
+    にだけ適用した(`generate.py`の`_youtube_metadata()`・
+    `repost_shorts.py`の`build_repost_metadata()`両方)。見た目の問題
+    (はさみ等)は説明欄にそのまま残り、APIが実際に拒否する文字だけが
+    除去される。テストを追加。
+
 ## プロジェクト構成
 
 ```

@@ -284,6 +284,26 @@ _BLOCKED_SYMBOLS = frozenset(
     )
 )
 
+# 説明欄の「Word: {word}」行は、タイトルで切り詰め・除去された記号も
+# 視聴者が確認できるよう、label(_sanitize_label_for_display()適用済み)
+# ではなく生のwordをそのまま埋め込む設計(README「ハマった罠」65番等)。
+# そのため_BLOCKED_SYMBOLS(はさみ等、タイトルでの見た目上の問題を理由に
+# 除去)はここでは適用しない方が設計意図に合う。しかし山括弧<>は見た目の
+# 問題ではなくYouTube Data API自体が説明欄でも"invalidDescription"で
+# アップロードを拒否することが実機で確認された(視聴者リクエストの単語
+# -%@><_><@%-、README「ハマった罠」95番)。_BLOCKED_SYMBOLSとは別に、
+# API自体が拒否する文字だけに絞った最小限の除去をここに適用する。
+_API_UNSAFE_SYMBOLS = frozenset({"<", ">"})
+
+
+def _strip_api_unsafe_symbols(text):
+    """YouTube Data APIがHTMLタグと誤認して拒否する文字(_API_UNSAFE_
+    SYMBOLS)だけを取り除く。_sanitize_label_for_display()と違い"???"への
+    フォールバックは行わない(タイトル単体ではなく、常に他の文章の一部に
+    埋め込まれる説明欄向けのため、除去した結果空になってもそのまま許容
+    する)。"""
+    return "".join(ch for ch in text if ch not in _API_UNSAFE_SYMBOLS)
+
 
 def _sanitize_label_for_display(label):
     """タイトル・字幕・コメントに使うlabelから、_BLOCKED_SYMBOLS(絵文字として
@@ -621,7 +641,8 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     title += " #Shorts"
     description = "Can you pronounce this? \U0001F440\n\n"
     description += (
-        f"{_PICTOGRAPH_DESCRIPTION_LINE}\n" if is_pictograph_script else f"Word: {word}\n"
+        f"{_PICTOGRAPH_DESCRIPTION_LINE}\n" if is_pictograph_script
+        else f"Word: {_strip_api_unsafe_symbols(word)}\n"
     )
     description += f"Mode: {mode_label}\n"
     if mode == "animalese":
