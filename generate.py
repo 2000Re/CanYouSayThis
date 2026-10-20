@@ -252,66 +252,63 @@ _REQUEST_LENGTH_NOTICE = " Requests: 80 characters max, please! \U0001F4AC"
 # 単語の見た目自体には影響しない。
 _SYMBOL_CATEGORIES = ("Sm", "Sc", "Sk", "So")
 
-# 装飾目的のSymbol文字(幾何学的な星・花びら・ブロック要素記号のみ)は
-# 例外的に許可する。運営者から「花の模様はタイトルにも表示したい」との
-# 要望があった(README「ハマった罠」83番、動画のWord:
-# ✾✾✾✺✿✺✹❀✸✺✸✺✿꙰❉꥟❉꥟꥟❉꙰❉꙰❉꙰が実例)。その後、Block Elements
-# (█▀▄░▒▓等、U+2580-259F)のみで構成された単語(████)のタイトルが
-# "???"になったのを見た運営者から、こちらも表示したいとの追加要望があり
-# 許可リストに加えた(README「ハマった罠」86番)。いずれも純粋な図形で
-# 現実のものを連想させないため許可している。一方、同じDingbatsブロックに
-# あるはさみ✂・きらめき✨U+2728・✧U+2747・✦U+2748・雪の結晶❄U+2744-2746
-# (79番の原因)や、宗教的な意味を持つダビデの星✡U+2721は、絵文字として
-# 誤解されたり現実のものを連想させるため対象外のまま。
+# タイトル等から除去する記号(許可リスト方式からブロックリスト方式への
+# 反転、README「ハマった罠」92番)。以前はSymbol系Unicodeカテゴリ
+# (Sm/Sc/Sk/So)を原則すべて除去し、星・花びら・Block Elements・顔文字の
+# 目印(`´)等を個別に許可リストへ追加する方式だった(83・86・88番)が、
+# 視聴者リクエストの顔文字で新しい記号が来るたびに不一致が起き、その都度
+# 許可リストへの追加が必要でスケールしなかった(92番)。そこで原則は表示し、
+# 「絵文字として誤解される」「宗教的な意味を持つ」等、実際に問題が確認された
+# 記号だけを個別に除去する方式に反転した。
 #
-# さらにその後、視聴者リクエストの顔文字Ψ( ` 皿 ´ )Ψで、目・眉を表す
-# バックティック(`、U+0060)とアキュートアクセント(´、U+00B4)がタイトルから
-# 脱落したのを見た運営者から、こちらも表示したいとの要望があり許可リストに
-# 加えた(README「ハマった罠」88番)。いずれも単独の記号としては特定の言語の
-# 発音区別符号(結合文字・Mnカテゴリ)ではなく、現実のものを連想させたり
-# 絵文字として誤解されるリスクも低いため許可している。
-_DECORATIVE_SYMBOLS = frozenset(
+# はさみ✂は視聴者リクエストの音楽記号混在単語で実際に絵文字として誤表示
+# された(README「ハマった罠」79番の原因)。きらめき✨U+2728・✧U+2747・
+# ✦U+2748・雪の結晶❄U+2744-2746は、同じDingbatsブロックの星・花びら系
+# 記号と違い現実の物を強く連想させ絵文字として誤解されやすい。ダビデの星
+# ✡U+2721は宗教的な意味を持つ。これらはいずれも引き続き除去する。
+_BLOCKED_SYMBOLS = frozenset(
     chr(cp)
     for cp in (
-        list(range(0x2580, 0x25A0))  # Block Elements(█▀▄░▒▓等)
-        + list(range(0x2722, 0x2728))  # 星・花びら系Dingbats(前半)
-        + list(range(0x2729, 0x2744))  # 星・花びら系Dingbats(後半)
-        + [0x2749, 0x274A, 0x274B]  # バルーン・プロペラ型アスタリスク
-        + [0x60, 0xB4]  # 顔文字の目・眉用のバックティック(`)・アキュートアクセント(´)
+        [0x2702]  # はさみ✂
+        + [0x2728, 0x2747, 0x2748]  # きらめき✨✧✦
+        + list(range(0x2744, 0x2747))  # 雪の結晶❄❅❆
+        + [0x2721]  # ダビデの星✡(宗教的)
     )
 )
 
 
 def _sanitize_label_for_display(label):
-    """タイトル・字幕・コメントに使うlabelから、Symbol系Unicodeカテゴリ
-    (Sm/Sc/Sk/So。音楽記号・チェス駒記号・はさみ記号等)を取り除く。ただし
-    _DECORATIVE_SYMBOLS(幾何学的な星・花びら・ブロック要素記号)は例外的に
-    残す。句読点・結合文字等、Symbol以外はそのまま残す(꧁꧂のような装飾
-    目的の句読点文字まで巻き込んで消してしまっていた実装上の不具合を修正。
-    README「ハマった罠」80番参照)。取り除いた結果、文字(Letter)・数字
-    (Number)・許可された装飾記号が1つも残らない場合(全て取り除かれて
-    空になった場合だけでなく、readable_label()が付与する省略記号"..."の
-    ような句読点だけが残った場合も含む。README「ハマった罠」82番参照)は、
+    """タイトル・字幕・コメントに使うlabelから、_BLOCKED_SYMBOLS(絵文字として
+    誤解されたり宗教的な意味を持つことが確認済みの記号)だけを取り除く。
+    それ以外のSymbol系Unicode文字(音楽記号・顔文字の記号・数学記号等)は
+    原則そのまま残す(README「ハマった罠」92番、ブロックリスト方式)。
+    句読点・結合文字もそのまま残す(꧁꧂のような装飾目的の句読点文字まで
+    巻き込んで消してしまっていた実装上の不具合の修正、README「ハマった罠」
+    80番参照、は引き続き維持)。取り除いた結果、文字(Letter)・数字
+    (Number)・Symbol文字が1つも残らない場合(全て取り除かれて空になった
+    場合だけでなく、readable_label()が付与する省略記号"..."のような句読点
+    だけが残った場合も含む。README「ハマった罠」82番参照)は、
     readable_label()と同じフォールバックで"???"を返す。"""
-    kept = "".join(
-        ch for ch in label
-        if unicodedata.category(ch) not in _SYMBOL_CATEGORIES or ch in _DECORATIVE_SYMBOLS
-    ).strip()
+    kept = "".join(ch for ch in label if ch not in _BLOCKED_SYMBOLS).strip()
     if not any(
-        unicodedata.category(ch)[0] in ("L", "N") or ch in _DECORATIVE_SYMBOLS
+        unicodedata.category(ch)[0] in ("L", "N") or unicodedata.category(ch) in _SYMBOL_CATEGORIES
         for ch in kept
     ):
         return "???"
     return kept
 
 
-def _is_decorative_symbol_word(word):
-    """wordが_DECORATIVE_SYMBOLS(星・花びら・ブロック要素記号)のみの
-    「装飾記号だけで構成された単語」(動画_-wkmpnDXWM・████が実例)かどうか
-    を判定する。文字(Letter)・数字(Number)が1文字でも含まれていたり、
-    許可リスト外のSymbol文字(はさみ等)が含まれていれば対象外(結合文字は
-    判定対象外。꙰のような囲み結合文字(Meカテゴリ)や꥟のような句読点は
-    元々sanitizeで取り除かれないため、含まれていても対象のまま)。
+def _is_symbol_only_word(word):
+    """wordに文字(Letter)・数字(Number)が1つも含まれず、かつSymbol系
+    Unicodeカテゴリ(_SYMBOL_CATEGORIES)の文字を1つ以上含む「記号だけの
+    単語」(動画_-wkmpnDXWM・████が実例)かどうかを判定する。結合文字は
+    判定対象外。꙰のような囲み結合文字(Meカテゴリ、combining()が0を返す
+    ため土台文字として扱われる)や꥟のような句読点(Po)はSymbolでも
+    Letter/Numberでもないため、含まれていても判定に影響しない(sanitizeで
+    元々取り除かれない文字のため)。_BLOCKED_SYMBOLSによる除去は考慮しない
+    (はさみ等のブロック対象記号が混ざっていても対象のまま。表示上の除去は
+    _sanitize_label_for_display()側の別の話で、ここでは「タイトルの
+    切り詰め幅をどちらにするか」だけを判定する)。
 
     末尾に区切り記号として星が1つ付いているだけの通常のZalgo単語
     (大半が文字で構成されている)まで対象になってしまっていた実装上の
@@ -322,13 +319,9 @@ def _is_decorative_symbol_word(word):
     100文字制限の安全マージンとして確立済みの_TITLE_SENTENCE_SNIPPET_CHARS
     (20文字)は超えない)。"""
     base_chars = [ch for ch in word if not unicodedata.combining(ch)]
-    if not any(ch in _DECORATIVE_SYMBOLS for ch in base_chars):
+    if not any(unicodedata.category(ch) in _SYMBOL_CATEGORIES for ch in base_chars):
         return False
-    return not any(
-        unicodedata.category(ch)[0] in ("L", "N")
-        or (unicodedata.category(ch) in _SYMBOL_CATEGORIES and ch not in _DECORATIVE_SYMBOLS)
-        for ch in base_chars
-    )
+    return not any(unicodedata.category(ch)[0] in ("L", "N") for ch in base_chars)
 
 
 # 楔形文字・エジプト/アナトリア象形文字・線文字B(config.PICTOGRAPH_SCRIPTS)の
@@ -1008,11 +1001,11 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
             word = _random_unique_word(existing_words, word_generator=word_generator)
         else:
             word = word_generator()
-        # 星・花びら系Dingbatsのみで構成された単語(_is_decorative_symbol_word()
-        # 参照)は、通常の12文字切り詰めではなく、100文字制限の安全マージン
-        # として確立済みの_TITLE_SENTENCE_SNIPPET_CHARS(20文字)まで見せる
-        # (README「ハマった罠」84番)。
-        if _is_decorative_symbol_word(word):
+        # 記号だけで構成された単語(_is_symbol_only_word()参照)は、通常の
+        # 12文字切り詰めではなく、100文字制限の安全マージンとして確立済みの
+        # _TITLE_SENTENCE_SNIPPET_CHARS(20文字)まで見せる(README「ハマった
+        # 罠」84番)。
+        if _is_symbol_only_word(word):
             label = readable_label(word, max_base_chars=_TITLE_SENTENCE_SNIPPET_CHARS)
         else:
             label = readable_label(word)

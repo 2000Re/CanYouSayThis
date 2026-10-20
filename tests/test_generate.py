@@ -17,8 +17,8 @@ from generate import (
     _SINGLE_VOICE_MODES,
     _TITLE_SENTENCE_SNIPPET_CHARS,
     _TITLE_TEMPLATES,
-    _is_decorative_symbol_word,
     _is_pictograph_word,
+    _is_symbol_only_word,
     _lang_code_for_voice,
     _mode_genre_suffix,
     _native_script_for_voice,
@@ -344,17 +344,21 @@ def test_youtube_metadata_comment_request_length_notice_also_applies_to_pictogra
     assert "80 characters max" in comment
 
 
-def test_sanitize_label_for_display_removes_symbol_category_characters():
+def test_sanitize_label_for_display_only_removes_blocked_symbols():
     # 視聴者リクエスト(音楽記号+はさみ記号+チェス記号混在)で、タイトルに
     # 音楽記号・チェス駒記号・はさみ記号等が紛れ込み、YouTube自身
     # のタイトル表示フォントで豆腐(❓)や意図しない絵文字表示になることが
-    # 発覚した(README「ハマった罠」79番)。Symbol系Unicodeカテゴリ
-    # (Sm/Sc/Sk/So)だけを取り除くことの回帰防止。結合文字(Mcカテゴリの
-    # 音楽記号用コンビニングステム等)はSymbolではないため対象外で残る
-    # (README「ハマった罠」80番、除去範囲をSymbolカテゴリのみに絞った
-    # 際の仕様)。
+    # 発覚した(README「ハマった罠」79番)。しかしSymbol系Unicodeカテゴリ
+    # (Sm/Sc/Sk/So)を原則すべて除去する方式は、新しい記号が来るたびに
+    # 許可リストへの追加が必要でスケールしなかったため、_BLOCKED_SYMBOLS
+    # (絵文字として誤解される・宗教的等、実際に問題が確認された記号)だけを
+    # 除去するブロックリスト方式に反転した(README「ハマった罠」92番)。
+    # はさみ(✂)は引き続き除去されるが、音楽記号(So)やチェス記号風の
+    # ⚷(Chiron、So)は原則通り残る。結合文字(Mcカテゴリの音楽記号用
+    # コンビニングステム等)は元々Symbolではないため対象外で残る
+    # (README「ハマった罠」80番)。
     label = "\U0001D1DA✂\U0001D158\U0001D165\U0001D172⚷⚷iǫúụủv"
-    assert _sanitize_label_for_display(label) == "\U0001D165\U0001D172iǫúụủv"
+    assert _sanitize_label_for_display(label) == "\U0001D1DA\U0001D158\U0001D165\U0001D172⚷⚷iǫúụủv"
 
 
 def test_sanitize_label_for_display_keeps_non_symbol_punctuation():
@@ -380,9 +384,9 @@ def test_sanitize_label_for_display_falls_back_when_only_punctuation_remains():
 
 def test_sanitize_label_for_display_keeps_decorative_star_florette_symbols():
     # 運営者から「花の模様はタイトルにも表示したい」との要望があった
-    # (動画_-wkmpnDXWMの実例、README「ハマった罠」83番)。幾何学的な
-    # 星・花びら記号(Dingbatsブロックの一部)は例外的にSymbol除去の
-    # 対象外とする。
+    # (動画_-wkmpnDXWMの実例、README「ハマった罠」83番)。ブロックリスト
+    # 方式(92番)では、幾何学的な星・花びら記号(Dingbatsブロックの一部)は
+    # _BLOCKED_SYMBOLS対象外のため原則通り残る。
     label = "✾✾✾✺✿✺✹❀✸✺✸✺..."
     assert _sanitize_label_for_display(label) == label
 
@@ -390,8 +394,8 @@ def test_sanitize_label_for_display_keeps_decorative_star_florette_symbols():
 def test_sanitize_label_for_display_still_removes_emoji_like_dingbats():
     # 同じDingbatsブロックでも、現実のものを連想させ絵文字として誤解
     # されやすい記号(きらめき✨・雪の結晶❄)や宗教的な意味を持つ記号
-    # (ダビデの星✡)は、星・花びら記号の許可リストには含めず引き続き
-    # 除去する(README「ハマった罠」83番)。
+    # (ダビデの星✡)は、_BLOCKED_SYMBOLSに含めて引き続き除去する
+    # (README「ハマった罠」83・92番)。
     assert _sanitize_label_for_display("✡✡✡...") == "???"
     assert _sanitize_label_for_display("✨✨✨...") == "???"
     assert _sanitize_label_for_display("❄❄❄...") == "???"
@@ -406,17 +410,24 @@ def test_sanitize_label_for_display_keeps_safe_ascii_punctuation_and_spaces():
 
 
 def test_sanitize_label_for_display_falls_back_to_question_marks_when_empty():
-    assert _sanitize_label_for_display("✂⚷") == "???"
+    # ⚷(Chiron、So)はブロック対象外のため残り、"???"にはならない
+    # (_BLOCKED_SYMBOLSのみで構成された場合だけが対象、README「ハマった
+    # 罠」92番)。
+    assert _sanitize_label_for_display("✂⚷") == "⚷"
+    assert _sanitize_label_for_display("✂✡") == "???"
 
 
-def test_youtube_metadata_title_excludes_symbol_characters_from_label():
+def test_youtube_metadata_title_excludes_blocked_symbols_from_label():
+    # ブロックリスト方式(README「ハマった罠」92番)では、はさみ(✂、
+    # _BLOCKED_SYMBOLS)だけが除去され、音楽記号(So、ブロック対象外)は
+    # 原則通り残る。
     label = "\U0001D1DA✂iv"  # 音楽記号+はさみ記号+通常の文字
     title, _description, _tags, caption, comment, _localizations = _youtube_metadata(
         label, label, "glitch"
     )
     for text in (title, caption, comment):
         assert "✂" not in text
-        assert "\U0001D1DA" not in text
+        assert "\U0001D1DA" in text
         assert "iv" in text
 
 
@@ -753,33 +764,34 @@ def test_is_pictograph_word_false_for_ordinary_words():
     assert not _is_pictograph_word("v́oOn")
 
 
-def test_is_decorative_symbol_word_true_for_pure_decorative_symbols():
+def test_is_symbol_only_word_true_for_pure_decorative_symbols():
     # 動画_-wkmpnDXWMの実例(花・星記号+結合文字+句読点)。結合文字(꙰)・
     # 句読点(꥟)はsanitizeで元々取り除かれないため、判定には影響しない。
     word = "✾✾✾✺✿✺✹❀✸✺✸✺✿꙰❉꥟❉꥟꥟❉꙰❉꙰❉꙰"
-    assert _is_decorative_symbol_word(word)
+    assert _is_symbol_only_word(word)
 
 
-def test_is_decorative_symbol_word_false_for_ordinary_words():
-    assert not _is_decorative_symbol_word("voOn")
+def test_is_symbol_only_word_false_for_ordinary_words():
+    assert not _is_symbol_only_word("voOn")
 
 
-def test_is_decorative_symbol_word_false_when_symbols_outside_allowlist():
-    # はさみ(✂)は星・花びら系の許可リストに含まれないため、花記号と
-    # 混在していても対象外(README「ハマった罠」83番、はさみは引き続き
-    # 除去対象)。
-    assert not _is_decorative_symbol_word("✾✂✿")
+def test_is_symbol_only_word_true_even_when_containing_blocked_symbols():
+    # はさみ(✂)は_BLOCKED_SYMBOLSにより表示上は除去されるが、Symbol文字
+    # であることに変わりはないため、花記号と混在していても「記号だけの
+    # 単語」判定自体は影響を受けない(ブロックリスト方式への反転、README
+    # 「ハマった罠」92番。_sanitize_label_for_display()側の除去とは別の話)。
+    assert _is_symbol_only_word("✾✂✿")
 
 
-def test_is_decorative_symbol_word_false_for_no_symbols_at_all():
-    assert not _is_decorative_symbol_word("...")
+def test_is_symbol_only_word_false_for_no_symbols_at_all():
+    assert not _is_symbol_only_word("...")
 
 
-def test_is_decorative_symbol_word_false_for_ordinary_word_with_trailing_star():
+def test_is_symbol_only_word_false_for_ordinary_word_with_trailing_star():
     # 通常のZalgo単語(文字主体)の末尾に区切り記号として星が1つ付いている
-    # だけのケース(upload_history.jsonの実例)まで「装飾記号のみの単語」
-    # と誤判定していた不具合の回帰防止(README「ハマった罠」85番)。
-    assert not _is_decorative_symbol_word(":llllU҉҉҉҉VEAAA( ؞ ❁")
+    # だけのケース(upload_history.jsonの実例)まで「記号のみの単語」と
+    # 誤判定していた不具合の回帰防止(README「ハマった罠」85番)。
+    assert not _is_symbol_only_word(":llllU҉҉҉҉VEAAA( ؞ ❁")
 
 
 def test_sanitize_label_for_display_keeps_block_elements():
@@ -790,8 +802,8 @@ def test_sanitize_label_for_display_keeps_block_elements():
     assert _sanitize_label_for_display("████") == "████"
 
 
-def test_is_decorative_symbol_word_true_for_block_elements():
-    assert _is_decorative_symbol_word("████")
+def test_is_symbol_only_word_true_for_block_elements():
+    assert _is_symbol_only_word("████")
 
 
 def test_sanitize_label_for_display_keeps_kaomoji_accent_marks():
@@ -805,13 +817,13 @@ def test_sanitize_label_for_display_keeps_kaomoji_accent_marks():
 
 def test_decorative_symbol_word_title_shows_more_than_default_truncation():
     # 運営者から「タイトルも説明欄と同じにしたい」との要望があった(動画
-    # _-wkmpnDXWMの実例、README「ハマった罠」84番)。_is_decorative_symbol_
-    # word()に該当する単語は、呼び出し側(generate_one())で通常の
+    # _-wkmpnDXWMの実例、README「ハマった罠」84番)。_is_symbol_only_word()
+    # に該当する単語は、呼び出し側(generate_one())で通常の
     # readable_label()(12文字)ではなく_TITLE_SENTENCE_SNIPPET_CHARS
     # (20文字、YouTubeタイトル100文字制限の安全マージンとして確立済み)
     # まで見せる。
     word = "✾✾✾✺✿✺✹❀✸✺✸✺✿꙰❉꥟❉꥟꥟❉꙰❉꙰❉꙰"
-    assert _is_decorative_symbol_word(word)
+    assert _is_symbol_only_word(word)
 
     default_label = readable_label(word)
     widened_label = readable_label(word, max_base_chars=_TITLE_SENTENCE_SNIPPET_CHARS)

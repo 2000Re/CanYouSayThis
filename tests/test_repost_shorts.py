@@ -209,9 +209,10 @@ def test_build_repost_metadata_comment_includes_request_length_notice():
 
 def test_build_repost_metadata_sanitizes_symbol_characters_from_label():
     # generate.py _youtube_metadata()と同じく、タイトル・コメントに使う
-    # labelから音楽記号・はさみ記号等のSymbol系文字を取り除く
-    # (README「ハマった罠」79番)。entry["label"]自体(サムネイル表示用に
-    # 別途使われる)は変更しないことも確認する。
+    # labelから_BLOCKED_SYMBOLS(はさみ等)だけを取り除く(README「ハマった
+    # 罠」79・92番)。音楽記号(So、ブロック対象外)は原則通り残る。
+    # entry["label"]自体(サムネイル表示用に別途使われる)は変更しないことも
+    # 確認する。
     label = "\U0001D1DA✂iv"  # 音楽記号+はさみ記号+通常の文字
     entry = {
         "word": label, "label": label, "mode": "glitch",
@@ -219,7 +220,7 @@ def test_build_repost_metadata_sanitizes_symbol_characters_from_label():
     }
     metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
     assert "✂" not in metadata["title"]
-    assert "\U0001D1DA" not in metadata["title"]
+    assert "\U0001D1DA" in metadata["title"]
     assert "iv" in metadata["title"]
     assert entry["label"] == label  # entry自体は変更しない(サムネイル用)
 

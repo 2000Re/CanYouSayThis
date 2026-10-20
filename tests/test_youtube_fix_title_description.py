@@ -15,7 +15,8 @@ from youtube_fix_title_description import fix_video_title_description
 def _symbol_heavy_entry():
     # 視聴者リクエスト(音楽記号+はさみ記号混在)で、タイトル表示が豆腐・
     # 意図しない絵文字になっていたことが発覚した実例(README「ハマった罠」
-    # 79番)と同じ構成。
+    # 79番)と同じ構成。現在ははさみ(✂)だけが_BLOCKED_SYMBOLSとして
+    # 除去され、音楽記号は原則通り残る(README「ハマった罠」92番)。
     word = "\U0001D1DA✂iv"  # 音楽記号+はさみ記号+通常の文字
     return {
         "word": word, "label": word, "video_id": "v1", "mode": "glitch",
@@ -45,7 +46,7 @@ def test_fix_video_title_description_updates_when_symbols_present(monkeypatch):
     body = snippet_call.kwargs["body"]
     assert body["id"] == "v1"
     assert "✂" not in body["snippet"]["title"]
-    assert "\U0001D1DA" not in body["snippet"]["title"]
+    assert "\U0001D1DA" in body["snippet"]["title"]  # 音楽記号はブロック対象外(README92番)
     assert "iv" in body["snippet"]["title"]
     # categoryId等、titleとdescription以外のフィールドは保持する
     assert body["snippet"]["categoryId"] == "24"
