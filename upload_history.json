@@ -3911,5 +3911,16 @@
     "voice_label": "Hindi (Female)",
     "lang_code": "hi",
     "title_template": "what_does_it_sound_like"
+  },
+  {
+    "word": "лоданакорбаснедитова",
+    "label": "лоданакорбас...",
+    "video_id": "VMkir5KwNq4",
+    "mode": "tts",
+    "run_id": "39385550554",
+    "uploaded_at": "2026-10-20T07:22:48.155750+00:00",
+    "voice_label": null,
+    "lang_code": "ru",
+    "title_template": "is_pronounceable"
   }
 ]
