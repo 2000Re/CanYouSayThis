@@ -3933,5 +3933,16 @@
     "voice_label": "Bosnian (Female)",
     "lang_code": "bs",
     "title_template": "how_to_pronounce"
+  },
+  {
+    "word": "d̪̥̪̬͆͆͆̃ˠ͜ᵊxʼˠ̪͆͜͡ʲɪ̥̈̊ʲ͡ˌ͆͆͆͆͆͆͆͆͆͆͆͆͆͆͆͆ʲpo̞˞̊̃͆͆͜",
+    "label": "dˠᵊxʼˠʲɪʲˌʲp...",
+    "video_id": "fuoxaREbtsM",
+    "mode": "tts",
+    "run_id": "39408048946",
+    "uploaded_at": "2026-10-20T10:37:54.115517+00:00",
+    "voice_label": "Portuguese (Portugal) (Male)",
+    "lang_code": "pt",
+    "title_template": "is_pronounceable"
   }
 ]
