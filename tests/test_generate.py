@@ -1025,36 +1025,44 @@ def test_youtube_metadata_localizations_use_word_boundary_snippet_for_long_sente
         assert "Welcome to m..." not in entry["title"]
 
 
-def test_youtube_metadata_localizations_includes_japanese_title():
+def test_youtube_metadata_localizations_includes_japanese_title(monkeypatch):
+    # 日本語ローカライズ機能自体はデフォルトで無効化した(README「ハマった
+    # 罠」97番)が、コード自体は残しているため、有効時の挙動はここで明示的に
+    # 有効化して回帰確認する。
+    monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", True)
     _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert localizations is not None
     assert "voOn" in localizations["ja"]["title"]
     assert "#Shorts" in localizations["ja"]["title"]
 
 
-def test_youtube_metadata_localizations_reuses_description_for_japanese():
+def test_youtube_metadata_localizations_reuses_description_for_japanese(monkeypatch):
+    monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", True)
     _title, description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert localizations["ja"]["description"] == description
 
 
-def test_youtube_metadata_localizations_includes_japanese_language_name_when_lang_code_given():
+def test_youtube_metadata_localizations_includes_japanese_language_name_when_lang_code_given(monkeypatch):
+    monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", True)
     _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts", voice_label="French (Female)", lang_code="fr"
     )
     assert "フランス語" in localizations["ja"]["title"]
 
 
-def test_youtube_metadata_localizations_omits_language_name_when_lang_code_not_given():
+def test_youtube_metadata_localizations_omits_language_name_when_lang_code_not_given(monkeypatch):
+    monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", True)
     _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "(" not in localizations["ja"]["title"]
 
 
-def test_youtube_metadata_localizations_wraps_label_in_bidi_isolate():
+def test_youtube_metadata_localizations_wraps_label_in_bidi_isolate(monkeypatch):
     # ヘブライ語・アラビア語等のRTL文字がlabelに含まれると、「」直後の
     # 最初の強い方向性を持つ文字になり、タイトル全体の基準方向がRTLと
     # 判定されて語順が入れ替わって見える不具合があった(実際にYouTube上で
     # 確認済み)。First Strong Isolate(U+2068)/Pop Directional Isolate
     # (U+2069)でlabelを囲んで分離していることを回帰確認する。
+    monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", True)
     hebrew_label = "קקעמדחפ"
     _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata(
         hebrew_label, hebrew_label, "tts", lang_code="he",
@@ -1063,13 +1071,14 @@ def test_youtube_metadata_localizations_wraps_label_in_bidi_isolate():
     assert f"⁨{hebrew_label}⁩" in title_ja
 
 
-def test_youtube_metadata_localizations_japanese_title_starts_with_strong_ltr_char():
+def test_youtube_metadata_localizations_japanese_title_starts_with_strong_ltr_char(monkeypatch):
     # bidi isolate(FSI/PDI)で囲むだけでは不十分だった: YouTube側が表示前に
     # ゼロ幅のisolate制御文字を取り除いている可能性が高く、2026-10-09に
     # アップロードされたヘブライ語動画で同じ語順の入れ替わりが実機再発した。
     # 不可視文字が失われても壊れないよう、タイトル文字列の最初の1文字自体を
     # 常に実在の強いLTR文字(ここでは言語名のかな/カナ)にし、鉤括弧「」の
     # ような中立文字を先頭に置かないことを回帰確認する。
+    monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", True)
     hebrew_label = "קקעמדחפ"
     _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata(
         hebrew_label, hebrew_label, "tts", lang_code="he",
@@ -1078,30 +1087,35 @@ def test_youtube_metadata_localizations_japanese_title_starts_with_strong_ltr_ch
     assert title_ja.startswith("ヘブライ語")
 
 
-def test_youtube_metadata_localizations_bidi_isolate_wraps_any_label():
+def test_youtube_metadata_localizations_bidi_isolate_wraps_any_label(monkeypatch):
     # RTL文字かどうかで分岐していない(常にlabelを囲む)ことの確認。
+    monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", True)
     _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     title_ja = localizations["ja"]["title"]
     assert "⁨voOn⁩" in title_ja
 
 
 def test_youtube_metadata_localizations_none_when_both_disabled(monkeypatch):
+    # JAPANESE_TITLE_LOCALIZATION_ENABLEDは既定でFalse(README「ハマった罠」
+    # 97番)だが、挙動を明示するためここでも明示的に設定する。
     monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", False)
     monkeypatch.setattr(config, "EXTRA_TITLE_LOCALIZATION_ENABLED", False)
     _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert localizations is None
 
 
-def test_youtube_metadata_localizations_japanese_disabled_independently(monkeypatch):
-    # 日本語を無効化しても、追加言語ローカライズは独立して有効なまま。
-    monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", False)
+def test_youtube_metadata_localizations_japanese_disabled_by_default():
+    # 日本語ローカライズは既定で無効(README「ハマった罠」97番)。追加言語
+    # ローカライズ(fil/id/ms)は独立して有効なまま。
     _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "ja" not in localizations
     assert "id" in localizations
 
 
 def test_youtube_metadata_localizations_extra_disabled_independently(monkeypatch):
-    # 追加言語ローカライズを無効化しても、日本語は独立して有効なまま。
+    # 追加言語ローカライズを無効化しても、日本語(明示的に有効化した場合)は
+    # 独立して有効なまま。
+    monkeypatch.setattr(config, "JAPANESE_TITLE_LOCALIZATION_ENABLED", True)
     monkeypatch.setattr(config, "EXTRA_TITLE_LOCALIZATION_ENABLED", False)
     _title, _description, _tags, _caption, _comment, localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "ja" in localizations

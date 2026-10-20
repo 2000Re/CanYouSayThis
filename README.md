@@ -1859,6 +1859,20 @@ assets/
     対象外(生のwordをそのまま埋め込む設計、65番)のため影響なし。
     テストを更新。
 
+97. **タイトルの日本語ローカライズ機能(`JAPANESE_TITLE_LOCALIZATION_
+    ENABLED`、`videos.insert`の`localizations`フィールド)を無効化した**:
+    運営者自身以外に日本語環境の視聴者はほぼいないと判断し、`config.
+    JAPANESE_TITLE_LOCALIZATION_ENABLED`を`True`から`False`に変更した。
+    `CAPTIONS_ENABLED`等と同じトグル方式のため、コード自体(`generate.py`
+    `_youtube_metadata()`内の日本語タイトル組み立て、`LANGUAGE_LABELS_JA`)
+    は残しており、方針が変わればいつでもTrueに戻せる。追加言語ローカライズ
+    (`EXTRA_TITLE_LOCALIZATION_ENABLED`、フィリピン語・インドネシア語・
+    マレー語)は独立したトグルのため影響を受けない。
+
+    既定でON前提になっていたテスト(`localizations["ja"]`を直接参照する
+    もの)は、`monkeypatch`で明示的に`JAPANESE_TITLE_LOCALIZATION_ENABLED`
+    を`True`にしてから検証するよう更新した。
+
 ## プロジェクト構成
 
 ```
