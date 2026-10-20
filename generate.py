@@ -103,6 +103,7 @@ from tts_synth import (
 )
 from video_builder import build_video
 from word_generator import (
+    cap_combining_marks,
     expand_unknown_chars_to_names,
     random_abugida_word,
     random_pictograph_word,
@@ -1032,10 +1033,13 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # TTS系モードにはword自体ではなく_speakable_word(word)を渡す
         # (楔形文字等を取り除いた版。_speakable_word()参照)。さらに
         # _speak_symbols_by_name()で、はさみ・音楽記号等のSymbol文字を
-        # Unicode正式名称の読み上げに変換する(README「ハマった罠」89番)。
-        # 動画フレーム・label・upload_history.json記録にはword自体を
-        # そのまま使い続ける。
-        tts_word = _speak_symbols_by_name(_speakable_word(word))
+        # Unicode正式名称の読み上げに変換し(README「ハマった罠」89番)、
+        # cap_combining_marks()で1箇所あたりの結合文字の積み重ねを
+        # 制限する(--word直接指定で結合文字を極端に積み重ねると、
+        # espeak-ngの読み上げが異常に長くなりShorts判定の3分を超えて
+        # しまう問題の対策、README「ハマった罠」91番)。動画フレーム・
+        # label・upload_history.json記録にはword自体をそのまま使い続ける。
+        tts_word = cap_combining_marks(_speak_symbols_by_name(_speakable_word(word)))
         # 単一ボイスのモード専用に、さらに現在のactual_voiceが対応していない
         # 文字体系(CJK統合漢字・タイ文字・アラビア文字・ヘブライ文字・
         # エチオピア文字)を取り除いた版を用意する

@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import config
 from config import DECORATIVE_SYMBOLS, SAFE_COMBINING_BLOCKS, THAI_CONSONANTS, THAI_VOWEL_MARKS
 from word_generator import (
+    cap_combining_marks,
     expand_unknown_chars_to_names,
     random_abugida_word,
     random_pictograph_word,
@@ -283,3 +284,33 @@ def test_expand_unknown_chars_to_names_relies_on_caller_for_combining_marks():
     combining = chr(0x0301)
     assert expand_unknown_chars_to_names(combining, lambda ch: True) == combining
     assert expand_unknown_chars_to_names(combining, lambda ch: False) != combining
+
+
+def test_cap_combining_marks_leaves_short_clusters_unchanged():
+    word = "a" + chr(0x0301) * 3 + "b" + chr(0x0302) * 2
+    assert cap_combining_marks(word, max_marks_per_cluster=10) == word
+
+
+def test_cap_combining_marks_truncates_long_clusters():
+    # 視聴者リクエストで1箇所に結合文字を16個連続で積み重ねた単語が
+    # TTS系モードに渡った際、espeak-ngの読み上げが異常に長くなり、動画の
+    # 尺がYouTube Shortsの上限(3分)を超えてしまった実例(3分3秒、README
+    # 「ハマった罠」91番)。1クラスターあたりmax_marks_per_clusterまでに
+    # 制限する。
+    word = "a" + chr(0x0301) * 16
+    capped = cap_combining_marks(word, max_marks_per_cluster=10)
+    assert capped == "a" + chr(0x0301) * 10
+
+
+def test_cap_combining_marks_caps_each_cluster_independently():
+    word = "a" + chr(0x0301) * 16 + "b" + chr(0x0302) * 3
+    capped = cap_combining_marks(word, max_marks_per_cluster=10)
+    assert capped == "a" + chr(0x0301) * 10 + "b" + chr(0x0302) * 3
+
+
+def test_cap_combining_marks_preserves_base_characters():
+    # 土台文字自体は結合文字の上限とは無関係に、個数・内容とも変わらない
+    # (単語の意味・見た目の大枠を変えないため)。
+    word = "".join(c + chr(0x0301) * 16 for c in "hello")
+    capped = cap_combining_marks(word, max_marks_per_cluster=10)
+    assert "".join(ch for ch in capped if not unicodedata.combining(ch)) == "hello"

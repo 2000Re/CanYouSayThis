@@ -179,6 +179,37 @@ def zalgo_display_word(word, max_base_chars=12, max_marks_per_cluster=4):
     return "".join(units) or "???"
 
 
+def cap_combining_marks(word, max_marks_per_cluster=10):
+    """1つの土台文字に乗る結合文字(Zalgoの見た目)の数を、
+    max_marks_per_clusterまでに制限した文字列を返す(超過分は無視、
+    土台文字自体は保持する)。
+
+    random_zalgo_word()のstack_depthは最大10だが、この上限は生成時にしか
+    効かず、--word直接指定(視聴者リクエスト対応)では経由しない。1箇所に
+    結合文字を極端に積み重ねた単語(視聴者リクエストの実例で16個連続)を
+    TTS系モードに渡すと、espeak-ngの読み上げが異常に長くなり、動画の尺が
+    YouTube Shortsの上限(3分)を超えて通常動画扱いになってしまうことが
+    実機で確認された(3分3秒、README「ハマった罠」91番)。
+    zalgo_display_word()のmax_marks_per_cluster(フレーム表示用、総文字数
+    も切り詰める)とは別物で、こちらは土台文字数自体は変えずクラスターの
+    深さだけを制限する。"""
+    out = []
+    marks_on_current = 0
+    for ch in word:
+        if unicodedata.combining(ch):
+            if marks_on_current < max_marks_per_cluster:
+                out.append(ch)
+                marks_on_current += 1
+            # 上限を超えた分は無視する(土台文字が無い状態で結合文字が
+            # 先頭に来た場合も、marks_on_currentが0のままなので最初の
+            # max_marks_per_cluster個までは保持される。word_generator側の
+            # 構造上、土台文字より前に結合文字が来ることは通常起こらない)
+        else:
+            out.append(ch)
+            marks_on_current = 0
+    return "".join(out)
+
+
 def expand_unknown_chars_to_names(word, is_native):
     """is_native(ch)がFalseを返す文字を、unicodedata.name()で得られる
     正式名称に展開して返す(例: "Ψ"→" GREEK SMALL LETTER PSI "、
