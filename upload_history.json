@@ -3988,5 +3988,16 @@
     "voice_label": "English (Female)",
     "lang_code": "en",
     "title_template": "is_pronounceable"
+  },
+  {
+    "word": "|||_-/-_/-//-/\\|\\\\》/_-/\\|",
+    "label": "|||_-/-_/-//-/\\|\\\\》/...",
+    "video_id": "idUAt3HTXbk",
+    "mode": "glitch",
+    "run_id": "39414685590",
+    "uploaded_at": "2026-10-20T11:29:17.855673+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "nobody_can_pronounce"
   }
 ]
