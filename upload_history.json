@@ -3999,5 +3999,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "nobody_can_pronounce"
+  },
+  {
+    "word": "-%@><_><@%-",
+    "label": "-%@><_><@%-",
+    "video_id": "SY07wrBeTRU",
+    "mode": "glitch",
+    "run_id": "39418600997",
+    "uploaded_at": "2026-10-20T12:02:16.412577+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "how_to_pronounce"
   }
 ]
