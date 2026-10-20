@@ -3944,5 +3944,16 @@
     "voice_label": "Portuguese (Portugal) (Male)",
     "lang_code": "pt",
     "title_template": "is_pronounceable"
+  },
+  {
+    "word": "( ^-^)ノ∠※。.:*:・'°☆",
+    "label": "( ^-^)ノ∠※。.:...",
+    "video_id": "akRtnh2elJw",
+    "mode": "tts",
+    "run_id": "39409799736",
+    "uploaded_at": "2026-10-20T10:47:48.533266+00:00",
+    "voice_label": "Finnish (Male)",
+    "lang_code": "fi",
+    "title_template": "try_to_say"
   }
 ]
