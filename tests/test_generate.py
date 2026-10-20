@@ -34,6 +34,7 @@ from generate import (
     _single_voice_metadata,
     _speak_symbols_by_name,
     _speakable_word,
+    _strip_api_unsafe_symbols,
     _unposted_lang_codes,
     _voice_pitch_for,
     _word_generator_for,
@@ -410,6 +411,29 @@ def test_sanitize_label_for_display_removes_angle_brackets():
     assert "<" not in _sanitize_label_for_display("a<b>c")
     assert ">" not in _sanitize_label_for_display("a<b>c")
     assert _sanitize_label_for_display("-%@><_><@%-") == "???"
+
+
+def test_strip_api_unsafe_symbols_removes_only_angle_brackets():
+    # 説明欄の「Word: {word}」行は生のwordをそのまま埋め込む設計のため、
+    # _BLOCKED_SYMBOLS(はさみ等、タイトルでの見た目上の問題を理由に除去)
+    # は適用しない。しかし山括弧<>はYouTube Data API自体が説明欄でも
+    # "invalidDescription"でアップロードを拒否することが実機で確認された
+    # (視聴者リクエストの単語-%@><_><@%-、README「ハマった罠」95番)ため、
+    # こちらだけは除去する。はさみ(✂、_BLOCKED_SYMBOLS対象)は対象外のまま
+    # 残ることも確認する。
+    assert _strip_api_unsafe_symbols("a<b>c") == "abc"
+    assert _strip_api_unsafe_symbols("✂<>") == "✂"
+
+
+def test_youtube_metadata_description_strips_angle_brackets_from_word():
+    # videos.insertが実際に"invalidDescription"で失敗した実例の回帰防止。
+    word = "-%@><_><@%-"
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata(
+        word, word, "glitch"
+    )
+    assert "<" not in description
+    assert ">" not in description
+    assert "Word: -%@_@%-" in description
 
 
 def test_sanitize_label_for_display_keeps_safe_ascii_punctuation_and_spaces():

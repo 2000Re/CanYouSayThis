@@ -225,6 +225,22 @@ def test_build_repost_metadata_sanitizes_symbol_characters_from_label():
     assert entry["label"] == label  # entry自体は変更しない(サムネイル用)
 
 
+def test_build_repost_metadata_strips_angle_brackets_from_description_word():
+    # generate.py _youtube_metadata()と同じく、説明欄の「Word: {word}」行
+    # (生のwordをそのまま埋め込む)から山括弧<>だけを取り除く。YouTube
+    # Data API自体がHTMLタグと誤認し"invalidDescription"でアップロードを
+    # 拒否することが実機で確認されたため(README「ハマった罠」95番)。
+    word = "-%@><_><@%-"
+    entry = {
+        "word": word, "label": word, "mode": "glitch",
+        "voice_label": None, "lang_code": None,
+    }
+    metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
+    assert "<" not in metadata["description"]
+    assert ">" not in metadata["description"]
+    assert "Word: -%@_@%-" in metadata["description"]
+
+
 def test_build_repost_metadata_omits_word_for_pictograph_entry():
     # 楔形文字等(generate._is_pictograph_word()参照)はYouTube自身のフォントが
     # 対応しておらずタイトル等に生で埋め込むと「豆腐」になるため(2026-10-14に

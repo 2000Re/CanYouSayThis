@@ -90,6 +90,7 @@ from generate import (
     _random_pictograph_comment_text,
     _resolve_title_template,
     _sanitize_label_for_display,
+    _strip_api_unsafe_symbols,
 )
 from jst_time import jst_timestamp
 from repost_state import (
@@ -266,7 +267,8 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
 
     description = "Can you pronounce this? \U0001F440\n\n"
     description += (
-        f"{_PICTOGRAPH_DESCRIPTION_LINE}\n" if is_pictograph_script else f"Word: {entry['word']}\n"
+        f"{_PICTOGRAPH_DESCRIPTION_LINE}\n" if is_pictograph_script
+        else f"Word: {_strip_api_unsafe_symbols(entry['word'])}\n"
     )
     description += f"Mode: {mode_label}\n"
     if entry.get("voice_label"):
