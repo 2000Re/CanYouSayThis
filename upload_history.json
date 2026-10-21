@@ -4021,5 +4021,16 @@
     "voice_label": "French (Female)",
     "lang_code": "fr",
     "title_template": "say_out_loud"
+  },
+  {
+    "word": "Umżviunjƙivssluyx̌qaifvẓ̌diúťvmiż",
+    "label": "Umżviunjƙivs...",
+    "video_id": "4gGHkF1IAhM",
+    "mode": "tts",
+    "run_id": "39559095118",
+    "uploaded_at": "2026-10-21T07:06:22.742195+00:00",
+    "voice_label": "Korean (Male)",
+    "lang_code": "ko",
+    "title_template": "can_you_say"
   }
 ]
