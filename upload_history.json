@@ -4054,5 +4054,16 @@
     "voice_label": "French (Male)",
     "lang_code": "fr",
     "title_template": "pronunciation_challenge"
+  },
+  {
+    "word": "S̴̼͔̆u̷̪̒b̷̭̙̋ç̵̹͝r̵̦̍̔ȉ̴̪̠b̵͈̍͑e̷͕͑ͅ",
+    "label": "Subçrȉbe",
+    "video_id": "OGX9WLa8k-U",
+    "mode": "morse",
+    "run_id": "39561953289",
+    "uploaded_at": "2026-10-21T07:32:13.937524+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "can_you_pronounce"
   }
 ]
