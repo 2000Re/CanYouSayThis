@@ -4043,5 +4043,16 @@
     "voice_label": "Indonesian (Male)",
     "lang_code": "id",
     "title_template": "can_you_say"
+  },
+  {
+    "word": "﹇⧑℺ẛ∭ⱒ℆⹖ⱛ꜎",
+    "label": "﹇⧑℺ẛ∭ⱒ℆⹖ⱛ꜎",
+    "video_id": "HVRHs9-lKbE",
+    "mode": "tts",
+    "run_id": "39560976253",
+    "uploaded_at": "2026-10-21T07:22:57.787043+00:00",
+    "voice_label": "French (Male)",
+    "lang_code": "fr",
+    "title_template": "pronunciation_challenge"
   }
 ]
