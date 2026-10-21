@@ -4076,5 +4076,16 @@
     "voice_label": "Hebrew (Female)",
     "lang_code": "he",
     "title_template": "say_out_loud"
+  },
+  {
+    "word": ";ςςςςςςς/////////)( ",
+    "label": ";ςςςςςςς////...",
+    "video_id": "nzUt_YGYIIk",
+    "mode": "morse",
+    "run_id": "39570448961",
+    "uploaded_at": "2026-10-21T08:41:46.062592+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "how_to_pronounce"
   }
 ]
