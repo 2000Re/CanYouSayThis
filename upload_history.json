@@ -4065,5 +4065,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "can_you_pronounce"
+  },
+  {
+    "word": "Σ(ﾟДﾟﾉ)ﾉ",
+    "label": "Σ(ﾟДﾟﾉ)ﾉ",
+    "video_id": "ftwDv9nOfc8",
+    "mode": "tts",
+    "run_id": "39563020534",
+    "uploaded_at": "2026-10-21T07:40:38.929942+00:00",
+    "voice_label": "Hebrew (Female)",
+    "lang_code": "he",
+    "title_template": "say_out_loud"
   }
 ]
