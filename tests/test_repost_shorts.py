@@ -257,41 +257,38 @@ def test_build_repost_metadata_omits_word_for_pictograph_entry():
     assert word not in metadata["comment_text"]
 
 
-def _entry(video_id, run_id):
-    return {"video_id": video_id, "run_id": run_id, "label": video_id}
+def _entry(video_id, run_id, uploaded_at=None):
+    return {"video_id": video_id, "run_id": run_id, "label": video_id, "uploaded_at": uploaded_at}
 
 
-def test_select_targets_includes_all_own_run_entries_without_cap():
-    # 同じ実行(同じGITHUB_RUN_ID)で生成されたShortsは、backlog_countが
-    # どれだけ小さくても全件優先して含まれる(「Shortsと通常動画に同じ
-    # 単語を」という要望のため、件数に上限を設けない)。
-    pending = [
-        _entry("old1", "run_a"), _entry("new1", "run_current"),
-        _entry("new2", "run_current"), _entry("new3", "run_current"),
-        _entry("old2", "run_b"),
-    ]
-    targets = repost_shorts.select_targets(pending, "run_current", backlog_count=0)
-    assert {t["video_id"] for t in targets} == {"new1", "new2", "new3"}
-
-
-def test_select_targets_fills_remaining_budget_from_oldest_backlog():
-    pending = [
-        _entry("old1", "run_a"), _entry("old2", "run_b"),
-        _entry("new1", "run_current"), _entry("old3", "run_c"),
-    ]
-    targets = repost_shorts.select_targets(pending, "run_current", backlog_count=2)
-    ids = [t["video_id"] for t in targets]
-    assert ids == ["new1", "old1", "old2"]
-
-
-def test_select_targets_uses_only_backlog_when_no_own_run_entries():
+def test_select_targets_returns_oldest_entries_up_to_backlog_count():
+    # Shorts投稿当日中の変換をやめた(README「ハマった罠」98番)ため、
+    # select_targets()自体はpendingの記録順(=古い順)のまま先頭から
+    # backlog_count件を返すだけのシンプルな関数になった。
     pending = [_entry("old1", "run_a"), _entry("old2", "run_b"), _entry("old3", "run_c")]
-    targets = repost_shorts.select_targets(pending, "run_current", backlog_count=2)
+    targets = repost_shorts.select_targets(pending, backlog_count=2)
     assert [t["video_id"] for t in targets] == ["old1", "old2"]
 
 
-def test_select_targets_handles_missing_current_run_id():
-    # ローカル実行等でGITHUB_RUN_IDが無い場合、全てバックログ扱いになる。
-    pending = [_entry("old1", "run_a"), _entry("old2", "run_b")]
-    targets = repost_shorts.select_targets(pending, None, backlog_count=1)
-    assert [t["video_id"] for t in targets] == ["old1"]
+def test_select_targets_returns_empty_when_backlog_count_is_zero():
+    pending = [_entry("old1", "run_a")]
+    assert repost_shorts.select_targets(pending, backlog_count=0) == []
+
+
+def test_uploaded_today_true_for_same_pacific_date():
+    # today(_quota_reset_date_today()と同じPacific Time基準)と同じ日に
+    # アップロードされたエントリはTrueになる。
+    entry = _entry("v1", "run_a", uploaded_at="2026-10-21T10:00:00+00:00")
+    # 2026-10-21T10:00:00+00:00 はPacific Time(UTC-7、夏時間)で同日10/21
+    assert repost_shorts._uploaded_today(entry, "2026-10-21") is True
+
+
+def test_uploaded_today_false_for_different_pacific_date():
+    entry = _entry("v1", "run_a", uploaded_at="2026-10-19T10:00:00+00:00")
+    assert repost_shorts._uploaded_today(entry, "2026-10-21") is False
+
+
+def test_uploaded_today_false_when_uploaded_at_missing():
+    # uploaded_atが記録されていない旧いエントリは除外しない(Falseを返す)。
+    entry = _entry("v1", "run_a", uploaded_at=None)
+    assert repost_shorts._uploaded_today(entry, "2026-10-21") is False
