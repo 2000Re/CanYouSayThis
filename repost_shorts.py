@@ -49,14 +49,19 @@ run_idが記録されていない旧いエントリ(この方式導入前にア�
 1本にする必要がない)、1本の取得が一時的なエラーで失敗しても、その回の
 処理全体を止めず残りの候補へ進む。
 
-[設計] 変換の優先順位(select_targets()参照): 「Shortsと通常動画に同じ
-単語を載せたい」という要望に応え、generate.pyが同じワークフロー実行内で
-今まさに作ったShorts(entry["run_id"]が自分自身のGITHUB_RUN_IDと一致する
-もの)は、件数に関わらず常に全て優先して変換する。そのうえでまだ余力が
-あれば、config.REPOST_BACKLOG_PER_RUN件ぶんだけ過去のバックログ(古い
-Shorts)も記録順(古い順)で追加消化する。YouTube側の1日あたりアップロード
-本数上限(未認証チャンネルほど低い)との兼ね合いで、バックログ側の件数を
-控えめにしている。
+[設計] 変換の優先順位(select_targets()参照): 以前は「Shortsと通常動画に
+同じ単語を載せたい」という要望に応え、generate.pyが同じワークフロー実行
+内で今まさに作ったShorts(entry["run_id"]が自分自身のGITHUB_RUN_IDと
+一致するもの)を件数に関わらず常に全て優先して変換していたが、Shorts・
+通常動画はYouTube側で投稿本数カウントが別になるため、同じ日にまとめて
+行うと実質2本以上のクォータ・投稿本数を一度に消費してしまう。クォータ
+増枠申請を検討した際にこの消費の大きさが運用上のボトルネックだと判明し、
+運営者の指示でShorts投稿当日中の変換自体をやめた(_uploaded_today()
+参照、README「ハマった罠」98番)。今日アップロードされた分は、翌日以降の
+実行でconfig.REPOST_BACKLOG_PER_RUN件ぶんの過去のバックログ(古いShorts)
+として記録順(古い順)に自然に消化される。YouTube側の1日あたりアップロード
+本数上限(未認証チャンネルほど低い)との兼ね合いで、この件数は控えめに
+している。
 
 [設計] 変換後、通常動画の概要欄に元Shortsへのリンクを、元Shortsの概要欄に
 通常動画へのリンクをそれぞれ追記する(youtube_upload.append_video_description())。
@@ -70,9 +75,11 @@ YOUTUBE_REFRESH_TOKEN、任意で YOUTUBE_CHANNEL_ID)。GitHub Actions APIの
 渡す。追加のシークレット登録は不要)を使う。
 """
 import argparse
+import datetime
 import os
 import time
 import uuid
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -103,6 +110,7 @@ from repost_state import (
 from upload_history import load_upload_history
 import youtube_upload
 from youtube_upload import (
+    _quota_reset_date_today,
     add_to_playlist,
     append_video_description,
     load_api_usage_from_disk,
@@ -301,22 +309,41 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
     return {"title": title, "description": description, "tags": tags, "comment_text": comment_text}
 
 
-def select_targets(pending: list, current_run_id: str | None, backlog_count: int) -> list:
-    """変換対象を「同じ実行でgenerate.pyが今まさに作ったShorts」優先で並べる。
+def _uploaded_today(entry: dict, today: str) -> bool:
+    """entryのuploaded_at(ISO 8601)が、todayが示すPacific Timeの日付と
+    同じ日に当たるかどうかを判定する。
 
-    同じワークフロー実行内ではGITHUB_RUN_IDがgenerate.py・repost_shorts.py
-    の両ステップで共通のため、pending中のentry["run_id"]がcurrent_run_idと
-    一致するものは「今回生成されたばかりのShorts」だと判別できる。これは
-    「Shortsと通常動画に同じ単語を載せたい」という要望に応えるため、件数に
-    関わらず全て優先して変換する。
+    Shorts投稿とその通常動画への変換を同じ日にまとめて行うと、YouTube側は
+    Shorts・通常動画で投稿本数カウントが別になるため1回の運用で実質2本
+    以上のクォータ・投稿本数を消費してしまう(README「クォータ増枠申請」
+    相談時に判明)。運営者の指示でこれを避けるため、Shorts投稿当日中
+    (todayの基準はyoutube_upload._quota_reset_date_today()と同じPacific
+    Time、README「ハマった罠」98番)は変換対象から外し、翌日以降の実行で
+    バックログとして消化する。
 
-    残りの予算(backlog_count)は、pendingの記録順(=古い順)のまま、まだ
-    今回選ばれていない中から先頭から詰める形でバックログ(過去のShorts)を
-    消化する。"""
-    own_run = [e for e in pending if current_run_id and e.get("run_id") == current_run_id]
-    own_run_ids = {e["video_id"] for e in own_run}
-    backlog = [e for e in pending if e["video_id"] not in own_run_ids]
-    return own_run + backlog[:backlog_count]
+    uploaded_atが記録されていない旧いエントリ(導入前にアップロードされた
+    もの)はFalse(除外しない)として扱う。"""
+    uploaded_at = entry.get("uploaded_at")
+    if not uploaded_at:
+        return False
+    try:
+        uploaded_dt = datetime.datetime.fromisoformat(uploaded_at)
+    except ValueError:
+        return False
+    return uploaded_dt.astimezone(ZoneInfo("America/Los_Angeles")).date().isoformat() == today
+
+
+def select_targets(pending: list, backlog_count: int) -> list:
+    """変換対象を、pendingの記録順(=古い順)のまま先頭からbacklog_count件選ぶ。
+
+    以前は同じワークフロー実行(同じGITHUB_RUN_ID)でgenerate.pyが今まさに
+    作ったShortsを件数無制限で優先していたが、Shorts投稿とその変換を同じ日
+    に行わない方針(_uploaded_today()参照)に変更したことで、呼び出し元
+    (main())が本日分のエントリを事前にpendingから除外するようになった。
+    そのため本関数自体にはもう「同じ実行で作られたばかりのShorts」は
+    渡ってこず、単純にバックログの先頭からbacklog_count件を返すだけで
+    良い。"""
+    return pending[:backlog_count]
 
 
 def main():
@@ -324,7 +351,7 @@ def main():
     ap.add_argument("--privacy-status", type=str, choices=["public", "unlisted", "private"],
                      default="public", help="変換後の通常動画の公開範囲")
     ap.add_argument("--backlog-count", type=int, default=config.REPOST_BACKLOG_PER_RUN,
-                     help="同じ実行で生成されたShorts分とは別に、過去のバックログから追加で処理する件数")
+                     help="過去のバックログ(未変換の古いShorts)から処理する件数")
     args = ap.parse_args()
 
     history = load_upload_history()
@@ -335,12 +362,17 @@ def main():
     state = load_repost_state()
     pending = select_pending(repostable, state)
 
+    # Shorts投稿当日中の変換は行わない(_uploaded_today()参照、README
+    # 「ハマった罠」98番)。今日アップロードされた分は、翌日以降の実行で
+    # バックログとして自然に消化される。
+    today = _quota_reset_date_today()
+    pending = [e for e in pending if not _uploaded_today(e, today)]
+
     if not pending:
         print("変換対象がありません。")
         return
 
-    current_run_id = os.environ.get("GITHUB_RUN_ID")
-    targets = select_targets(pending, current_run_id, args.backlog_count)
+    targets = select_targets(pending, args.backlog_count)
 
     os.makedirs(config.REPOST_DOWNLOAD_DIR, exist_ok=True)
     os.makedirs(config.REPOST_OUTPUT_DIR, exist_ok=True)
