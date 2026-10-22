@@ -4153,5 +4153,16 @@
     "voice_label": "Portuguese (Portugal) (Male)",
     "lang_code": "pt",
     "title_template": "say_out_loud"
+  },
+  {
+    "word": "πνευμονοϋπερμικροσκοπικήσιλικονεοβολκανιοκονίαση",
+    "label": "πνευμονοϋπερ...",
+    "video_id": "MvAyEiWYayM",
+    "mode": "morse",
+    "run_id": "39743425969",
+    "uploaded_at": "2026-10-22T07:57:13.281847+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "how_to_pronounce"
   }
 ]
