@@ -36,6 +36,17 @@ MORSE_CODE = {
     "(": "-.--.", ")": "-.--.-", ":": "---...", "-": "-....-",
 }
 
+# synthesize_morse()が1要素ごとにffmpegへ"-f lavfi -i ..."を1組追加するため、
+# 要素数(units)がそのままffmpegのコマンドライン長に直結する。視聴者
+# リクエストの単語(ギリシャ文字49文字、符号表に無いため全てUnicode正式
+# 名称に展開される、README「ハマった罠」89番)で実機検証したところ、
+# 展開後の要素数が4935個になり、OSの「Argument list too long」エラーで
+# ffmpeg実行自体が失敗した。cap_combining_marks()(TTS側、結合文字の
+# 積み重ねすぎで尺が伸びる問題、「ハマった罠」91番)と同種の、入力content
+# 依存で際限なく膨らむ値への安全弁として、要素数の上限を設ける
+# (README「ハマった罠」99番)。
+_MAX_MORSE_UNITS = 1000
+
 
 def _units_for_word(word):
     """word中の各文字を、モールス符号の要素列(トーン/無音の長さ倍率の
@@ -95,6 +106,11 @@ def synthesize_morse(word, wav_path, unit_duration=None, freq=None):
         # 構造上、random_zalgo_word()の土台はBASE_CHARSのラテン文字のため
         # 通常は起こらない)。
         units = [(True, 1)]
+    # 符号表に無い文字(特にUnicode正式名称への展開対象)が多い単語ほど
+    # 要素数が膨らみ、ffmpegのコマンドライン長が「Argument list too
+    # long」エラーになるまで際限なく伸びる(_MAX_MORSE_UNITS定義のコメント
+    # 参照、README「ハマった罠」99番)。安全弁として上限で打ち切る。
+    units = units[:_MAX_MORSE_UNITS]
 
     cmd = ["ffmpeg", "-y"]
     filter_parts = []

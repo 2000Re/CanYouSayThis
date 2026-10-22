@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from morse_synth import MORSE_CODE, _units_for_word, synthesize_morse
+from morse_synth import MORSE_CODE, _MAX_MORSE_UNITS, _units_for_word, synthesize_morse
 
 
 def test_units_for_word_maps_simple_letter_to_dit():
@@ -129,6 +129,23 @@ def test_synthesize_morse_falls_back_to_single_tone_for_unmapped_only_word(mock_
     cmd = mock_run.call_args[0][0]
     filter_complex = cmd[cmd.index("-filter_complex") + 1]
     assert "concat=n=1" in filter_complex
+
+
+@patch("morse_synth.subprocess.run")
+def test_synthesize_morse_caps_unit_count_for_long_unmapped_word(mock_run):
+    # 符号表に無い文字(ギリシャ文字等)ばかりの長い単語は、1文字ずつ
+    # Unicode正式名称に展開されるため要素数が際限なく膨らみ、ffmpegの
+    # コマンドライン長が「Argument list too long」エラーになっていた
+    # 実機事故の回帰防止(README「ハマった罠」99番)。視聴者リクエストの
+    # 単語(ギリシャ文字49文字)と同じ規模で、要素数が_MAX_MORSE_UNITSを
+    # 超えないことを確認する。
+    greek_word = "πνευμονοϋπερμικροσκοπικήσιλικονεοβολκανιοκονίαση"
+    synthesize_morse(greek_word, "/tmp/x.wav", unit_duration=0.02, freq=700)
+    cmd = mock_run.call_args[0][0]
+    filter_complex = cmd[cmd.index("-filter_complex") + 1]
+    n = int(filter_complex.split("concat=n=")[1].split(":")[0])
+    assert n <= _MAX_MORSE_UNITS
+    assert n == _MAX_MORSE_UNITS  # この単語は展開後に上限を超えるため、実際に打ち切られる
 
 
 @patch("morse_synth.subprocess.run")
