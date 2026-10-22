@@ -4142,5 +4142,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "is_pronounceable"
+  },
+  {
+    "word": "kdæaåæsåsvækåยเืผข็",
+    "label": "kdæaåæsåsvæk...",
+    "video_id": "VAIpKo4dkkg",
+    "mode": "tts",
+    "run_id": "39742697904",
+    "uploaded_at": "2026-10-22T07:50:25.709051+00:00",
+    "voice_label": "Portuguese (Portugal) (Male)",
+    "lang_code": "pt",
+    "title_template": "say_out_loud"
   }
 ]
