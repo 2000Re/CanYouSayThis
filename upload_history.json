@@ -4131,5 +4131,16 @@
     "voice_label": "Hungarian (Male)",
     "lang_code": "hu",
     "title_template": "say_out_loud"
+  },
+  {
+    "word": "ᕯ⁑꙰ᕯ꙰⁑꙰ᕯ",
+    "label": "ᕯ⁑꙰ᕯ꙰⁑꙰ᕯ",
+    "video_id": "EFeZcQ6enIw",
+    "mode": "morse",
+    "run_id": "39741976095",
+    "uploaded_at": "2026-10-22T07:44:41.089587+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "is_pronounceable"
   }
 ]
