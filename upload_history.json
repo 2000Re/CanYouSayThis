@@ -4098,5 +4098,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "is_pronounceable"
+  },
+  {
+    "word": "€¥℅€+*)%:$\")()",
+    "label": "€¥℅€+*)%:$\")()",
+    "video_id": "USg-y9zH4Rg",
+    "mode": "tts",
+    "run_id": "39737922844",
+    "uploaded_at": "2026-10-22T07:10:06.873831+00:00",
+    "voice_label": "Finnish (Female)",
+    "lang_code": "fi",
+    "title_template": "how_to_pronounce"
   }
 ]
