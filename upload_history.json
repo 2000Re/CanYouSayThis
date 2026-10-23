@@ -4340,5 +4340,16 @@
     "voice_label": "Cantonese (Male)",
     "lang_code": "yue",
     "title_template": "what_does_it_sound_like"
+  },
+  {
+    "word": "✿✧✷☆♡❥ᴥ",
+    "label": "✿✧✷☆♡❥ᴥ",
+    "video_id": "v0FEBZanxNU",
+    "mode": "tts",
+    "run_id": "40039936636",
+    "uploaded_at": "2026-10-23T23:34:20.022977+00:00",
+    "voice_label": "Uyghur (Male)",
+    "lang_code": "ug",
+    "title_template": "is_pronounceable"
   }
 ]
