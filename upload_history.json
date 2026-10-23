@@ -4186,5 +4186,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "how_to_pronounce"
+  },
+  {
+    "word": "!!(⊃ Д)⊃≡ﾟ ﾟ",
+    "label": "!!(⊃ Д)⊃≡ﾟ ﾟ",
+    "video_id": "EF_xOa9xX-0",
+    "mode": "tts",
+    "run_id": "39915042627",
+    "uploaded_at": "2026-10-23T07:06:08.131481+00:00",
+    "voice_label": "Icelandic (Male)",
+    "lang_code": "is",
+    "title_template": "is_pronounceable"
   }
 ]
