@@ -4296,5 +4296,16 @@
     "voice_label": "German (Female)",
     "lang_code": "de",
     "title_template": "how_to_pronounce"
+  },
+  {
+    "word": "l᷐᷷᷾UUUUuuu ○ ◙",
+    "label": "lUUUUuuu ○ ◙",
+    "video_id": "_9GsamorW_0",
+    "mode": "underwater",
+    "run_id": "39966334066",
+    "uploaded_at": "2026-10-23T14:04:19.875737+00:00",
+    "voice_label": "Vietnamese (Female)",
+    "lang_code": "vi",
+    "title_template": "can_you_pronounce"
   }
 ]
