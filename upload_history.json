@@ -4329,5 +4329,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "attempt_to_pronounce"
+  },
+  {
+    "word": "(＃ﾟДﾟ)ﾉ！Σ(￣□￣;)(=^ェ^=)( ≧∀≦)ノ",
+    "label": "(＃ﾟДﾟ)ﾉ！Σ(￣□...",
+    "video_id": "9IPMzosJGVA",
+    "mode": "tts",
+    "run_id": "40039227348",
+    "uploaded_at": "2026-10-23T23:27:00.796183+00:00",
+    "voice_label": "Cantonese (Male)",
+    "lang_code": "yue",
+    "title_template": "what_does_it_sound_like"
   }
 ]
