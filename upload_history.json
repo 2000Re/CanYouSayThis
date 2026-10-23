@@ -4307,5 +4307,16 @@
     "voice_label": "Vietnamese (Female)",
     "lang_code": "vi",
     "title_template": "can_you_pronounce"
+  },
+  {
+    "word": "𓈂𓇵𓍿𓆩𓈉𓋨",
+    "label": "𓈂𓇵𓍿𓆩𓈉𓋨",
+    "video_id": "GKXFUJi3lfs",
+    "mode": "glitch",
+    "run_id": "39983505571",
+    "uploaded_at": "2026-10-23T16:04:16.942821+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "say_out_loud"
   }
 ]
