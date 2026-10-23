@@ -4230,5 +4230,16 @@
     "voice_label": "Bosnian (Male)",
     "lang_code": "bs",
     "title_template": "nobody_can_pronounce"
+  },
+  {
+    "word": "e̋ȦȧN̋t̋n̋s̄T̋t̋S̄b̦B̦e̋T̋N̋ȧG̈g̈ϜϠϞ",
+    "label": "eȦȧNtnsTtSbB...",
+    "video_id": "Qeh9B8YRVbg",
+    "mode": "tts",
+    "run_id": "39923573285",
+    "uploaded_at": "2026-10-23T08:22:30.071260+00:00",
+    "voice_label": "Uyghur (Male)",
+    "lang_code": "ug",
+    "title_template": "pronunciation_challenge"
   }
 ]
