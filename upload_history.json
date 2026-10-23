@@ -4351,5 +4351,16 @@
     "voice_label": "Uyghur (Male)",
     "lang_code": "ug",
     "title_template": "is_pronounceable"
+  },
+  {
+    "word": "ᶍꮉ죀ط⭥♷ᙔ",
+    "label": "ᶍꮉ죀ط⭥♷ᙔ",
+    "video_id": "GZ9zAqcLAx0",
+    "mode": "tts",
+    "run_id": "40040588879",
+    "uploaded_at": "2026-10-23T23:41:22.648339+00:00",
+    "voice_label": "Cantonese (Male)",
+    "lang_code": "yue",
+    "title_template": "impossible_to_say"
   }
 ]
