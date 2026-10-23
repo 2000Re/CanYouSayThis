@@ -4219,5 +4219,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "impossible_to_say"
+  },
+  {
+    "word": "𓇽◉꧂Σ∫☾𓁹",
+    "label": "𓇽◉꧂Σ∫☾𓁹",
+    "video_id": "6VItOHwAk0c",
+    "mode": "tts",
+    "run_id": "39921234830",
+    "uploaded_at": "2026-10-23T08:02:16.900965+00:00",
+    "voice_label": "Bosnian (Male)",
+    "lang_code": "bs",
+    "title_template": "nobody_can_pronounce"
   }
 ]
