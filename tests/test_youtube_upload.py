@@ -843,3 +843,73 @@ def test_upload_video_still_raises_immediately_on_non_retriable_error(monkeypatc
         youtube_upload.upload_video(str(video_path), title="t", description="d")
 
     assert youtube.videos.return_value.insert.call_count == 1
+
+
+def test_fetch_live_stats_parses_concurrent_viewers(monkeypatch):
+    youtube = MagicMock()
+    youtube.videos.return_value.list.return_value.execute.return_value = {
+        "items": [
+            {
+                "id": "v1",
+                "liveStreamingDetails": {
+                    "concurrentViewers": "7",
+                    "activeLiveChatId": "chat1",
+                    "actualStartTime": "2026-10-23T11:00:00Z",
+                },
+            },
+        ]
+    }
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    result = youtube_upload.fetch_live_stats(["v1"])
+
+    assert result == {
+        "v1": {
+            "concurrentViewers": 7,
+            "activeLiveChatId": "chat1",
+            "actualStartTime": "2026-10-23T11:00:00Z",
+        },
+    }
+    _, kwargs = youtube.videos.return_value.list.call_args
+    assert kwargs["part"] == "liveStreamingDetails"
+    assert youtube_upload._api_call_counts["videos.list"] == 1
+
+
+def test_fetch_live_stats_returns_none_for_ended_or_non_live_video(monkeypatch):
+    # 配信終了後・通常動画はliveStreamingDetails自体が無い、または
+    # concurrentViewersキーが無い(配信中のみ存在するフィールドのため)。
+    youtube = MagicMock()
+    youtube.videos.return_value.list.return_value.execute.return_value = {
+        "items": [{"id": "v1", "liveStreamingDetails": {}}]
+    }
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    result = youtube_upload.fetch_live_stats(["v1"])
+
+    assert result == {
+        "v1": {"concurrentViewers": None, "activeLiveChatId": None, "actualStartTime": None},
+    }
+
+
+def test_fetch_live_stats_queries_in_batches(monkeypatch):
+    monkeypatch.setattr(youtube_upload.config, "ANALYTICS_VIDEO_BATCH_SIZE", 1)
+    youtube = MagicMock()
+    responses = iter([
+        {"items": [{"id": "v1", "liveStreamingDetails": {"concurrentViewers": "1"}}]},
+        {"items": [{"id": "v2", "liveStreamingDetails": {"concurrentViewers": "2"}}]},
+    ])
+    youtube.videos.return_value.list.return_value.execute.side_effect = lambda: next(responses)
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    result = youtube_upload.fetch_live_stats(["v1", "v2"])
+
+    assert result["v1"]["concurrentViewers"] == 1
+    assert result["v2"]["concurrentViewers"] == 2
+    assert youtube.videos.return_value.list.call_count == 2
+    assert youtube_upload._api_call_counts["videos.list"] == 2

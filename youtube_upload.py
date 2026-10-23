@@ -678,6 +678,44 @@ def fetch_video_stats(video_ids):
     return stats_by_id
 
 
+def fetch_live_stats(video_ids):
+    """video_ids(リスト)のライブ配信情報(part=liveStreamingDetails)を
+    video_id -> {"concurrentViewers", "activeLiveChatId", "actualStartTime"}
+    のdictで返す。
+
+    [背景] 深夜〜早朝の無人配信中、視聴者が今どれくらいいるかを定期的に
+    確認したい(2026-10-23、ユーザーとの相談)用途向け。videos.listの
+    liveStreamingDetailsパートはfetch_video_stats()のstatisticsパートと
+    同じ即時反映の値で、配信が終了するとconcurrentViewersはレスポンス
+    自体から消える(配信中のみ存在するフィールドのため、値が無い場合は
+    Noneとして扱い、呼び出し側で「配信中か終了したか」を判別できるように
+    する)。
+
+    配信中でないvideo_id(ライブ配信ではない通常動画・配信終了後の
+    アーカイブ等)はliveStreamingDetails自体がレスポンスに含まれないか、
+    concurrentViewersキーが無いため、全フィールドNoneで返す。
+
+    fetch_video_stats()と同じくvideos.listは1回のリクエストにつき1 unit
+    なので、同じバッチサイズで分割する。"""
+    youtube = get_youtube_client()
+    stats_by_id = {}
+    for i in range(0, len(video_ids), config.ANALYTICS_VIDEO_BATCH_SIZE):
+        batch = video_ids[i:i + config.ANALYTICS_VIDEO_BATCH_SIZE]
+        _api_call_counts["videos.list"] += 1
+        response = youtube.videos().list(
+            part="liveStreamingDetails", id=",".join(batch)
+        ).execute()
+        for item in response.get("items", []):
+            live = item.get("liveStreamingDetails", {})
+            concurrent = live.get("concurrentViewers")
+            stats_by_id[item["id"]] = {
+                "concurrentViewers": int(concurrent) if concurrent is not None else None,
+                "activeLiveChatId": live.get("activeLiveChatId"),
+                "actualStartTime": live.get("actualStartTime"),
+            }
+    return stats_by_id
+
+
 def fetch_video_status(video_ids):
     """video_ids(リスト)のアップロード・処理状況を
     video_id -> {"uploadStatus", "failureReason", "rejectionReason",
