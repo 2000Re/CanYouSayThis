@@ -522,7 +522,10 @@ def test_fetch_video_status_parses_status_and_processing_details(monkeypatch):
                     "uploadStatus": "processed", "privacyStatus": "public",
                 },
                 "processingDetails": {"processingStatus": "succeeded"},
-                "snippet": {"title": 'How to Pronounce "foo"', "publishedAt": "2026-10-08T00:00:00Z"},
+                "snippet": {
+                    "title": 'How to Pronounce "foo"', "publishedAt": "2026-10-08T00:00:00Z",
+                    "description": "Word: foo\n",
+                },
             },
             {
                 "id": "v2",
@@ -549,13 +552,14 @@ def test_fetch_video_status_parses_status_and_processing_details(monkeypatch):
             "rejectionReason": None, "privacyStatus": "public",
             "processingStatus": "succeeded", "processingFailureReason": None,
             "title": 'How to Pronounce "foo"', "publishedAt": "2026-10-08T00:00:00Z",
+            "description": "Word: foo\n",
         },
         "v2": {
             "uploadStatus": "rejected", "failureReason": None,
             "rejectionReason": "duplicate", "privacyStatus": "private",
             "processingStatus": "failed",
             "processingFailureReason": "transcodeError",
-            "title": None, "publishedAt": None,
+            "title": None, "publishedAt": None, "description": None,
         },
     }
     _, kwargs = youtube.videos.return_value.list.call_args
