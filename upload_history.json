@@ -4274,5 +4274,16 @@
     "voice_label": "Kazakh (Male)",
     "lang_code": "kk",
     "title_template": "impossible_to_say"
+  },
+  {
+    "word": "Zqvjytvcbolcvbrwyhxczqhllbumiguviz",
+    "label": "Zqvjytvcbolc...",
+    "video_id": "EAdIxk5qvLY",
+    "mode": "tts",
+    "run_id": "39942897484",
+    "uploaded_at": "2026-10-23T11:04:28.342176+00:00",
+    "voice_label": "Kazakh (Male)",
+    "lang_code": "kk",
+    "title_template": "try_to_say"
   }
 ]
