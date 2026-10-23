@@ -4285,5 +4285,16 @@
     "voice_label": "Kazakh (Male)",
     "lang_code": "kk",
     "title_template": "try_to_say"
+  },
+  {
+    "word": "¹⅗⁸【】>>》¥◇◇○■□●●••",
+    "label": "¹⅗⁸【】>>》¥◇◇○...",
+    "video_id": "9VqGMxSYhPQ",
+    "mode": "tts",
+    "run_id": "39944894979",
+    "uploaded_at": "2026-10-23T11:21:43.869705+00:00",
+    "voice_label": "German (Female)",
+    "lang_code": "de",
+    "title_template": "how_to_pronounce"
   }
 ]
