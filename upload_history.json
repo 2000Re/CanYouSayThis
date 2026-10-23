@@ -4241,5 +4241,16 @@
     "voice_label": "Uyghur (Male)",
     "lang_code": "ug",
     "title_template": "pronunciation_challenge"
+  },
+  {
+    "word": "Ahnakhxthombpohshish",
+    "label": "Ahnakhxthomb...",
+    "video_id": "w2aZCV6Fa9M",
+    "mode": "tts",
+    "run_id": "39940762518",
+    "uploaded_at": "2026-10-23T10:45:40.417524+00:00",
+    "voice_label": "Uyghur (Female)",
+    "lang_code": "ug",
+    "title_template": "attempt_to_pronounce"
   }
 ]
