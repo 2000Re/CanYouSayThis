@@ -733,7 +733,8 @@ def fetch_video_status(video_ids):
     """video_ids(リスト)のアップロード・処理状況を
     video_id -> {"uploadStatus", "failureReason", "rejectionReason",
     "privacyStatus", "processingStatus", "processingFailureReason",
-    "title", "publishedAt"} の dictで返す(値が無いキーはNone)。
+    "title", "publishedAt", "description"} の dictで返す(値が無いキーは
+    None)。
 
     [背景] 「保留中」のまま長時間変わらない動画など、YouTube側の処理が
     止まっている疑いがある動画を診断するための軽量ツール
@@ -741,10 +742,16 @@ def fetch_video_status(video_ids):
     所有者(自チャンネル)のみ取得できる。videos.listが返さなかったID
     (動画が削除済み・存在しない等)は結果のdictに含めない。
 
-    title/publishedAt(snippetパート)は、upload_history.json/
+    title/publishedAt/description(snippetパート)は、upload_history.json/
     repost_state.jsonのどちらにも記録が無いvideo_id(URLだけ分かっている
     「出所不明」な動画)の正体を特定するために追加した。タイトルが
     "How to Pronounce ..."形式ならこのチャンネルの生成物と判断できる。
+    descriptionは、generate.py _youtube_metadata()/repost_shorts.py
+    build_repost_metadata()が埋め込む"Word: {word}"の行(楔形文字等の
+    pictograph系単語を除く、_PICTOGRAPH_DESCRIPTION_LINE参照)や、通常
+    動画(repost)側の"Watch the original Short: {url}"の行から、元の単語
+    や元Shortsを特定するのに使う(2026-10-23、視聴者コメントで「最後の
+    記号をコピペして」と頼まれたのがきっかけで追加)。
 
     fetch_video_stats()と同じくvideos.listは1回のリクエストにつき1 unit
     (IDを何件まとめて渡しても同じ)なので、同じバッチサイズで分割する。"""
@@ -769,5 +776,6 @@ def fetch_video_status(video_ids):
                 "processingFailureReason": processing.get("processingFailureReason"),
                 "title": snippet.get("title"),
                 "publishedAt": snippet.get("publishedAt"),
+                "description": snippet.get("description"),
             }
     return status_by_id
