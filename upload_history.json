@@ -4318,5 +4318,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "say_out_loud"
+  },
+  {
+    "word": "Jak does sneͬͬͬͬks({.{),(.?",
+    "label": "Jak does sne...",
+    "video_id": "orFf03vhdIo",
+    "mode": "chorus",
+    "run_id": "40038353556",
+    "uploaded_at": "2026-10-23T23:17:53.191076+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "attempt_to_pronounce"
   }
 ]
