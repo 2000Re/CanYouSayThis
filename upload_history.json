@@ -4263,5 +4263,16 @@
     "voice_label": "Portuguese (Brazil) (Male)",
     "lang_code": "pt-br",
     "title_template": "pronunciation_challenge"
+  },
+  {
+    "word": "(°ロ°) ( ⚆ _ ⚆ ) (ﾉ◕ヮ◕)ﾉ (〃＾▽＾〃)",
+    "label": "(°ロ°) ( ⚆ _ ...",
+    "video_id": "JebM5neAo_E",
+    "mode": "tts",
+    "run_id": "39942113711",
+    "uploaded_at": "2026-10-23T10:57:40.926828+00:00",
+    "voice_label": "Kazakh (Male)",
+    "lang_code": "kk",
+    "title_template": "impossible_to_say"
   }
 ]
