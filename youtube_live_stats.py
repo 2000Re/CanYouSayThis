@@ -7,6 +7,11 @@ YouTube Data API(videos.list、part=liveStreamingDetails)を使って、指定�
 (通常動画の再生数)と違い、こちらは配信中のみ有効な値を返す
 (youtube_upload.fetch_live_stats()参照)。
 
+[罠] 同時視聴者数が少ない配信は、YouTube側がプライバシー保護のため
+concurrentViewers自体を返さないことがある(配信終了済みと見分けが付かない
+ため、actualEndTimeの有無で「配信中/終了済み」を別途判定する、
+fetch_live_stats()のdocstring参照)。
+
 必要な環境変数はyoutube_upload.pyと同じ(YOUTUBE_CLIENT_ID/
 YOUTUBE_CLIENT_SECRET/YOUTUBE_REFRESH_TOKEN)。
 
@@ -36,11 +41,17 @@ def main():
         if stats is None:
             print(f"{video_id}: 見つかりませんでした(削除済み、または存在しないIDの可能性があります)")
             continue
-        if stats["concurrentViewers"] is None:
-            print(f"{video_id}: 配信中ではありません(終了済み、または通常動画の可能性があります)")
+        if stats["actualStartTime"] is None:
+            print(f"{video_id}: ライブ配信ではありません(通常動画の可能性があります)")
+            continue
+        if stats["actualEndTime"] is not None:
+            print(f"{video_id}: 配信は終了しています(終了時刻: {stats['actualEndTime']})")
             continue
         print(f"=== {video_id} ===")
-        print(f"  concurrentViewers: {stats['concurrentViewers']}")
+        if stats["concurrentViewers"] is None:
+            print("  concurrentViewers: (非表示 — 視聴者数が少ないためYouTube側で非表示になっている可能性があります。配信自体は継続中です)")
+        else:
+            print(f"  concurrentViewers: {stats['concurrentViewers']}")
         print(f"  actualStartTime: {stats['actualStartTime']}")
         print(f"  activeLiveChatId: {stats['activeLiveChatId']}")
 

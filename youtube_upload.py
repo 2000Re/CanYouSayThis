@@ -680,20 +680,32 @@ def fetch_video_stats(video_ids):
 
 def fetch_live_stats(video_ids):
     """video_ids(リスト)のライブ配信情報(part=liveStreamingDetails)を
-    video_id -> {"concurrentViewers", "activeLiveChatId", "actualStartTime"}
-    のdictで返す。
+    video_id -> {"concurrentViewers", "activeLiveChatId", "actualStartTime",
+    "actualEndTime"} のdictで返す。
 
     [背景] 深夜〜早朝の無人配信中、視聴者が今どれくらいいるかを定期的に
     確認したい(2026-10-23、ユーザーとの相談)用途向け。videos.listの
     liveStreamingDetailsパートはfetch_video_stats()のstatisticsパートと
-    同じ即時反映の値で、配信が終了するとconcurrentViewersはレスポンス
-    自体から消える(配信中のみ存在するフィールドのため、値が無い場合は
-    Noneとして扱い、呼び出し側で「配信中か終了したか」を判別できるように
-    する)。
+    同じ即時反映の値だが、concurrentViewersは「配信中なら必ず入っている」
+    わけではない点に注意が必要([罠] 実機確認: 同時視聴者数が少ない配信
+    (本チャンネルの初配信、同時視聴者2人程度)では、YouTube公式ドキュメント
+    に記載の「視聴者数が少ない配信は、その少人数のプライバシー保護のため
+    視聴者数自体を非表示にすることがある」仕様により、配信が続いていても
+    concurrentViewersキー自体がレスポンスから欠落する。これをactualEndTime
+    の有無で判定せず「concurrentViewers無し=配信終了」と早合点すると、
+    実際にはまだ配信中なのに「配信は終了した」と誤報してしまう)。
 
-    配信中でないvideo_id(ライブ配信ではない通常動画・配信終了後の
-    アーカイブ等)はliveStreamingDetails自体がレスポンスに含まれないか、
-    concurrentViewersキーが無いため、全フィールドNoneで返す。
+    そのため「配信が本当に終了したか」はconcurrentViewersの有無ではなく
+    actualEndTimeの有無で判定する必要がある。呼び出し側は:
+      - actualEndTimeが入っている → 配信終了
+      - actualStartTimeは入っているがactualEndTimeが無い → 配信中
+        (concurrentViewersが無ければ、上記の少人数プライバシー保護で
+        非表示になっているだけ)
+      - actualStartTimeも無い → そもそもライブ配信ではない(通常動画等)
+    で判断する。
+
+    配信中でないvideo_id(ライブ配信ではない通常動画等)はliveStreamingDetails
+    自体がレスポンスに含まれないため、全フィールドNoneで返す。
 
     fetch_video_stats()と同じくvideos.listは1回のリクエストにつき1 unit
     なので、同じバッチサイズで分割する。"""
@@ -711,6 +723,7 @@ def fetch_live_stats(video_ids):
             stats_by_id[item["id"]] = {
                 "concurrentViewers": int(concurrent) if concurrent is not None else None,
                 "activeLiveChatId": live.get("activeLiveChatId"),
+                "actualEndTime": live.get("actualEndTime"),
                 "actualStartTime": live.get("actualStartTime"),
             }
     return stats_by_id

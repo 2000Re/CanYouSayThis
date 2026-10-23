@@ -1916,6 +1916,23 @@ assets/
     `synthesize_morse()`内で要素数をこの上限で打ち切るようにした
     (`units = units[:_MAX_MORSE_UNITS]`)。テストを追加。
 
+100. **夜間の無人ライブ配信を`fetch_live_stats()`(`videos.list`、
+     `part=liveStreamingDetails`)で監視した際、同時視聴者2人程度の配信で
+     `concurrentViewers`キー自体がレスポンスから欠落し、「配信は終了した」
+     と誤判定しかけた**: YouTube公式ドキュメントに記載の仕様で、同時視聴者数
+     が少ない配信はその少人数のプライバシー保護のため`concurrentViewers`
+     自体を非表示にすることがある。「`concurrentViewers`が無い=配信終了」
+     と早合点すると、実際には配信が継続しているのに「終了した」と誤報して
+     しまう(本チャンネルの初配信がまさにこの同時視聴者数だったため、
+     実機で早速踏んだ)。
+
+     `concurrentViewers`の有無ではなく`actualEndTime`の有無で「配信中/
+     終了済み」を判定するよう修正した: `actualEndTime`が入っていれば配信
+     終了、`actualStartTime`はあるが`actualEndTime`が無ければ配信は継続中
+     (`concurrentViewers`が無くても、少人数プライバシー保護で非表示に
+     なっているだけ)、`actualStartTime`自体が無ければそもそもライブ配信
+     ではない、の3通りで判断する。テストを追加。
+
 ## プロジェクト構成
 
 ```
