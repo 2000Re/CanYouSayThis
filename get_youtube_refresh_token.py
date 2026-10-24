@@ -32,8 +32,13 @@ GitHub Secretsに登録しておく運用にしている(取得したトーク�
 ブラウザで選択画面が出たら、必ず意図したチャンネルをクリックすること。
 
 使い方:
-    pip install -r requirements-dev.txt
+    pip install -r requirements.txt -r requirements-dev.txt
     python3 get_youtube_refresh_token.py --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET
+
+    (google-auth-oauthlibはrequirements-dev.txt側、このスクリプトが使う
+    googleapiclient/google-authはrequirements.txt側に分かれているため、
+    どちらか片方だけでは ModuleNotFoundError になる。tests.ymlのCIと同じ
+    組み合わせ)
 
 実行するとブラウザが開いてGoogleアカウントでの認可、続いてチャンネルの
 選択を求められる。認可するとリフレッシュトークンが標準出力に表示される
