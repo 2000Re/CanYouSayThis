@@ -98,12 +98,8 @@ def test_build_repost_metadata_mirrors_short_title_without_shorts_tag():
     assert "#Shorts" not in metadata["description"]
     assert "https://youtu.be/xyz" in metadata["description"]
     # comment_textはgenerate._random_comment_text()が複数パターンから
-    # ランダムに選ぶため(2026-10-13)、いずれかの出力(+80文字上限の案内、
-    # README「ハマった罠」76番)と一致することを確認する。
-    expected_comments = {
-        template("abc123", None) + generate._REQUEST_LENGTH_NOTICE
-        for template in generate._COMMENT_TEMPLATES
-    }
+    # ランダムに選ぶため(2026-10-13)、いずれかの出力と一致することを確認する。
+    expected_comments = {template("abc123", None) for template in generate._COMMENT_TEMPLATES}
     assert metadata["comment_text"] in expected_comments
 
 
@@ -185,18 +181,18 @@ def test_build_repost_metadata_omits_genre_suffix_for_non_genre_mode():
     assert "(" not in metadata["title"]
 
 
-def test_build_repost_metadata_comment_includes_request_length_notice():
-    # generate.py _youtube_metadata()(通常のShorts投稿)では必ず80文字上限の
-    # 案内をcomment_textに付けているが、以前はrepost_shorts.py側に付いて
-    # おらず、再投稿された動画のコメントだけ注記が無いという不整合があった
-    # (運営者からの指摘で発覚、README「ハマった罠」76番)。pictograph系の
-    # コメントテンプレートにも同様に付くことを確認する。
+def test_build_repost_metadata_comment_omits_request_length_notice():
+    # generate.py _youtube_metadata()(通常のShorts投稿)は以前、80文字上限の
+    # 案内を必ずcomment_textに付けていたが、リクエストが処理しきれないほど
+    # 増えたため2026-10-24に削除した(README「ハマった罠」103番)。
+    # repost_shorts.py側も同じ案内を付けていたので、こちらも再度紛れ込んで
+    # いないことの回帰防止(pictograph系のコメントテンプレートも対象)。
     entry = {
         "word": "abc123", "label": "abc123", "mode": "glitch",
         "voice_label": None, "lang_code": None,
     }
     metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
-    assert metadata["comment_text"].endswith(generate._REQUEST_LENGTH_NOTICE)
+    assert "80 characters" not in metadata["comment_text"]
 
     pictograph_word = generate.config.CUNEIFORM_CHARS[0] + generate.config.CUNEIFORM_CHARS[1]
     pictograph_entry = {
@@ -204,7 +200,7 @@ def test_build_repost_metadata_comment_includes_request_length_notice():
         "voice_label": None, "lang_code": None,
     }
     pictograph_metadata = repost_shorts.build_repost_metadata(pictograph_entry, "https://youtu.be/xyz")
-    assert pictograph_metadata["comment_text"].endswith(generate._REQUEST_LENGTH_NOTICE)
+    assert "80 characters" not in pictograph_metadata["comment_text"]
 
 
 def test_build_repost_metadata_sanitizes_symbol_characters_from_label():

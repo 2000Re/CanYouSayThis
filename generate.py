@@ -240,15 +240,6 @@ def _random_comment_text(label, lang_label):
     return random.choice(_COMMENT_TEMPLATES)(label, lang_label)
 
 
-# 761文字という極端に長い--wordリクエストが来たことがきっかけで追加した
-# 文字数上限の案内(README「ハマった罠」68番)。_youtube_metadata()
-# (通常のShorts投稿)・repost_shorts.py build_repost_metadata()(Shortsを
-# 通常動画に変換して再投稿する際のコメント)の両方で共通して使う定数化
-# したもの。以前はrepost_shorts.py側にこの注記が無く、再投稿されたコメント
-# にだけ付かないという不整合があった(運営者からの指摘で発覚、README
-# 「ハマった罠」76番)。
-_REQUEST_LENGTH_NOTICE = " Requests: 80 characters max, please! \U0001F4AC"
-
 # readable_label()が残す「結合文字を除いた土台の文字」には、音楽記号・
 # チェス駒記号・はさみ記号等のSymbol系文字も含まれうる(視聴者リクエストの
 # バムン文字+チェスのクイーン記号+音楽記号混在の単語で発覚)。これらは
@@ -546,12 +537,10 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     検索キーワードフレーズ(視聴者属性で継続的に上位に入っているフィリピン・
     インドネシア・マレーシア向け)も、動画のボイス言語とは無関係に常に含める。
 
-    説明文・comment_textの両方に、視聴者コメントでのリクエストを「80文字
-    以内」にお願いする一文を常に含める(761文字という極端に長い--word
-    リクエストが来たのがきっかけ、README「ハマった罠」68番)。comment_text
-    側は追加分を最小限の長さに抑えている(既存の「実在の単語ではない」の
-    注記が、Shorts視聴画面のコメント欄プレビューの行数制限で切り詰められ
-    ないようにするため。本関数後半のコメント参照)。
+    説明文・comment_textに視聴者コメントでのリクエストを案内する一文は
+    含めない(以前は「80文字以内で」という案内を常に含めていたが、
+    リクエストが処理しきれないほど増えたため、運営者の判断で2026-10-24に
+    削除した。README「ハマった罠」103番)。
 
     戻り値のcaption_text(YouTubeの手動字幕用)は、意味不明な音声を自動文字
     起こし(ASR)に任せると検索インデックス対象のテキスト枠が無駄になる
@@ -687,13 +676,6 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
             f"https://www.youtube.com/playlist?list={playlist_id}\n\n"
         )
     description += "\U0001F514 Subscribe for a new unpronounceable word every day!\n\n"
-    # 761文字という極端に長い--wordリクエストが来たことがきっかけで、運営者
-    # から「80文字以内で」という上限をどこかに明記してほしいと要望があった
-    # ため追加(README「ハマった罠」68番)。全モード共通で常に表示する。
-    description += (
-        "\U0001F4AC Got a word or phrase for me to try? Drop it in the "
-        "comments — please keep requests to 80 characters or less!\n\n"
-    )
     native_hashtag_word = lang_entry.get("hashtag_word") if lang_entry else None
     description += "#Shorts #Pronunciation #Unpronounceable #Zalgo #GlitchText #TextToSpeech #TTS #Challenge"
     if native_hashtag_word:
@@ -730,13 +712,6 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
             caption_text += f" in {lang_label}"
         caption_text += "? Not a real word — just a joke, give it a try! 😄"
         comment_text = _random_comment_text(label, lang_label)
-    # 761文字という極端に長い--wordリクエストが来たことがきっかけで追加した
-    # 文字数上限の案内(description側と同じ趣旨、README「ハマった罠」68番)。
-    # 既存のcomment_text本文(68〜89文字程度)より長くしすぎると、Shorts
-    # 視聴画面のコメント欄プレビューの行数制限で「実在の単語ではない」の
-    # 注記ごと切り詰められてしまう(本関数前述のコメント参照)ため、
-    # 追加分は最小限の長さ(40文字弱)に抑えている。
-    comment_text += _REQUEST_LENGTH_NOTICE
 
     # タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド)。
     # YouTube側の視聴環境が日本語の視聴者には、通常のtitle/descriptionの
