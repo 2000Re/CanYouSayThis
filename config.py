@@ -229,7 +229,15 @@ PICTOGRAPH_SCRIPT_WEIGHTS = [1, 2, 1, 1]
 # 文字体系を使う確率)と同じ考え方で、見た目に一定の頻度でnoveltyを
 # 混ぜつつ、これまでのZalgo系の見た目も引き続き主流のまま残すようにして
 # いる(generate.py _pictograph_word_generator()・_word_generator_for()参照)。
-PICTOGRAPH_VISUAL_CHANCE = 0.4
+#
+# 元は0.4だったが、youtube_analytics.pyの直近1週間集計(「ハマった罠」
+# 101番)で、好調動画トップ3が揃ってZalgo装飾込みでも元の単語が透けて
+# 見えるタイプ(例: 'E...ooooo')だった一方、完全な記号の羅列は視聴者
+# リクエスト分も含めて伸び悩んでいたため、完全ピクトグラフの出現率を
+# 下げた(YouTube StudioのAI分析が挙げた「読める単語ほど伸びる」という
+# 指摘とも整合する)。視聴者リクエスト分(--word直接指定)は元々この抽選の
+# 対象外なので影響しない。
+PICTOGRAPH_VISUAL_CHANCE = 0.15
 
 # --voice random(generate.py _resolve_voice()参照)が抽選する言語/性別の
 # 候補。単語自体は母音中心のBASE_CHARSしか使わないので、言語ごとの発音規則の
