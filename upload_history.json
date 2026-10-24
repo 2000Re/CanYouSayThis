@@ -4362,5 +4362,16 @@
     "voice_label": "Cantonese (Male)",
     "lang_code": "yue",
     "title_template": "impossible_to_say"
+  },
+  {
+    "word": ":iiiiiU͚̝̰͔͡n҃҃҆҇҉a֤֧֑֭֨֓( ❈ ✵",
+    "label": ":iiiiiUn҉a( ...",
+    "video_id": "K4KgtePhNLM",
+    "mode": "chorus",
+    "run_id": "40080420526",
+    "uploaded_at": "2026-10-24T09:04:10.983560+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "pronunciation_challenge"
   }
 ]
