@@ -9,7 +9,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import pytest
 
 import audio_utils
-from audio_utils import _atempo_chain_for_factor, _is_silent_audio, _stretch_to_min_duration, finalize_audio, repeat_audio
+from audio_utils import (
+    _atempo_chain_for_factor,
+    _is_silent_audio,
+    _speed_up_to_max_duration,
+    _stretch_to_min_duration,
+    finalize_audio,
+    repeat_audio,
+)
 
 
 def test_atempo_chain_for_factor_within_range_needs_no_chaining():
@@ -91,6 +98,49 @@ def test_stretch_to_min_duration_stops_after_max_passes_without_infinite_loop(mo
     _fake_ffmpeg_writes_output_file(monkeypatch)
 
     _stretch_to_min_duration(str(src), str(dst), min_duration=0.6, max_passes=2)
+
+    assert dst.exists()
+
+
+def test_speed_up_to_max_duration_passes_through_when_already_short_enough(monkeypatch, tmp_path):
+    src = tmp_path / "src.wav"
+    src.touch()
+    dst = tmp_path / "dst.wav"
+    monkeypatch.setattr(audio_utils, "_probe_duration", lambda path: 5.0)
+    _fake_ffmpeg_writes_output_file(monkeypatch)
+
+    _speed_up_to_max_duration(str(src), str(dst), max_duration=8.0)
+
+    assert dst.exists()
+
+
+def test_speed_up_to_max_duration_applies_atempo_when_too_long(monkeypatch, tmp_path):
+    src = tmp_path / "src.wav"
+    src.touch()
+    dst = tmp_path / "dst.wav"
+    # 1回目の計測は長すぎる、atempo適用後の2回目の計測では狙った長さに
+    # 収まった、という想定(_stretch_to_min_durationと対称)。
+    durations = iter([20.0, 8.0])
+    monkeypatch.setattr(audio_utils, "_probe_duration", lambda path: next(durations))
+    _fake_ffmpeg_writes_output_file(monkeypatch)
+
+    _speed_up_to_max_duration(str(src), str(dst), max_duration=8.0)
+
+    assert dst.exists()
+    # 元のsrcファイル自体は消さない(呼び出し側が自分で管理・削除する)
+    assert src.exists()
+
+
+def test_speed_up_to_max_duration_stops_after_max_passes_without_infinite_loop(monkeypatch, tmp_path):
+    # 何回短縮しても閾値を超えたままのケースでも無限ループせず、
+    # max_passes回で打ち切って完了することの回帰防止。
+    src = tmp_path / "src.wav"
+    src.touch()
+    dst = tmp_path / "dst.wav"
+    monkeypatch.setattr(audio_utils, "_probe_duration", lambda path: 20.0)
+    _fake_ffmpeg_writes_output_file(monkeypatch)
+
+    _speed_up_to_max_duration(str(src), str(dst), max_duration=8.0, max_passes=2)
 
     assert dst.exists()
 

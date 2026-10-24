@@ -500,6 +500,17 @@ TTS_EXTREME_MIN_DURATION_SECONDS = 0.6
 # もう一段チェックが入る形)。
 MIN_FINAL_VIDEO_DURATION_SECONDS = 3.0
 
+# YouTube StudioのAI分析(「次に向けたアクション案」)で、5〜8秒程度の短尺×
+# ループ動画が視聴維持率200〜360%に達する一方、10〜20秒を超える動画は
+# 50〜75%まで落ちるという傾向が示唆された。実際にyoutube_analytics.pyの
+# 直近1週間集計でも、音声が長くなりがちなmorseモード(視聴維持率14.7%)・
+# slowed_reverbモード(66.0%)が、短尺で揃うnightcore(360.3%)・8d_audio
+# (264.2%)等より明確に低かった。そのため上記MIN_FINAL_VIDEO_DURATION_
+# SECONDSと対称に、generate.py generate_one()がaudio_utils._speed_up_
+# to_max_duration()でこの長さを超える音声をatempoで短縮する
+# (2026-10-24時点の計測が根拠。将来さらにデータが増えたら見直すこと)。
+MAX_FINAL_VIDEO_DURATION_SECONDS = 8.0
+
 # --- YouTube SEO(カテゴリ・字幕・説明文キーワード) ----------------------------
 #
 # YouTubeの動画カテゴリID一覧(公式にリストAPIはあるが固定値として広く知られて
