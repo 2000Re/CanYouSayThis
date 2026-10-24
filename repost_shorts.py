@@ -89,7 +89,6 @@ from frame_builder import build_thumbnail
 from generate import (
     _PICTOGRAPH_DESCRIPTION_LINE,
     _PICTOGRAPH_TITLE,
-    _REQUEST_LENGTH_NOTICE,
     _TITLE_TEMPLATES,
     _is_pictograph_word,
     _mode_genre_suffix,
@@ -301,11 +300,6 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
         _random_pictograph_comment_text() if is_pictograph_script
         else _random_comment_text(label, lang_label)
     )
-    # generate.py _youtube_metadata()と同じ80文字上限の案内(README
-    # 「ハマった罠」68・76番)。以前はこちらに付いておらず、再投稿された
-    # 動画のコメントだけ注記が無いという不整合があった。
-    comment_text += _REQUEST_LENGTH_NOTICE
-
     return {"title": title, "description": description, "tags": tags, "comment_text": comment_text}
 
 
