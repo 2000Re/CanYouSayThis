@@ -18,6 +18,7 @@ from youtube_analytics import (
     _entries_in_range,
     _week_start,
     fetch_video_metrics,
+    rank_videos,
     summarize_by_mode,
     summarize_by_voice,
     summarize_by_week,
@@ -167,6 +168,38 @@ def test_summarize_by_mode_skips_entries_missing_required_fields():
     ]
     summary = summarize_by_mode({}, entries, "2026-09-19")
     assert summary["tts"]["videos"] == 1
+
+
+def test_rank_videos_sorts_by_views_descending(sample_entries):
+    metrics_by_id = {
+        "t1": {"views": 100, "average_view_percentage": 40.0},
+        "t2": {"views": 500, "average_view_percentage": 360.0},
+        "g1": {"views": 10, "average_view_percentage": 20.0},
+    }
+    ranked = rank_videos(metrics_by_id, sample_entries)
+
+    assert [r["video_id"] for r in ranked] == ["t2", "t1", "g1"]
+    assert ranked[0]["views"] == 500
+    assert ranked[0]["average_view_percentage"] == 360.0
+    assert ranked[0]["mode"] == "tts"
+
+
+def test_rank_videos_treats_missing_metrics_as_zero_views(sample_entries):
+    ranked = rank_videos({"t1": {"views": 100, "average_view_percentage": 40.0}}, sample_entries)
+
+    by_id = {r["video_id"]: r for r in ranked}
+    assert by_id["t2"]["views"] == 0
+    assert by_id["t2"]["average_view_percentage"] == 0.0
+
+
+def test_rank_videos_skips_entries_missing_required_fields():
+    entries = [
+        {"video_id": "a", "word": "foo", "mode": "tts", "uploaded_at": "2026-09-19T00:00:00+00:00"},
+        {"video_id": None, "word": "bar", "mode": "tts", "uploaded_at": "2026-09-19T00:00:00+00:00"},
+        {"video_id": "c", "word": "baz", "mode": "tts", "uploaded_at": None},
+    ]
+    ranked = rank_videos({}, entries)
+    assert [r["video_id"] for r in ranked] == ["a"]
 
 
 def test_week_start_returns_preceding_monday():

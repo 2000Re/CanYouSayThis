@@ -31,6 +31,7 @@ YOUTUBE_CLIENT_SECRET/YOUTUBE_REFRESH_TOKEN)。ただしYOUTUBE_REFRESH_TOKEN
     python3 youtube_analytics.py --days 14              # 過去14日間を集計
     python3 youtube_analytics.py --start-date 2026-09-01 --end-date 2026-09-19
     python3 youtube_analytics.py --days 90 --by-week    # 週別の推移も出力(「飽き」傾向の確認用)
+    python3 youtube_analytics.py --days 7 --top-bottom 3  # 期間内で再生数が多い/少ない動画を個別に3本ずつ出力
 """
 import argparse
 import datetime
@@ -215,6 +216,34 @@ def summarize_by_week(metrics_by_id, entries, end_date):
     return _summarize_by_key(metrics_by_id, entries, end_date, key_fn=lambda e: _week_start(e["uploaded_at"]))
 
 
+def rank_videos(metrics_by_id, entries):
+    """entries(_entries_in_range()で絞り込んだupload_history.jsonのエント
+    リ)をmetrics_by_idの再生数で降順に並べ替えた、個別動画のリストを返す
+    (summarize_by_mode()等とは違い、モード単位ではなく動画1本ごとの実績を
+    見たい場合に使う。2026-10-24、ユーザーとの相談で「直近1週間で特に
+    好調/不調だった動画を1本ずつ知りたい」という要望を受けて追加)。
+
+    各要素は{"video_id", "word", "mode", "views", "average_view_percentage"}
+    のdict。video_id/uploaded_atが欠けているエントリは対象外にする
+    (_summarize_by_key()と同じ方針)。metrics_by_idに無いvideo_idは
+    views=0、average_view_percentage=0.0として扱う。"""
+    ranked = []
+    for entry in entries:
+        video_id = entry.get("video_id")
+        if not video_id or not entry.get("uploaded_at"):
+            continue
+        metrics = metrics_by_id.get(video_id, {"views": 0, "average_view_percentage": 0.0})
+        ranked.append({
+            "video_id": video_id,
+            "word": entry.get("word"),
+            "mode": entry.get("mode"),
+            "views": metrics["views"],
+            "average_view_percentage": metrics["average_view_percentage"],
+        })
+    ranked.sort(key=lambda r: -r["views"])
+    return ranked
+
+
 def summarize_by_voice(metrics_by_id, entries, end_date):
     """lang_code(--voice randomで実際に読み上げに使った言語、
     config.VOICE_LANGUAGESのキー)別の集計。_summarize_by_key()参照。
@@ -249,6 +278,9 @@ def main():
                           "(--voice randomの抽選比率調整の参考用。lang_codeは"
                           "この項目の追加以降にアップロードされたtts/tts_extreme"
                           "の動画にしか記録されていない)")
+    ap.add_argument("--top-bottom", type=int, default=0,
+                     help="指定した件数、期間内で再生数が多い動画/少ない動画を"
+                          "個別に(モード集計とは別に)出力する(省略時は出力しない)")
     args = ap.parse_args()
 
     end_date = args.end_date or datetime.date.today().isoformat()
@@ -301,6 +333,22 @@ def main():
                     f"1日あたり平均{data['avg_views_per_day']:.2f}回"
                     f"(単純平均{data['avg_views']:.1f}回, 視聴維持率{data['avg_view_percentage']:.1f}%)"
                 )
+
+    if args.top_bottom > 0:
+        ranked = rank_videos(metrics_by_id, target_entries)
+        n = args.top_bottom
+        print(f"\n=== 個別動画: 再生数が多い{n}本({start_date} 〜 {end_date}) ===")
+        for r in ranked[:n]:
+            print(
+                f"  {r['views']}回(視聴維持率{r['average_view_percentage']:.1f}%) "
+                f"[{r['mode']}] {r['word']!r} https://youtu.be/{r['video_id']}"
+            )
+        print(f"\n=== 個別動画: 再生数が少ない{n}本({start_date} 〜 {end_date}) ===")
+        for r in ranked[-n:][::-1]:
+            print(
+                f"  {r['views']}回(視聴維持率{r['average_view_percentage']:.1f}%) "
+                f"[{r['mode']}] {r['word']!r} https://youtu.be/{r['video_id']}"
+            )
 
 
 if __name__ == "__main__":
