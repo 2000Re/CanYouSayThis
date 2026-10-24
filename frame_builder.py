@@ -9,6 +9,7 @@ PILの単一フォント描画だとZalgoの結合文字や記号ブロックが
 
 import html
 import os
+import random
 
 from playwright.sync_api import sync_playwright
 
@@ -22,7 +23,7 @@ from config import CHROMIUM_PATH, FRAME_CSS_FONT_STACK, FRAME_SIZE, MODE_LABELS,
 # サイズ(1080x1920)などフレーム幅が変わっても崩れないようにするため)。
 FRAME_HTML_TEMPLATE = """
 <html><head><meta charset="utf-8"><style>
-  body {{ margin:0; width:{width}px; height:{height}px; background:white;
+  body {{ margin:0; width:{width}px; height:{height}px; background:white; position:relative;
          font-family: {font_stack};
          display:flex; flex-direction:column; align-items:center; justify-content:center; }}
   p.kicker {{ font-size:{kicker_font_size}px; font-weight:700; letter-spacing:4px; text-transform:uppercase;
@@ -31,6 +32,8 @@ FRAME_HTML_TEMPLATE = """
              word-break:break-word; max-width:{word_max_width}px; line-height:1.05; color:black; }}
   p.sub {{ color:#777; font-size:{sub_font_size}px; margin-top:28px; }}
   .icon {{ margin-top:20px; }}
+  p.cta {{ position:absolute; left:0; right:0; bottom:{cta_bottom}px; margin:0; text-align:center;
+           font-size:{cta_font_size}px; font-weight:700; color:#555; }}
 </style></head>
 <body>
 <p class="kicker">How to Pronounce</p>
@@ -41,8 +44,29 @@ FRAME_HTML_TEMPLATE = """
   <path d="M100,70 A30,30 0 0 0 100,30" stroke="black" stroke-width="6" fill="none"/>
   <path d="M100,95 A55,55 0 0 0 100,5" stroke="black" stroke-width="6" fill="none"/>
 </svg>
+<p class="cta">{cta_text}</p>
 </body></html>
 """
+
+# フレーム下部に焼き込む、視聴者への軽いリアクション喚起の一言(2026-10-24、
+# YouTube側のAIパフォーマンス分析でもらった改善案「固定コメントや動画内の
+# テロップでリアクションを促す」を受けて追加)。_COMMENT_TEMPLATES(generate.py)
+# と同じ考え方で、固定1パターンだと複数本見る視聴者に「テンプレ感」が
+# 出やすいため、複数パターンをランダムに選ぶ。すべて動画の主役である単語
+# より目立たない(_BASELINE_CTA_FONT_SIZEがサブラベルより一回り小さい)
+# ところに置き、短い英文のみ(複数言語対応の翻訳管理コストを避けるため、
+# 他の視聴者向けテキストと同じ英語で統一)。
+_CTA_TEXTS = (
+    "👍 Like if you got it right!",
+    "Think you said it right? Hit like!",
+    "🔥 Nailed it? Smash that like button!",
+    "👍 Like if you can pronounce it!",
+    "Comment your attempt below! 🗣️",
+)
+
+
+def _random_cta_text():
+    return random.choice(_CTA_TEXTS)
 
 # 以下の基準値はすべて横幅1280px(旧デフォルトの16:9フレーム)を基準に
 # 調整したもの。build_frame() でフレーム幅に応じて一律スケールする。
@@ -51,6 +75,8 @@ _BASELINE_KICKER_FONT_SIZE = 36
 _BASELINE_SUB_FONT_SIZE = 24
 _BASELINE_ICON_SIZE = 90
 _BASELINE_MAX_WIDTH_MARGIN = 80  # フレーム幅からこの分を引いたものが単語のmax-width
+_BASELINE_CTA_FONT_SIZE = 20  # サブラベル(24px)より一回り小さく、主役の単語を邪魔しない
+_BASELINE_CTA_BOTTOM = 56  # フレーム下端からの余白
 # 結合文字(Zalgoの見た目)は土台の文字の行の上へせり出して描画されるため、
 # 詰めすぎるとキッカー("How to Pronounce")と衝突する。それを避けるための
 # 単語上の余白(結合文字を含まない旧デザインの頃は margin-top:0 だった)。
@@ -212,6 +238,9 @@ def build_frame(word_label, frame_path, mode="tts", size=FRAME_SIZE, display_wor
         sub_font_size=round(_BASELINE_SUB_FONT_SIZE * scale),
         icon_size=round(_BASELINE_ICON_SIZE * scale),
         word_margin_top=round(_BASELINE_WORD_MARGIN_TOP * scale),
+        cta_text=html.escape(_random_cta_text()),
+        cta_font_size=round(_BASELINE_CTA_FONT_SIZE * scale),
+        cta_bottom=round(_BASELINE_CTA_BOTTOM * scale),
     )
     html_path = frame_path + ".html"
     with open(html_path, "w", encoding="utf-8") as f:

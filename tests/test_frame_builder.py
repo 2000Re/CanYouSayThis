@@ -71,6 +71,17 @@ def test_sub_label_unknown_mode_falls_back_to_raw_mode_name():
         "[mystery / Unpronounceable word]"
 
 
+def test_random_cta_text_returns_one_of_the_known_phrases():
+    assert frame_builder._random_cta_text() in frame_builder._CTA_TEXTS
+
+
+def test_random_cta_text_varies_across_calls():
+    # _COMMENT_TEMPLATES(generate.py)と同じ「テンプレ感」回避の方針が
+    # ここでも機能していることの回帰防止(固定1パターンに戻っていないか)。
+    seen = {frame_builder._random_cta_text() for _ in range(50)}
+    assert len(seen) > 1
+
+
 def test_thumbnail_word_font_size_shrinks_as_length_grows():
     # 文字数が増えるほど基準サイズが小さくなること(_word_font_size()と
     # 同じ傾向)の確認。

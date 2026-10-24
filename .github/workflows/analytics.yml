@@ -25,6 +25,10 @@ on:
         required: false
         default: "false"
         type: boolean
+      top_bottom:
+        description: "指定した件数、期間内で再生数が多い/少ない動画を個別に出力する(0なら出力しない)"
+        required: false
+        default: "0"
 
 jobs:
   analytics:
@@ -65,5 +69,8 @@ jobs:
           fi
           if [ "${{ inputs.by_voice }}" = "true" ]; then
             args+=(--by-voice)
+          fi
+          if [ "${{ inputs.top_bottom }}" != "0" ]; then
+            args+=(--top-bottom "${{ inputs.top_bottom }}")
           fi
           python3 youtube_analytics.py "${args[@]}"
