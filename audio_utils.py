@@ -13,6 +13,10 @@
                        tts_synth.synthesize_tts_extreme()専用だったが、
                        generate.pyが全モード共通の最終尺チェックにも使う
                        ため、ここに置いている)
+- _speed_up_to_max_duration: 長すぎる音声をatempoで短縮する
+                       (_stretch_to_min_durationと対称の処理。視聴維持率
+                       データで長尺モードの不利が裏付けられたため追加
+                       (README「ハマった罠」参照))
 - _is_silent_audio  : 音声が実質無音かどうかをvolumedetectで判定する
                        (generate.pyがアップロード前の安全網として使う)
 """
@@ -101,6 +105,33 @@ def _stretch_to_min_duration(src_path, dst_path, min_duration, max_passes=3):
         # 別名にする(同名を使い回すと直前の出力を読みながら同時に上書き
         # しようとして壊れる)。
         next_path = f"{dst_path}.stretch_tmp{pass_index}.wav"
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", current, "-af", _atempo_chain_for_factor(factor), next_path],
+            check=True,
+            capture_output=True,
+        )
+        if current != src_path:
+            os.remove(current)
+        current = next_path
+    if current == src_path:
+        subprocess.run(["ffmpeg", "-y", "-i", current, dst_path], check=True, capture_output=True)
+    else:
+        os.replace(current, dst_path)
+
+
+def _speed_up_to_max_duration(src_path, dst_path, max_duration, max_passes=3):
+    """src_pathの長さがmax_durationを超えていれば、atempoで再生速度を
+    上げて短縮する。_stretch_to_min_duration()と対称の処理で、収束の
+    ための複数パス・ファイル命名規則も同じ理由(詳細はそちらの
+    docstring参照)。元々max_duration以下であれば何もせずそのまま
+    dst_pathにコピーする。"""
+    current = src_path
+    for pass_index in range(max_passes):
+        duration = _probe_duration(current)
+        if duration <= max_duration:
+            break
+        factor = duration / max_duration
+        next_path = f"{dst_path}.speedup_tmp{pass_index}.wav"
         subprocess.run(
             ["ffmpeg", "-y", "-i", current, "-af", _atempo_chain_for_factor(factor), next_path],
             check=True,

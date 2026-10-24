@@ -1933,6 +1933,22 @@ assets/
      なっているだけ)、`actualStartTime`自体が無ければそもそもライブ配信
      ではない、の3通りで判断する。テストを追加。
 
+101. **YouTube StudioのAI分析(「次に向けたアクション案」)で、5〜8秒程度の
+     短尺×ループ動画が視聴維持率200〜360%に達する一方、10〜20秒を超える
+     動画は50〜75%まで落ちるという指摘があり、`youtube_analytics.py`の
+     `--top-bottom`で直近1週間を集計したところ実際に裏付けが取れた**:
+     音声が長くなりがちなmorseモード(視聴維持率14.7%)・slowed_reverb
+     モード(66.0%)が、短尺で揃うnightcore(360.3%)・8d_audio(264.2%)等
+     より明確に低かった。元々`MIN_FINAL_VIDEO_DURATION_SECONDS`(短すぎる
+     音声をatempoで引き伸ばす)はあったが、長すぎる音声を縮める仕組みは
+     無かった。
+
+     `audio_utils._speed_up_to_max_duration()`を追加し、
+     `MAX_FINAL_VIDEO_DURATION_SECONDS`(8.0秒)を超える音声を`atempo`で
+     短縮するようにした。`_stretch_to_min_duration()`と対称の処理(収束の
+     ための複数パス構造も同じ)。generate.py側は`_stretch_to_min_duration`
+     の直後、`finalize_audio`の直前にこのチェックを挟む。
+
 ## プロジェクト構成
 
 ```

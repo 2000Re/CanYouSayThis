@@ -82,7 +82,14 @@ import unicodedata
 
 import config
 from animalese_synth import synthesize_animalese
-from audio_utils import _is_silent_audio, _stretch_to_min_duration, finalize_audio, repeat_audio, wav_to_mp3
+from audio_utils import (
+    _is_silent_audio,
+    _speed_up_to_max_duration,
+    _stretch_to_min_duration,
+    finalize_audio,
+    repeat_audio,
+    wav_to_mp3,
+)
 from frame_builder import build_frame, close_browser
 from glitch_synth import synthesize_glitch_chunk
 from jst_time import jst_timestamp
@@ -1011,6 +1018,7 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
     raw_wav = base + "_raw.wav"
     rep_wav = base + "_rep.wav"
     str_wav = base + "_str.wav"
+    cap_wav = base + "_cap.wav"
     fin_wav = base + ".wav"
     mp3_path = base + ".mp3"
     frame_path = base + "_frame.png"
@@ -1124,12 +1132,18 @@ def generate_one(idx, outdir, mode=config.DEFAULT_MODE, voice=config.DEFAULT_VOI
         # MIN_FINAL_VIDEO_DURATION_SECONDSを下回る場合はここでさらに引き伸ばす
         # (config.py参照)。
         _stretch_to_min_duration(rep_wav, str_wav, config.MIN_FINAL_VIDEO_DURATION_SECONDS)
+        # morse/slowed_reverb等、音声が長くなりがちなモードはShorts自動
+        # ループの視聴維持率が明確に低いことがyoutube_analytics.pyの集計で
+        # 確認できたため、MAX_FINAL_VIDEO_DURATION_SECONDSを超える場合は
+        # ここで短縮する(config.py参照)。
+        _speed_up_to_max_duration(str_wav, cap_wav, config.MAX_FINAL_VIDEO_DURATION_SECONDS)
         # 無音パディングはしない。中身の実際の長さのまま、末尾だけ短くフェード
         # し、動画の尺もそれに合わせる(build_videoが -shortest で音声側に合わせる)
-        finalize_audio(str_wav, fin_wav, fade=fade, fade_in=config.DEFAULT_FADE_IN)
+        finalize_audio(cap_wav, fin_wav, fade=fade, fade_in=config.DEFAULT_FADE_IN)
         os.remove(raw_wav)
         os.remove(rep_wav)
         os.remove(str_wav)
+        os.remove(cap_wav)
 
         if not _is_silent_audio(fin_wav):
             break
