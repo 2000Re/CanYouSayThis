@@ -4406,5 +4406,16 @@
     "voice_label": "Lithuanian (Male)",
     "lang_code": "lt",
     "title_template": "say_out_loud"
+  },
+  {
+    "word": "شششششنج",
+    "label": "شششششنج",
+    "video_id": "Nu3B9ARrBJw",
+    "mode": "8d_audio",
+    "run_id": "40179054891",
+    "uploaded_at": "2026-10-25T09:04:15.643590+00:00",
+    "voice_label": "Uyghur (Male)",
+    "lang_code": "ug",
+    "title_template": "say_out_loud"
   }
 ]
