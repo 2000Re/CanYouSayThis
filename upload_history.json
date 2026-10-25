@@ -4439,5 +4439,16 @@
     "voice_label": "Arabic (Female)",
     "lang_code": "ar",
     "title_template": "can_you_say"
+  },
+  {
+    "word": "(nnnEEU֥֭֬֫֕֘֝֬Vᷘᷡ᷅ᷣᷓᷢ᷈A֢֧֚֡֕֬֙֝֙֯) ◕",
+    "label": "(nnnEEUVA) ◕",
+    "video_id": "KEfz-5LZ4e0",
+    "mode": "8d_audio",
+    "run_id": "40205095085",
+    "uploaded_at": "2026-10-25T15:04:15.097013+00:00",
+    "voice_label": "Finnish (Female)",
+    "lang_code": "fi",
+    "title_template": "nobody_can_pronounce"
   }
 ]
