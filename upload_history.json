@@ -4428,5 +4428,16 @@
     "voice_label": "Cantonese (Male)",
     "lang_code": "yue",
     "title_template": "say_out_loud"
+  },
+  {
+    "word": "مؿؤؤؤؾؾ",
+    "label": "مؿؤؤؤؾؾ",
+    "video_id": "Pb3rtlMY5h8",
+    "mode": "slowed_reverb",
+    "run_id": "40195850646",
+    "uploaded_at": "2026-10-25T13:04:27.754322+00:00",
+    "voice_label": "Arabic (Female)",
+    "lang_code": "ar",
+    "title_template": "can_you_say"
   }
 ]
