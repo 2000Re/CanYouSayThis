@@ -4417,5 +4417,16 @@
     "voice_label": "Uyghur (Male)",
     "lang_code": "ug",
     "title_template": "say_out_loud"
+  },
+  {
+    "word": "v҇҅҄҃҉҇҈҉v֣֧֧֭֬֡֯֙֙O̥ͦ͝n֪֜֨֞rrrrr ✽ ◒",
+    "label": "v҉҈҉vOnrrrrr...",
+    "video_id": "uoM5JuFHH0g",
+    "mode": "reverse",
+    "run_id": "40187256568",
+    "uploaded_at": "2026-10-25T11:04:15.938250+00:00",
+    "voice_label": "Cantonese (Male)",
+    "lang_code": "yue",
+    "title_template": "say_out_loud"
   }
 ]
