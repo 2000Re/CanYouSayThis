@@ -4461,5 +4461,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "pronunciation_challenge"
+  },
+  {
+    "word": ")nnnnŕ̷̦̪̒ͪr҄҉҇҈҉i҈҃҇҃҆҇E) ✱",
+    "label": ")nnnnrr҉҈҉i҈...",
+    "video_id": "s8TvuD9BImA",
+    "mode": "nightcore",
+    "run_id": "40312122973",
+    "uploaded_at": "2026-10-26T11:05:30.109138+00:00",
+    "voice_label": "Vietnamese (Female)",
+    "lang_code": "vi",
+    "title_template": "nobody_can_pronounce"
   }
 ]
