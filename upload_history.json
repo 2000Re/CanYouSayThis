@@ -4472,5 +4472,16 @@
     "voice_label": "Vietnamese (Female)",
     "lang_code": "vi",
     "title_template": "nobody_can_pronounce"
+  },
+  {
+    "word": "AAm̢̺̝̝̈́̔ͥrrrrO̹̒̔̃͞OOO ◕ ✽ ✧",
+    "label": "AAmrrrrOOOO ...",
+    "video_id": "KUHqCqz6KTk",
+    "mode": "robot_voice",
+    "run_id": "40327302691",
+    "uploaded_at": "2026-10-26T13:04:24.965060+00:00",
+    "voice_label": "Romanian (Male)",
+    "lang_code": "ro",
+    "title_template": "is_pronounceable"
   }
 ]
