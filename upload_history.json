@@ -4483,5 +4483,16 @@
     "voice_label": "Romanian (Male)",
     "lang_code": "ro",
     "title_template": "is_pronounceable"
+  },
+  {
+    "word": "(OOOOOE֢֑֧֡֩m᷎᷹ᷕᷡᷣᷦ᷈᷁ᷤ᷍) ✬ ❉ ✲",
+    "label": "(OOOOOEm) ✬ ...",
+    "video_id": "IiNUwlx-ssE",
+    "mode": "echo_cave",
+    "run_id": "40345481893",
+    "uploaded_at": "2026-10-26T15:04:09.448942+00:00",
+    "voice_label": "Finnish (Female)",
+    "lang_code": "fi",
+    "title_template": "try_to_say"
   }
 ]
