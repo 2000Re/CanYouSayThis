@@ -4516,5 +4516,16 @@
     "voice_label": "Icelandic (Male)",
     "lang_code": "is",
     "title_template": "attempt_to_pronounce"
+  },
+  {
+    "word": "¿Ú͏̵͇̟̱̈̚v҈҅҃҃҆E̳̅̌̉͌̀͛vvvvvvo᷹ᷦ᷈᷋᷑᷉ᷕ᷒ᷗ¿ ◗ ✤ ◖",
+    "label": "¿U͏v҈Evvvvvv...",
+    "video_id": "JqJn7cHzFis",
+    "mode": "8d_audio",
+    "run_id": "40527116797",
+    "uploaded_at": "2026-10-27T15:11:20.882103+00:00",
+    "voice_label": "French (Male)",
+    "lang_code": "fr",
+    "title_template": "can_you_pronounce"
   }
 ]
