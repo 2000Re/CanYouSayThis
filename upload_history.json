@@ -4505,5 +4505,16 @@
     "voice_label": "Spanish (Female)",
     "lang_code": "es",
     "title_template": "impossible_to_say"
+  },
+  {
+    "word": "aaa᷿᷿ᷥ᷒ᷘ᷈᷉ᷞU᷏᷵᷉᷾ᷖᷔm̪̏̋a ❋ ◘",
+    "label": "aaaUma ❋ ◘",
+    "video_id": "_ywbac-moCU",
+    "mode": "8d_audio",
+    "run_id": "40508684765",
+    "uploaded_at": "2026-10-27T13:04:11.127920+00:00",
+    "voice_label": "Icelandic (Male)",
+    "lang_code": "is",
+    "title_template": "attempt_to_pronounce"
   }
 ]
