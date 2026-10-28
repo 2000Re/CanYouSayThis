@@ -4538,5 +4538,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "try_to_say"
+  },
+  {
+    "word": "v̢̤̩͒̐͞lllm̡̨̠̅̀͑̓̔EE ❅ ◐",
+    "label": "vlllmEE ❅ ◐",
+    "video_id": "4r_nKU8jEnQ",
+    "mode": "8d_audio",
+    "run_id": "40676918247",
+    "uploaded_at": "2026-10-28T11:04:04.397734+00:00",
+    "voice_label": "Swedish (Male)",
+    "lang_code": "sv",
+    "title_template": "is_pronounceable"
   }
 ]
