@@ -4560,5 +4560,16 @@
     "voice_label": "Vietnamese (Male)",
     "lang_code": "vi",
     "title_template": "can_you_pronounce"
+  },
+  {
+    "word": "-vvĭ͍̩̳̈́ͅIIn֑֚֩֜֡֓V҇҉҅aaaaa: ✦ ✽",
+    "label": "-vviIInV҉aaa...",
+    "video_id": "sqlrMCHsOD0",
+    "mode": "slowed_reverb",
+    "run_id": "40712017478",
+    "uploaded_at": "2026-10-28T15:05:02.608880+00:00",
+    "voice_label": "Icelandic (Female)",
+    "lang_code": "is",
+    "title_template": "say_out_loud"
   }
 ]
