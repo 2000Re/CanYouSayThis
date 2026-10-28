@@ -4549,5 +4549,16 @@
     "voice_label": "Swedish (Male)",
     "lang_code": "sv",
     "title_template": "is_pronounceable"
+  },
+  {
+    "word": "O͏̨̫̗ͣ͢͞o᷐᷏᷽᷸᷈ᷞ᷈o֛֤֖֮֝A֢֮֩֠֒֞֯n᷐᷿ᷣᷛᷤ᷵᷇ᷢ᷍v֛֕֗EEEEO҆҈҄҆҄҈҆ ✬ ✿",
+    "label": "O͏ooAnvEEEEO...",
+    "video_id": "pGFzagV3DcM",
+    "mode": "tts",
+    "run_id": "40692946718",
+    "uploaded_at": "2026-10-28T13:04:21.097374+00:00",
+    "voice_label": "Vietnamese (Male)",
+    "lang_code": "vi",
+    "title_template": "can_you_pronounce"
   }
 ]
