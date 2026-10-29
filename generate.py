@@ -474,6 +474,16 @@ def _random_pictograph_comment_text():
     return random.choice(_PICTOGRAPH_COMMENT_TEMPLATES)
 
 
+# コミュニティ投稿はほぼ誰にも見られておらず、停止後もリクエストが
+# 来続けてしまうため、視聴者が実際に見ている動画のコメント欄側で告知する
+# (README「ハマった罠」104番)。_youtube_metadata()(通常のShorts投稿)・
+# repost_shorts.py build_repost_metadata()(Shortsを通常動画に変換して
+# 再投稿する際のコメント)の両方で共通して使う定数化したもの(以前の
+# _REQUEST_LENGTH_NOTICEと同じ理由で、repost_shorts.py側だけ付け忘れる
+# 不整合を避ける)。
+_REQUEST_PAUSED_NOTICE = " Requests are paused for now, sorry! \U0001F64F"
+
+
 def _mode_genre_suffix(mode):
     """modeがconfig.TITLE_GENRE_MODESに含まれる場合、タイトル末尾に付ける
     " (ジャンル名)" を返す(該当しなければ空文字列)。
@@ -537,10 +547,17 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
     検索キーワードフレーズ(視聴者属性で継続的に上位に入っているフィリピン・
     インドネシア・マレーシア向け)も、動画のボイス言語とは無関係に常に含める。
 
-    説明文・comment_textに視聴者コメントでのリクエストを案内する一文は
-    含めない(以前は「80文字以内で」という案内を常に含めていたが、
-    リクエストが処理しきれないほど増えたため、運営者の判断で2026-10-24に
-    削除した。README「ハマった罠」103番)。
+    説明文には視聴者コメントでのリクエストを案内する一文を含めない
+    (以前は「80文字以内で」という案内を常に含めていたが、リクエストが
+    処理しきれないほど増えたため、運営者の判断で2026-10-24に削除した。
+    README「ハマった罠」103番)。
+
+    comment_textの末尾には「リクエストは現在停止中」の一文を常に含める
+    (2026-10-29、README「ハマった罠」104番)。コミュニティ投稿は誰も
+    見ておらずリクエストが来続けてしまうため、視聴者が実際に見ている
+    動画のコメント欄側で告知する。103番の「80文字以内で」という受付
+    案内とは別の、受付自体を停止している旨の告知なので、103番の削除とは
+    矛盾しない。
 
     戻り値のcaption_text(YouTubeの手動字幕用)は、意味不明な音声を自動文字
     起こし(ASR)に任せると検索インデックス対象のテキスト枠が無駄になる
@@ -712,6 +729,7 @@ def _youtube_metadata(word, label, mode, playlist_id=None, voice_label=None, is_
             caption_text += f" in {lang_label}"
         caption_text += "? Not a real word — just a joke, give it a try! 😄"
         comment_text = _random_comment_text(label, lang_label)
+    comment_text += _REQUEST_PAUSED_NOTICE
 
     # タイトルの日本語ローカライズ(videos.insertのlocalizationsフィールド)。
     # YouTube側の視聴環境が日本語の視聴者には、通常のtitle/descriptionの

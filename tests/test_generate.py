@@ -14,6 +14,7 @@ from generate import (
     _COMMENT_TEMPLATES,
     _FRAME_MAX_BASE_CHARS,
     _PICTOGRAPH_TITLE,
+    _REQUEST_PAUSED_NOTICE,
     _SINGLE_VOICE_MODES,
     _TITLE_SENTENCE_SNIPPET_CHARS,
     _TITLE_TEMPLATES,
@@ -339,6 +340,27 @@ def test_youtube_metadata_comment_omits_request_length_notice():
     # (README「ハマった罠」103番)。
     _title, _description, _tags, _caption, comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
     assert "80 characters" not in comment
+
+
+def test_youtube_metadata_comment_contains_request_paused_notice():
+    # コミュニティ投稿は誰も見ておらずリクエストが来続けてしまうため、
+    # 視聴者が実際に見ている動画のコメント欄側で「リクエストは現在停止中」
+    # を告知する(README「ハマった罠」104番)。モードに関わらず常に含める。
+    _title, _description, _tags, _caption, comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "Requests are paused" in comment
+
+
+def test_youtube_metadata_comment_request_paused_notice_also_applies_to_pictograph_word():
+    word = config.CUNEIFORM_CHARS[0] + config.CUNEIFORM_CHARS[1]
+    _title, _description, _tags, _caption, comment, _localizations = _youtube_metadata(word, word, "glitch")
+    assert "Requests are paused" in comment
+
+
+def test_youtube_metadata_description_omits_request_paused_notice():
+    # 停止告知はcomment_text側のみ(説明欄まで読まない視聴者にも確実に
+    # 伝わるコメント欄で告知する狙いのため、README「ハマった罠」104番)。
+    _title, description, _tags, _caption, _comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
+    assert "Requests are paused" not in description
 
 
 def test_sanitize_label_for_display_only_removes_blocked_symbols():
@@ -773,11 +795,14 @@ def test_random_comment_text_omits_language_name_when_not_given():
 def test_youtube_metadata_comment_is_separate_from_caption():
     # comment_textはcaption_textの使い回しではなく、_random_comment_text()
     # で独立に選ばれる(2026-10-13の分離、caption_textは引き続き字幕専用)。
+    # 「リクエストは現在停止中」の告知(README「ハマった罠」104番)が末尾に
+    # 常に付くため、比較前にその分を取り除く。
     expected = {template("voOn", None) for template in _COMMENT_TEMPLATES}
     _title, _description, _tags, caption, comment, _localizations = _youtube_metadata(
         "v́oOn", "voOn", "tts"
     )
-    assert comment in expected
+    assert comment.endswith(_REQUEST_PAUSED_NOTICE)
+    assert comment[: -len(_REQUEST_PAUSED_NOTICE)] in expected
     assert comment != caption
 
 

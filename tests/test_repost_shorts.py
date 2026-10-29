@@ -98,8 +98,12 @@ def test_build_repost_metadata_mirrors_short_title_without_shorts_tag():
     assert "#Shorts" not in metadata["description"]
     assert "https://youtu.be/xyz" in metadata["description"]
     # comment_textはgenerate._random_comment_text()が複数パターンから
-    # ランダムに選ぶため(2026-10-13)、いずれかの出力と一致することを確認する。
-    expected_comments = {template("abc123", None) for template in generate._COMMENT_TEMPLATES}
+    # ランダムに選ぶため(2026-10-13)、いずれかの出力(+「リクエストは現在
+    # 停止中」の告知、README「ハマった罠」104番)と一致することを確認する。
+    expected_comments = {
+        template("abc123", None) + generate._REQUEST_PAUSED_NOTICE
+        for template in generate._COMMENT_TEMPLATES
+    }
     assert metadata["comment_text"] in expected_comments
 
 
@@ -201,6 +205,28 @@ def test_build_repost_metadata_comment_omits_request_length_notice():
     }
     pictograph_metadata = repost_shorts.build_repost_metadata(pictograph_entry, "https://youtu.be/xyz")
     assert "80 characters" not in pictograph_metadata["comment_text"]
+
+
+def test_build_repost_metadata_comment_includes_request_paused_notice():
+    # generate.py _youtube_metadata()(通常のShorts投稿)は「リクエストは
+    # 現在停止中」の告知を必ずcomment_textに付けている(README「ハマった
+    # 罠」104番)。103番と同じ理由で、再投稿された動画のコメントだけ告知が
+    # 無いという不整合を避けるため、こちらにも付くことを確認する
+    # (pictograph系のコメントテンプレートも対象)。
+    entry = {
+        "word": "abc123", "label": "abc123", "mode": "glitch",
+        "voice_label": None, "lang_code": None,
+    }
+    metadata = repost_shorts.build_repost_metadata(entry, "https://youtu.be/xyz")
+    assert metadata["comment_text"].endswith(generate._REQUEST_PAUSED_NOTICE)
+
+    pictograph_word = generate.config.CUNEIFORM_CHARS[0] + generate.config.CUNEIFORM_CHARS[1]
+    pictograph_entry = {
+        "word": pictograph_word, "label": pictograph_word, "mode": "glitch",
+        "voice_label": None, "lang_code": None,
+    }
+    pictograph_metadata = repost_shorts.build_repost_metadata(pictograph_entry, "https://youtu.be/xyz")
+    assert pictograph_metadata["comment_text"].endswith(generate._REQUEST_PAUSED_NOTICE)
 
 
 def test_build_repost_metadata_sanitizes_symbol_characters_from_label():

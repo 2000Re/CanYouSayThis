@@ -89,6 +89,7 @@ from frame_builder import build_thumbnail
 from generate import (
     _PICTOGRAPH_DESCRIPTION_LINE,
     _PICTOGRAPH_TITLE,
+    _REQUEST_PAUSED_NOTICE,
     _TITLE_TEMPLATES,
     _is_pictograph_word,
     _mode_genre_suffix,
@@ -300,6 +301,10 @@ def build_repost_metadata(entry: dict, original_url: str) -> dict:
         _random_pictograph_comment_text() if is_pictograph_script
         else _random_comment_text(label, lang_label)
     )
+    # generate.py _youtube_metadata()と同じ「リクエストは現在停止中」の
+    # 告知(README「ハマった罠」104番)。103番と同じ理由で、再投稿された
+    # 動画のコメントだけ告知が無いという不整合を避ける。
+    comment_text += _REQUEST_PAUSED_NOTICE
     return {"title": title, "description": description, "tags": tags, "comment_text": comment_text}
 
 
