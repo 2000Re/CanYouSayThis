@@ -4571,5 +4571,16 @@
     "voice_label": "Icelandic (Female)",
     "lang_code": "is",
     "title_template": "say_out_loud"
+  },
+  {
+    "word": "O᷻ᷓᷗ᷋᷉v҄҅҅҄҅҇oor֧֚֭֮֔֨֫֒֨rrrr ๑ ◙",
+    "label": "Ovoorrrrr ๑ ...",
+    "video_id": "YIAl73wyM9Y",
+    "mode": "telephone",
+    "run_id": "40846605807",
+    "uploaded_at": "2026-10-29T09:04:58.574216+00:00",
+    "voice_label": "Icelandic (Female)",
+    "lang_code": "is",
+    "title_template": "pronunciation_challenge"
   }
 ]
