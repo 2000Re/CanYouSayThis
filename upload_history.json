@@ -4593,5 +4593,16 @@
     "voice_label": "Vietnamese (Female)",
     "lang_code": "vi",
     "title_template": "try_to_say"
+  },
+  {
+    "word": "AAAvvvvvOOO ✰ ❁",
+    "label": "AAAvvvvvOOO ...",
+    "video_id": "zdRUNHxQ3MQ",
+    "mode": "tts",
+    "run_id": "40878425996",
+    "uploaded_at": "2026-10-29T13:04:11.599752+00:00",
+    "voice_label": "Icelandic (Male)",
+    "lang_code": "is",
+    "title_template": "what_does_it_sound_like"
   }
 ]
