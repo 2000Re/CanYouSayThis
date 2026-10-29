@@ -4604,5 +4604,16 @@
     "voice_label": "Icelandic (Male)",
     "lang_code": "is",
     "title_template": "what_does_it_sound_like"
+  },
+  {
+    "word": "ظحىججججى",
+    "label": "ظحىججججى",
+    "video_id": "J4zI7B26HLQ",
+    "mode": "echo_cave",
+    "run_id": "40897607818",
+    "uploaded_at": "2026-10-29T15:04:17.953750+00:00",
+    "voice_label": "Arabic (Male)",
+    "lang_code": "ar",
+    "title_template": "is_pronounceable"
   }
 ]
