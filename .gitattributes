@@ -4,3 +4,4 @@
 upload_history.json merge=tracking-json
 repost_state.json merge=tracking-json
 quota_usage.json merge=tracking-json
+comment_request_state.json merge=tracking-json

@@ -1,0 +1,140 @@
+name: comment_requests
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_videos:
+        description: "直近何本の動画のコメントを確認対象にするか"
+        required: false
+        default: "30"
+      max_candidates:
+        description: "1回の実行で生成する新規リクエストの上限本数"
+        required: false
+        default: "5"
+
+permissions:
+  contents: write
+  # repost_shorts.pyと同様、将来GitHub Actions APIを使う可能性に備えて
+  # 読み取りだけ許可しておく(generate.ymlと同じ方針)。
+  actions: read
+
+# comment_request_state.json/upload_history.json をこのワークフローも
+# git pushするため、手動実行が重なった場合に同じファイルへのpushが競合
+# しないよう同時実行を1本に制限する(generate.ymlと同じ理由)。
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  comment_requests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y espeak-ng ffmpeg \
+            fonts-noto-core fonts-noto-extra fonts-noto-ui-core fonts-noto-ui-extra \
+            fonts-noto-cjk \
+            mbrola mbrola-us1 mbrola-fr4 mbrola-de1 mbrola-hu1 mbrola-sw2 \
+            mbrola-br4 mbrola-pt1 mbrola-es3 mbrola-pl1
+          # generate.ymlと同じ依存関係(検出した単語をこのワークフロー内で
+          # そのままgenerate.pyに渡して生成するため)。詳細はgenerate.ymlの
+          # 同ステップのコメント参照。
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Playwright Chromium
+        run: playwright install --with-deps chromium
+
+      - name: Detect requested words from comments
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+          YOUTUBE_REFRESH_TOKEN_ISSUED_AT: ${{ secrets.YOUTUBE_REFRESH_TOKEN_ISSUED_AT }}
+        run: |
+          python3 comment_requests.py \
+            --max-videos "${{ inputs.max_videos }}" \
+            --max-candidates "${{ inputs.max_candidates }}"
+
+      # 検出した単語それぞれを、視聴者リクエスト対応(--word)として
+      # generate.pyに渡す。誤検知の安全網として、privacy-statusは
+      # 常にprivateに固定する(generate.yml --word指定時と同じ運用。
+      # 内容確認後、手動でYouTube Studio側の公開設定を切り替える想定)。
+      - name: Generate videos for each detected word
+        if: ${{ hashFiles('comment_request_words.txt') != '' }}
+        env:
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
+          YOUTUBE_REFRESH_TOKEN_ISSUED_AT: ${{ secrets.YOUTUBE_REFRESH_TOKEN_ISSUED_AT }}
+          YOUTUBE_SHORTS_PLAYLIST_ID: ${{ secrets.YOUTUBE_SHORTS_PLAYLIST_ID }}
+        run: |
+          while IFS= read -r word; do
+            [ -z "$word" ] && continue
+            echo "=== 生成: ${word} ==="
+            # 単語が"-"で始まることがあるため"--word=VALUE"の形で渡す
+            # (generate.ymlと同じ理由、"--word VALUE"だと先頭"-"が別オプション
+            # と誤認される)。
+            python3 generate.py --count 1 --outdir ./out --mode random --voice random \
+              --word="$word" --upload --privacy-status private
+          done < comment_request_words.txt
+
+      - name: Upload generated videos (backup/audit + repost_shorts.py用)
+        if: ${{ hashFiles('out/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-videos
+          path: out/
+          if-no-files-found: ignore
+
+      - name: Commit updated state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # comment_request_state.json/upload_history.json/quota_usage.jsonは
+          # 複数の実行がそれぞれ追記・加算するだけのファイルで、通常のテキスト
+          # マージだと衝突するため、generate.ymlと同じJSON対応マージドライバを
+          # 使う(.gitattributes/merge_tracking_json.py参照)。
+          git config merge.tracking-json.name "comment_requests.yml tracking files (JSON-aware union merge)"
+          git config merge.tracking-json.driver "python3 merge_tracking_json.py %O %A %B %P"
+
+          git add comment_request_state.json
+          if [ -f upload_history.json ]; then
+            git add upload_history.json
+          fi
+          if [ -f quota_usage.json ]; then
+            git add quota_usage.json
+          fi
+          git diff --cached --quiet || git commit -m "chore: update comment request state"
+
+          # git pushはGitHub側の一時的な障害で失敗することがある。この時点で
+          # 動画は既にYouTubeへアップロード済みの可能性があるため、ここで
+          # 諦めるとupload_history.json/comment_request_state.jsonへの記録
+          # だけが失われてしまう。generate.ymlの同ステップと同じリトライ方針。
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              exit 0
+            fi
+            echo "git push 失敗(${attempt}回目)。リトライします。"
+            sleep $((attempt * 10))
+            git pull --rebase origin "${GITHUB_REF_NAME}" || git rebase --abort
+          done
+          echo "git push が複数回失敗しました。comment_request_state.json の更新が反映されていない" \
+               "可能性があります。手動での確認・修正が必要です。"
+          exit 1

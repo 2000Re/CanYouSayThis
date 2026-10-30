@@ -669,6 +669,30 @@ REPOST_GITHUB_API_TIMEOUT_SECONDS = 20
 # 設定で変更されていなければ)。
 REPOST_ARTIFACT_NAME = "generated-videos"
 
+# --- comment_requests.py: 視聴者コメントからの単語リクエスト自動検出 ------------
+#
+# [背景] 元々はコミュニティ投稿でリクエスト受付案内を出していたが誰も見ておらず、
+# 視聴者は動画自体のコメント欄に「Can you do 'X'?」のような形でリクエストを
+# 書き込み続けていた(README「ハマった罠」104番)。運営者が手動でコメントを
+# 読んでgenerate.pyを個別実行する運用が続かなくなったため自動化する
+# (2026-10-30、ユーザーとの相談)。
+#
+# [スコープ] 実際のリクエストコメントを分析した結果に基づき、「do/can you do/
+# asking for」等の明示的なキーワードを伴うパターンのみを対象にしている
+# (comment_requests.py _REQUEST_TRIGGERS参照)。キーワード無しでいきなり
+# 単語から始まるパターン(例: "X in Finnish?")は手がかりが無く誤検知が
+# 増えるため、意図的に対象外(一部のリクエストを拾えないトレードオフを
+# 許容する判断)。
+
+COMMENT_REQUEST_STATE_PATH = "comment_request_state.json"
+# 直近何本の動画のコメントを確認対象にするか。古い動画までさかのぼるほど
+# commentThreads.list呼び出し(1回1 unit)が増えるため、直近分に絞る。
+COMMENT_REQUEST_VIDEOS_TO_SCAN = 30
+# 1回の実行で生成する新規リクエストの上限本数。大量のリクエストが一度に
+# 溜まっていても、1回の実行で動画を量産しすぎない(クォータ・実行時間への
+# 配慮)ための上限。上限超過分は次回以降に持ち越す(未処理のまま残す)。
+COMMENT_REQUEST_MAX_PER_RUN = 5
+
 # --- YouTube Data API クォータ ------------------------------------------------
 #
 # youtube_upload.py / repost_shorts.py の両方から参照し、実行ログに

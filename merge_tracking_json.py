@@ -73,6 +73,20 @@ def merge_repost_state(base: dict | None, ours: dict | None, theirs: dict | None
     }
 
 
+def merge_comment_request_state(base: dict | None, ours: dict | None, theirs: dict | None) -> dict:
+    """processed_comment_idsを重複無く和集合にする(merge_repost_stateと同じ考え方)。"""
+    base = base or {}
+    ours = ours or {}
+    theirs = theirs or {}
+    merged = list(theirs.get("processed_comment_ids", []))
+    seen = set(merged)
+    for cid in ours.get("processed_comment_ids", []):
+        if cid not in seen:
+            merged.append(cid)
+            seen.add(cid)
+    return {"processed_comment_ids": merged}
+
+
 def merge_quota_usage(base: dict | None, ours: dict | None, theirs: dict | None) -> dict:
     """api_call_countsは「このrunが増やした分(ours - base)」をtheirsに加算する。
 
@@ -97,6 +111,7 @@ _MERGERS = {
     "upload_history.json": merge_upload_history,
     "repost_state.json": merge_repost_state,
     "quota_usage.json": merge_quota_usage,
+    "comment_request_state.json": merge_comment_request_state,
 }
 
 

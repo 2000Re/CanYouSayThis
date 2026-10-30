@@ -1976,6 +1976,41 @@ assets/
      comment_textの末尾に常に含めるようにした。説明欄には含めない
      (103番の「受付案内の削除」とは別の話で、矛盾しない)。
 
+105. **104番の告知を出しても、運営者が手動でコメントを読んで
+     generate.pyを個別実行する運用(視聴者リクエスト対応)自体が
+     捌ききれなくなった**: 実際のリクエストコメントを分析したところ、
+     「Can you do 'X'?」「Do X」「asking for X」のような明示的な
+     パターンが多い一方、キーワード無しでいきなり単語から始まる
+     パターン(例: "X in Finnish?")も一定数あり、後者は手がかりが無く
+     正規表現での誤検知が増えるため意図的に対象外にした(一部のリクエスト
+     を拾えないトレードオフを許容する判断)。
+
+     `comment_requests.py`(新規)を追加し、`youtube_upload.fetch_comments()`
+     (`commentThreads.list`)で直近`config.COMMENT_REQUEST_VIDEOS_TO_SCAN`
+     本の動画のコメントを取得→正規表現で単語を抽出→`upload_history.json`
+     と照合して重複を除外、という流れで新規リクエストを検出する。
+
+     動画の説明欄をそのままコピペしただけの反応コメント(例: "Do you want
+     to make? :\n\nWord:...\n\nMode:...")が実際にあり、素朴に"do"を
+     トリガーに抽出すると"you want to make"のような無意味な文字列を
+     拾ってしまう問題があった。動画の説明欄と同じ"Word: ..."形式の行を
+     最優先で確認することで、この種のコメントは「現在の動画と同じ単語」
+     として重複除外に確実に引っかかり、新規リクエストとして誤検知しない
+     ようにした(comment_requests.py _WORD_LINE_PATTERN参照)。
+
+     "do"単体のトリガーはコメント全体の先頭に限定している(文中の"I'll
+     do my homework"のような誤検知や、"Do you think...?"のような無関係な
+     疑問文を拾わないための安全側のトレードオフ。"Day 3 of\n\nDo\n\n単語"
+     のようにDoが2行目以降に来るコメントは拾えなくなる)。
+
+     検出した単語は`comment_requests.yml`(新規ワークフロー)が
+     `generate.py --word=... --upload --privacy-status private`として
+     渡す。誤検知した場合の安全網として、常に非公開アップロードに固定
+     している(従来のvisitorリクエスト対応と同じ運用)。
+     `comment_request_state.json`(処理済みコメントID)は
+     `upload_history.json`等と同じJSON対応マージドライバ
+     (`merge_tracking_json.py`)で管理する。
+
 ## プロジェクト構成
 
 ```
@@ -1996,6 +2031,8 @@ youtube_upload.py             YouTube Data API v3への動画/サムネイルア
 upload_history.py             アップロード成功履歴(upload_history.json)の読み書き
 repost_state.py                Shorts→通常動画変換の状態(repost_state.json)管理
 repost_shorts.py               Shortsを1本ずつ横型の通常動画に変換してアップロード
+comment_request_state.py      視聴者コメントからの単語リクエスト検出の状態(comment_request_state.json)管理
+comment_requests.py            視聴者コメントから単語リクエストを自動検出 [comment_requests.ymlから実行]
 youtube_analytics.py          YouTube Analytics APIでモード別の再生数・視聴維持率を集計
 youtube_quick_stats.py         videos.listで直近投稿の即時再生数・高評価数・コメント数を取得
 youtube_video_status.py        videos.listで動画のアップロード・処理状況(status/processingDetails)を確認
