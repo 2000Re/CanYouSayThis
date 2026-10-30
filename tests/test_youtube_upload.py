@@ -968,3 +968,83 @@ def test_fetch_live_stats_queries_in_batches(monkeypatch):
     assert result["v2"]["concurrentViewers"] == 2
     assert youtube.videos.return_value.list.call_count == 2
     assert youtube_upload._api_call_counts["videos.list"] == 2
+
+
+def test_fetch_comments_parses_top_level_comments(monkeypatch):
+    youtube = MagicMock()
+    youtube.commentThreads.return_value.list.return_value.execute.return_value = {
+        "items": [
+            {
+                "id": "c1",
+                "snippet": {"topLevelComment": {"snippet": {
+                    "textOriginal": "Can you do 'X'?", "authorDisplayName": "@someone",
+                }}},
+            },
+        ],
+    }
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    result = youtube_upload.fetch_comments(["v1"])
+
+    assert result == {"v1": [{"comment_id": "c1", "text": "Can you do 'X'?", "author": "@someone"}]}
+    assert youtube_upload._api_call_counts["commentThreads.list"] == 1
+
+
+def test_fetch_comments_follows_pagination(monkeypatch):
+    youtube = MagicMock()
+    responses = iter([
+        {
+            "items": [{"id": "c1", "snippet": {"topLevelComment": {"snippet": {
+                "textOriginal": "first", "authorDisplayName": "@a",
+            }}}}],
+            "nextPageToken": "page2",
+        },
+        {
+            "items": [{"id": "c2", "snippet": {"topLevelComment": {"snippet": {
+                "textOriginal": "second", "authorDisplayName": "@b",
+            }}}}],
+        },
+    ])
+    youtube.commentThreads.return_value.list.return_value.execute.side_effect = lambda: next(responses)
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    result = youtube_upload.fetch_comments(["v1"])
+
+    assert [c["comment_id"] for c in result["v1"]] == ["c1", "c2"]
+    assert youtube_upload._api_call_counts["commentThreads.list"] == 2
+
+
+def test_fetch_comments_skips_video_with_comments_disabled(monkeypatch):
+    # コメント欄が無効化されている動画はcommentThreads.listが403を返す。
+    # その動画だけ空リストとしてスキップし、他の動画の取得は続行する。
+    youtube = MagicMock()
+    youtube.commentThreads.return_value.list.return_value.execute.side_effect = [
+        _http_error(403),
+        {"items": [{"id": "c1", "snippet": {"topLevelComment": {"snippet": {
+            "textOriginal": "hello", "authorDisplayName": "@a",
+        }}}}]},
+    ]
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    result = youtube_upload.fetch_comments(["v1_disabled", "v2"])
+
+    assert result["v1_disabled"] == []
+    assert [c["comment_id"] for c in result["v2"]] == ["c1"]
+
+
+def test_fetch_comments_raises_on_non_retriable_error(monkeypatch):
+    youtube = MagicMock()
+    youtube.commentThreads.return_value.list.return_value.execute.side_effect = _http_error(500)
+    monkeypatch.setattr(youtube_upload, "get_youtube_client", lambda **kwargs: youtube)
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    from googleapiclient.errors import HttpError
+    with pytest.raises(HttpError):
+        youtube_upload.fetch_comments(["v1"])

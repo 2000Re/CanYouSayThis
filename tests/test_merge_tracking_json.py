@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from merge_tracking_json import (
     main,
+    merge_comment_request_state,
     merge_quota_usage,
     merge_repost_state,
     merge_upload_history,
@@ -54,6 +55,18 @@ def test_merge_repost_state_handles_none_inputs():
     assert merge_repost_state(None, None, None) == {
         "converted_video_ids": [], "skipped_video_ids": [],
     }
+
+
+def test_merge_comment_request_state_unions_without_duplicates():
+    base = {"processed_comment_ids": ["a"]}
+    ours = {"processed_comment_ids": ["a", "b"]}
+    theirs = {"processed_comment_ids": ["a", "c"]}
+    merged = merge_comment_request_state(base, ours, theirs)
+    assert merged == {"processed_comment_ids": ["a", "c", "b"]}
+
+
+def test_merge_comment_request_state_handles_none_inputs():
+    assert merge_comment_request_state(None, None, None) == {"processed_comment_ids": []}
 
 
 def test_merge_quota_usage_sums_deltas_from_both_sides():

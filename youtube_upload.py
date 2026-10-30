@@ -136,7 +136,7 @@ def _execute_with_retry(request, retriable_statuses, max_retries=None):
 QUOTA_COST_PER_CALL = {
     "videos.insert": 100, "playlistItems.insert": 50, "channels.list": 1,
     "videos.list": 1, "videos.update": 50, "captions.insert": 400,
-    "commentThreads.insert": 50, "thumbnails.set": 50,
+    "commentThreads.insert": 50, "thumbnails.set": 50, "commentThreads.list": 1,
 }
 _api_call_counts = {name: 0 for name in QUOTA_COST_PER_CALL}
 
@@ -779,3 +779,49 @@ def fetch_video_status(video_ids):
                 "description": snippet.get("description"),
             }
     return status_by_id
+
+
+def fetch_comments(video_ids):
+    """video_ids(リスト)それぞれの動画のトップレベルコメントを
+    video_id -> [{"comment_id", "text", "author"}] のdictで返す。
+
+    [背景] 視聴者コメントからの単語リクエスト自動検出(comment_requests.py、
+    README「ハマった罠」104番)用。
+
+    commentThreads.listは1回のリクエストにつき1 unitだが、videos.listと
+    違いIDをまとめて渡せる仕組みが無いため、動画ごとに個別に呼び出す。
+    textOriginal(視聴者が実際に入力した生のテキスト、HTMLエスケープ無し)
+    を使う(textDisplayはURLが<a>タグ化される等、正規表現での抽出に不向き
+    なため)。
+
+    コメント欄が無効化されている動画はcommentThreads.listが403を返すため、
+    その動画だけスキップし、他の動画の取得は続行する(1本のコメント欄設定で
+    全体が止まらないようにするため)。"""
+    youtube = get_youtube_client()
+    comments_by_video = {}
+    for video_id in video_ids:
+        comments = []
+        page_token = None
+        while True:
+            _api_call_counts["commentThreads.list"] += 1
+            try:
+                response = youtube.commentThreads().list(
+                    part="snippet", videoId=video_id, maxResults=100,
+                    order="time", textFormat="plainText", pageToken=page_token,
+                ).execute()
+            except HttpError as e:
+                if e.resp.status in (403, 404):
+                    break
+                raise
+            for item in response.get("items", []):
+                top = item["snippet"]["topLevelComment"]["snippet"]
+                comments.append({
+                    "comment_id": item["id"],
+                    "text": top.get("textOriginal", ""),
+                    "author": top.get("authorDisplayName", ""),
+                })
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+        comments_by_video[video_id] = comments
+    return comments_by_video
