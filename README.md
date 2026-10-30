@@ -2073,6 +2073,15 @@ assets/
      条件として追加し、既存の「生成された音声が無音でした」という
      安全網(README「ハマった罠」69番)に正しく合流するようにした。
 
+109. **105番でリクエストの自動検出(comment_requests.py)を始めた後も、
+     104番の「Requests are paused for now, sorry!」という告知文が
+     コメント欄に残り続けていた**: 全面停止ではなく一部ずつ処理できる
+     ようになった実態に合わせ、`_REQUEST_PAUSED_NOTICE`
+     (generate.py/repost_shorts.pyで共通使用)の文言を
+     「Slowly getting back to requests now, but I can't get to all of
+     them, sorry! 🙏」に変更(2026-10-30)。全リクエストには対応できない
+     旨を明示し、期待値を調整する狙い。
+
 ## プロジェクト構成
 
 ```
