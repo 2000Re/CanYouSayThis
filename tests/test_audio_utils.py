@@ -102,6 +102,39 @@ def test_stretch_to_min_duration_stops_after_max_passes_without_infinite_loop(mo
     assert dst.exists()
 
 
+def test_probe_duration_treats_na_as_zero(monkeypatch, tmp_path):
+    # espeak-ngに空文字列を渡すと1サンプルも無いWAVができることがあり、
+    # ffprobeはdurationとして数値ではなく文字列"N/A"を返す(README
+    # 「ハマった罠」108番、実機で確認)。float()に素朴に渡すとクラッシュ
+    # するため、長さ0として扱われることを確認する。
+    def fake_run(cmd, **kwargs):
+        class _FakeResult:
+            stdout = "N/A\n"
+        return _FakeResult()
+
+    monkeypatch.setattr(audio_utils.subprocess, "run", fake_run)
+    assert audio_utils._probe_duration("dummy.wav") == 0.0
+
+
+def test_stretch_to_min_duration_passes_through_without_looping_when_duration_is_zero(
+    monkeypatch, tmp_path
+):
+    # duration=0(1サンプルも無い音声)の場合、factor=0/min_duration=0になり
+    # _atempo_chain_for_factor()の`remaining /= 0.5`を繰り返しても0のまま
+    # 無限ループしてしまう不具合があった(README「ハマった罠」108番)。
+    # atempoでは無いデータから音を作れないため、引き伸ばしを試みず素通しで
+    # 完了することを確認する(タイムアウトせず終わること自体が回帰防止)。
+    src = tmp_path / "src.wav"
+    src.touch()
+    dst = tmp_path / "dst.wav"
+    monkeypatch.setattr(audio_utils, "_probe_duration", lambda path: 0.0)
+    _fake_ffmpeg_writes_output_file(monkeypatch)
+
+    _stretch_to_min_duration(str(src), str(dst), min_duration=3.0)
+
+    assert dst.exists()
+
+
 def test_speed_up_to_max_duration_passes_through_when_already_short_enough(monkeypatch, tmp_path):
     src = tmp_path / "src.wav"
     src.touch()
@@ -226,16 +259,19 @@ def test_repeat_audio_preserves_stereo_channel_layout(monkeypatch, tmp_path):
     assert dst.exists()
 
 
-def _fake_volumedetect_stderr(monkeypatch, mean_volume_text):
-    """ffmpegのvolumedetectフィルタが吐くstderr出力を模したCompletedProcess
-    風オブジェクトを返すフェイクにsubprocess.runを差し替える。"""
+def _fake_volumedetect_stderr(monkeypatch, mean_volume_text, duration="1.0"):
+    """ffmpegのvolumedetectフィルタが吐くstderr出力と、_is_silent_audio()が
+    無音判定の前に呼ぶ_probe_duration()(ffprobe)のstdout出力の両方を
+    模したフェイクにsubprocess.runを差し替える(README「ハマった罠」
+    108番、_probe_duration()が追加されたことの回帰対応)。"""
     class _FakeResult:
+        stdout = duration
         stderr = (
             f"[Parsed_volumedetect_0 @ 0x0] mean_volume: {mean_volume_text}\n"
             "[Parsed_volumedetect_0 @ 0x0] max_volume: -10.0 dB\n"
         )
 
-    def fake_run(cmd, capture_output, text):
+    def fake_run(cmd, **kwargs):
         return _FakeResult()
 
     monkeypatch.setattr(audio_utils.subprocess, "run", fake_run)
@@ -267,13 +303,28 @@ def test_is_silent_audio_respects_custom_threshold(monkeypatch):
 def test_is_silent_audio_false_when_mean_volume_cannot_be_parsed(monkeypatch):
     # mean_volumeが取れない(解析失敗)場合は、無音として誤検知して
     # 通常の音声生成を止めてしまわないよう、安全側(無音ではない)に倒す。
-    def fake_run(cmd, capture_output, text):
+    def fake_run(cmd, **kwargs):
         class _FakeResult:
+            stdout = "1.0"
             stderr = "some unexpected ffmpeg output without mean_volume"
         return _FakeResult()
 
     monkeypatch.setattr(audio_utils.subprocess, "run", fake_run)
     assert _is_silent_audio("dummy.wav") is False
+
+
+def test_is_silent_audio_true_when_duration_is_zero(monkeypatch):
+    # 1サンプルも無いWAV(duration=0)はvolumedetectがmean_volume自体を
+    # 出力しないため、通常の正規表現マッチでは判定できない。音声データが
+    # 無い=定義上無音として、volumedetectを呼ぶ前に確定で無音判定する
+    # (README「ハマった罠」108番)。
+    monkeypatch.setattr(audio_utils, "_probe_duration", lambda path: 0.0)
+
+    def fake_run(cmd, **kwargs):
+        raise AssertionError("duration<=0ならvolumedetectを呼ばずに即returnするはず")
+
+    monkeypatch.setattr(audio_utils.subprocess, "run", fake_run)
+    assert _is_silent_audio("dummy.wav") is True
 
 
 def test_repeat_audio_skips_channel_probe_when_times_is_one(monkeypatch, tmp_path):

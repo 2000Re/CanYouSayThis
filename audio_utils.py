@@ -27,10 +27,21 @@ import subprocess
 
 
 def _probe_duration(wav_path):
+    """wav_pathの長さ(秒)を返す。
+
+    [罠] espeak-ngに空文字列を渡すと、エラーを出さずに1サンプルも無い
+    (ヘッダーだけの)WAVファイルを作ることがある(視聴者リクエストの
+    ピクトグラフのみの単語で、_speakable_word()が全文字を取り除いた結果
+    空文字列になった場合等)。この場合ffprobeはdurationとして数値ではなく
+    文字列"N/A"を返すため、素朴にfloat()へ渡すとValueErrorでクラッシュ
+    する(README「ハマった罠」108番、実機で確認)。音声データが無い=
+    長さ0として扱う。"""
     out = subprocess.run(
         ["ffprobe", "-v", "quiet", "-show_entries", "format=duration", "-of", "csv=p=0", wav_path],
         check=True, capture_output=True, text=True,
     ).stdout.strip()
+    if out in ("", "N/A"):
+        return 0.0
     return float(out)
 
 
@@ -48,6 +59,13 @@ def _is_silent_audio(wav_path, threshold_db=-50.0):
     使う。通常のTTS音声はmean_volumeが-30dB程度までに収まることが多く、
     -50dBという閾値は誤検知を避けつつ実質的な無音を十分検知できる値として
     実機確認した。"""
+    if _probe_duration(wav_path) <= 0:
+        # 1サンプルも無いWAV(_probe_duration()のdocstring参照、README
+        # 「ハマった罠」108番)はvolumedetectがmean_volume自体を出力しない
+        # ため、下のmean_volume判定には進めない。データが1つも無い=定義上
+        # 無音なので、ここで確定で無音として扱う(volumedetectの実行自体も
+        # 省略する)。
+        return True
     out = subprocess.run(
         ["ffmpeg", "-i", wav_path, "-af", "volumedetect", "-f", "null", "-"],
         capture_output=True, text=True,
@@ -94,11 +112,20 @@ def _stretch_to_min_duration(src_path, dst_path, min_duration, max_passes=3):
     引き伸ばす。1回のatempo適用だけだと(特に0.2秒未満のような極端に短い
     音声で)狙った長さにきっちり収まらないことが実機で確認できたため、
     再生成後の長さを都度測り直して収束するまで(最大max_passes回)繰り返す。
-    元々min_duration以上あれば何もせずそのままdst_pathにコピーする。"""
+    元々min_duration以上あれば何もせずそのままdst_pathにコピーする。
+
+    [罠] 音声データが1サンプルも無い(duration=0)場合、factor=0/
+    min_duration=0になり、_atempo_chain_for_factor()の
+    `while remaining < 0.5: remaining /= 0.5`が0を割っても0のままで
+    無限ループする(README「ハマった罠」108番)。そもそもatempoは既存の
+    音声の再生速度を変える処理であり、データが無い音声からatempoで新たに
+    音を作り出すことはできないため、duration<=0の場合は引き伸ばしを
+    試みず素通しする(generate_one()側のaudio_utils._is_silent_audio()が
+    この後の安全網として検知・報告する)。"""
     current = src_path
     for pass_index in range(max_passes):
         duration = _probe_duration(current)
-        if duration >= min_duration:
+        if duration >= min_duration or duration <= 0:
             break
         factor = duration / min_duration
         # ffmpegはinput/outputに同じファイルを指定できないため、パスごとに

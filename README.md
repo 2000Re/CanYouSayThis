@@ -2050,6 +2050,29 @@ assets/
      「Commit updated state」の両ステップに`if: always()`を付けて、
      途中で失敗があっても既存の成功分は必ずコミットされるようにした。
 
+108. **107番の修正後も、ピクトグラフのみの視聴者リクエスト単語で
+     `could not convert string to float: 'N/A'`というクラッシュが別途
+     発生した**: `_speakable_word()`が全文字を取り除いた結果、espeak-ng
+     が1サンプルも無い(ヘッダーだけの)WAVファイルを作ることがある。
+     この場合`ffprobe -show_entries format=duration`は数値ではなく
+     文字列`"N/A"`を返すが、`audio_utils._probe_duration()`が素朴に
+     `float()`へ渡していたためクラッシュしていた(実機のffmpeg/ffprobe
+     で再現・確認済み)。
+
+     `_probe_duration()`を`"N/A"`の場合は長さ0として扱うよう修正。
+     ただしそれだけでは`_stretch_to_min_duration()`で
+     `factor = 0 / min_duration = 0`になり、`_atempo_chain_for_factor()`
+     の`remaining /= 0.5`が0を割り続けて無限ループする別の不具合がある
+     ことも判明したため、duration<=0の場合は引き伸ばしを試みず素通しする
+     よう修正した(atempoはデータの無い音声から音を作り出せないため)。
+
+     さらに、1サンプルも無いWAVは`volumedetect`が`mean_volume`自体を
+     出力しないため、既存の`_is_silent_audio()`の正規表現マッチでは
+     「判定不能(無音ではない)」に倒れてしまい、空の動画がそのまま
+     アップロードされかねなかった。`_probe_duration()<=0`を無音確定の
+     条件として追加し、既存の「生成された音声が無音でした」という
+     安全網(README「ハマった罠」69番)に正しく合流するようにした。
+
 ## プロジェクト構成
 
 ```
