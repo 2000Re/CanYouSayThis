@@ -2011,6 +2011,22 @@ assets/
      `upload_history.json`等と同じJSON対応マージドライバ
      (`merge_tracking_json.py`)で管理する。
 
+106. **105番の`comment_requests.yml`を実機で初回実行したところ、「30本の
+     動画、0件のコメントを確認し、新規リクエスト0件」という結果になった
+     (実際にはコメントが多数付いていることを確認済み)**:
+     `commentThreads.list`も`commentThreads.insert`/`captions.insert`と
+     同じく`youtube.force-ssl`スコープが必要(`UPLOAD_SCOPES`には含まれ
+     ない)だが、`fetch_comments()`が`get_youtube_client()`をデフォルト
+     (`UPLOAD_SCOPES`に絞り込み)で呼んでいたため、全30本の呼び出しが
+     403になっていた。`fetch_comments()`内で403/404を「コメント欄無効化」
+     として静かにスキップする設計だったため、スコープ不足も同じ0件として
+     紛れてしまい、ログにも何も残らなかった。
+
+     `post_comment()`/`upload_caption()`と同じく`scopes=None`で呼ぶよう
+     修正し(`UPLOAD_SCOPESの罠`コメント参照)、あわせて403/404でスキップ
+     する際は原因切り分けのための警告ログを出すようにした(次回同様の
+     問題が起きても「コメント欄無効化」との区別がつくように)。
+
 ## プロジェクト構成
 
 ```
