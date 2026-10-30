@@ -4637,5 +4637,16 @@
     "voice_label": "Cantonese (Female)",
     "lang_code": "yue",
     "title_template": "how_to_pronounce"
+  },
+  {
+    "word": "l᷐ᷠᷗ᷌n҃҃҇҄҆҈҄҄҈aaaaa ❉",
+    "label": "ln҈҈aaaaa ❉",
+    "video_id": "mmNr71VrbXE",
+    "mode": "tts_extreme",
+    "run_id": "41060037064",
+    "uploaded_at": "2026-10-30T13:06:06.417432+00:00",
+    "voice_label": "Romanian (Male)",
+    "lang_code": "ro",
+    "title_template": "attempt_to_pronounce"
   }
 ]
