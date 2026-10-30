@@ -4615,5 +4615,16 @@
     "voice_label": "Arabic (Male)",
     "lang_code": "ar",
     "title_template": "is_pronounceable"
+  },
+  {
+    "word": "ـقؽؽؽدأأأ",
+    "label": "ـقؽؽؽدأأأ",
+    "video_id": "jm2DIPMxrjc",
+    "mode": "robot_voice",
+    "run_id": "41030598088",
+    "uploaded_at": "2026-10-30T09:04:08.184660+00:00",
+    "voice_label": "Arabic (Female)",
+    "lang_code": "ar",
+    "title_template": "impossible_to_say"
   }
 ]
