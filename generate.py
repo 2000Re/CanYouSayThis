@@ -480,8 +480,11 @@ def _random_pictograph_comment_text():
 # repost_shorts.py build_repost_metadata()(Shortsを通常動画に変換して
 # 再投稿する際のコメント)の両方で共通して使う定数化したもの(以前の
 # _REQUEST_LENGTH_NOTICEと同じ理由で、repost_shorts.py側だけ付け忘れる
-# 不整合を避ける)。
-_REQUEST_PAUSED_NOTICE = " Requests are paused for now, sorry! \U0001F64F"
+# 不整合を避ける)。comment_requests.py導入後、全面停止ではなく一部ずつ
+# 対応する運用に変わったため案内文を更新(README「ハマった罠」109番)。
+_REQUEST_PAUSED_NOTICE = (
+    " Slowly getting back to requests now, but I can't get to all of them, sorry! \U0001F64F"
+)
 
 
 def _mode_genre_suffix(mode):
