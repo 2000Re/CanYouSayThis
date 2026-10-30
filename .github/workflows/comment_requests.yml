@@ -75,6 +75,15 @@ jobs:
       # generate.pyに渡す。誤検知の安全網として、privacy-statusは
       # 常にprivateに固定する(generate.yml --word指定時と同じ運用。
       # 内容確認後、手動でYouTube Studio側の公開設定を切り替える想定)。
+      #
+      # [罠] 1単語ずつ別プロセスとして呼ぶループのため、generate.py本体の
+      # 「1本失敗しても残りの本数を続ける」仕組み(main()のfailures処理)が
+      # ここには及ばない。bashのデフォルト(-e)のまま1語でもpython3が非0で
+      # 終了するとループごと即終了し、既に成功していた分もコミットされず
+      # (後続の「Commit updated state」ステップごと丸ごとスキップされる)
+      # upload_history.jsonに記録されない「孤児アップロード」になってしまう
+      # 事故が実機で発生した(2026-10-30、README「ハマった罠」107番)。
+      # 1語の失敗で全体を止めず、最後にまとめて失敗件数を報告する。
       - name: Generate videos for each detected word
         if: ${{ hashFiles('comment_request_words.txt') != '' }}
         env:
@@ -85,18 +94,29 @@ jobs:
           YOUTUBE_REFRESH_TOKEN_ISSUED_AT: ${{ secrets.YOUTUBE_REFRESH_TOKEN_ISSUED_AT }}
           YOUTUBE_SHORTS_PLAYLIST_ID: ${{ secrets.YOUTUBE_SHORTS_PLAYLIST_ID }}
         run: |
+          failures=0
           while IFS= read -r word; do
             [ -z "$word" ] && continue
             echo "=== 生成: ${word} ==="
             # 単語が"-"で始まることがあるため"--word=VALUE"の形で渡す
             # (generate.ymlと同じ理由、"--word VALUE"だと先頭"-"が別オプション
             # と誤認される)。
-            python3 generate.py --count 1 --outdir ./out --mode random --voice random \
-              --word="$word" --upload --privacy-status private
+            if ! python3 generate.py --count 1 --outdir ./out --mode random --voice random \
+                 --word="$word" --upload --privacy-status private; then
+              echo "::warning::${word} の生成に失敗しました。他の単語の処理は続行します。"
+              failures=$((failures + 1))
+            fi
           done < comment_request_words.txt
+          if [ "$failures" -gt 0 ]; then
+            echo "::warning::${failures}件の単語が生成に失敗しました。詳細は上のログを確認してください。"
+            exit 1
+          fi
 
+      # 上のステップが一部の単語の失敗で非0終了しても、既に成功した分の
+      # upload_history.json記録・comment_request_state.jsonの更新は必ず
+      # 永続化する(always()、「ハマった罠」107番参照)。
       - name: Upload generated videos (backup/audit + repost_shorts.py用)
-        if: ${{ hashFiles('out/**') != '' }}
+        if: ${{ always() && hashFiles('out/**') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: generated-videos
@@ -104,6 +124,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Commit updated state
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

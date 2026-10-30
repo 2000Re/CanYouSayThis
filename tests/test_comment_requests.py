@@ -65,6 +65,20 @@ def test_extract_requested_word_rejects_too_long_candidate():
     assert extract_requested_word("Do " + "a" * 300) is None
 
 
+def test_extract_requested_word_sanitizes_lone_surrogate():
+    # 壊れたクライアントが投稿したコメントのJSONパース結果に、対応する
+    # 片割れの無いUTF-16サロゲート(例: U+DCB9)が紛れ込むことが実機で
+    # 確認された(README「ハマった罠」107番)。そのままgenerate.pyに渡すと
+    # --word引数の処理中にUnicodeEncodeErrorでクラッシュするため、ASCIIの
+    # "?"に置き換えられることを確認する(Pythonのencode側errors="replace"
+    # の仕様上、デコード側と違いU+FFFDにはならない)。
+    word_with_surrogate = "Do A\udcb9B"
+    result = extract_requested_word(word_with_surrogate)
+    assert result == "A?B"
+    # 正規化後は必ずUTF-8として安全にエンコードできること(クラッシュしない)
+    result.encode("utf-8")
+
+
 def test_find_new_requests_skips_already_processed_comments():
     comments_by_video = {"v1": [{"comment_id": "c1", "text": "Do test_word"}]}
     new_words, newly_seen = find_new_requests(comments_by_video, set(), {"c1"}, max_candidates=5)

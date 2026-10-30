@@ -2027,6 +2027,29 @@ assets/
      する際は原因切り分けのための警告ログを出すようにした(次回同様の
      問題が起きても「コメント欄無効化」との区別がつくように)。
 
+107. **106番の修正後、実機で初めてリクエストを検出・生成したところ、
+     ある単語で`generate.py`が`UnicodeEncodeError: 'utf-8' codec can't
+     encode character '\udcb9' ... surrogates not allowed`でクラッシュ
+     した**: 壊れたクライアントが投稿したコメントには、対応する片割れの
+     無いUTF-16サロゲートコードポイントが紛れ込むことがある。
+     `googleapiclient`のJSONパース自体はこれを許容してそのままPython
+     文字列に含めてしまうため、そのまま`--word`として`generate.py`に渡すと
+     単語をファイルに書き込む処理でクラッシュする。`comment_requests.py`の
+     `extract_requested_word()`末尾で`encode("utf-8", errors="replace")`
+     により変換できない文字をASCIIの"?"に正規化し、以降のパイプラインの
+     どこでも確実にUTF-8として扱えるようにした。
+
+     さらに、この1語のクラッシュが原因で`comment_requests.yml`の
+     「Generate videos」ステップ全体がbashのデフォルト(-e)で即終了し、
+     後続の「Commit updated state」ステップ(`if:`無し)ごと丸ごと
+     スキップされていたことも判明した。その結果、同じ実行内で**既に
+     成功していた別の単語の動画**(YouTubeには実在する)が
+     `upload_history.json`に記録されない「孤児アップロード」になって
+     いた。ワークフロー側で1語の失敗ではループを止めず最後に失敗件数を
+     まとめて報告するよう変更し、「Upload generated videos」
+     「Commit updated state」の両ステップに`if: always()`を付けて、
+     途中で失敗があっても既存の成功分は必ずコミットされるようにした。
+
 ## プロジェクト構成
 
 ```
