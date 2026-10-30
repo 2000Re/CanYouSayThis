@@ -1018,9 +1018,11 @@ def test_fetch_comments_follows_pagination(monkeypatch):
     assert youtube_upload._api_call_counts["commentThreads.list"] == 2
 
 
-def test_fetch_comments_skips_video_with_comments_disabled(monkeypatch):
+def test_fetch_comments_skips_video_with_comments_disabled(monkeypatch, capsys):
     # コメント欄が無効化されている動画はcommentThreads.listが403を返す。
     # その動画だけ空リストとしてスキップし、他の動画の取得は続行する。
+    # スキップ時は原因切り分けのための警告を出す(下のscopes=Noneの罠と
+    # 区別がつかなくなることを避けるため、README「ハマった罠」105番)。
     youtube = MagicMock()
     youtube.commentThreads.return_value.list.return_value.execute.side_effect = [
         _http_error(403),
@@ -1036,6 +1038,28 @@ def test_fetch_comments_skips_video_with_comments_disabled(monkeypatch):
 
     assert result["v1_disabled"] == []
     assert [c["comment_id"] for c in result["v2"]] == ["c1"]
+    assert "v1_disabled" in capsys.readouterr().out
+
+
+def test_fetch_comments_requests_unrestricted_scopes(monkeypatch):
+    # 2026-10-30に実機で発生した回帰の防止: commentThreads.listも
+    # commentThreads.insert/captions.insertと同じくyoutube.force-ssl
+    # スコープが必要なため、UPLOAD_SCOPESに絞り込まずscopes=Noneで呼ぶ。
+    # これを怠ると全呼び出しが403になり、「コメント欄無効化」と区別が
+    # つかないまま静かに0件が返ってしまう(README「ハマった罠」105番)。
+    youtube = MagicMock()
+    youtube.commentThreads.return_value.list.return_value.execute.return_value = {"items": []}
+    get_client_calls = []
+    monkeypatch.setattr(
+        youtube_upload, "get_youtube_client",
+        lambda **kwargs: get_client_calls.append(kwargs) or youtube,
+    )
+    monkeypatch.setattr(youtube_upload, "_api_call_counts",
+                         {name: 0 for name in QUOTA_COST_PER_CALL})
+
+    youtube_upload.fetch_comments(["v1"])
+
+    assert get_client_calls == [{"scopes": None}]
 
 
 def test_fetch_comments_raises_on_non_retriable_error(monkeypatch):

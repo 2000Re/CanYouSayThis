@@ -794,10 +794,20 @@ def fetch_comments(video_ids):
     を使う(textDisplayはURLが<a>タグ化される等、正規表現での抽出に不向き
     なため)。
 
+    [罠] commentThreads.list は commentThreads.insert/captions.insert と
+    同じく youtube.force-ssl スコープが必要(UPLOAD_SCOPESには含まれない)。
+    get_youtube_client() をデフォルト(UPLOAD_SCOPESに絞り込み)で呼ぶと、
+    全呼び出しが403になり「コメント欄が無効化されている」場合と区別が
+    つかないまま静かに0件が返ってしまう(2026-10-30、実機で発生: 30本の
+    動画全てで0件と誤判定した)。post_comment()/upload_caption()と同じく
+    scopes=Noneで呼び、絞り込みをしないことで回避する(UPLOAD_SCOPESの
+    罠コメント参照)。
+
     コメント欄が無効化されている動画はcommentThreads.listが403を返すため、
     その動画だけスキップし、他の動画の取得は続行する(1本のコメント欄設定で
-    全体が止まらないようにするため)。"""
-    youtube = get_youtube_client()
+    全体が止まらないようにするため)。スキップした場合は原因切り分けの
+    ため警告を出す(上記の罠と区別がつかなくなることを避けるため)。"""
+    youtube = get_youtube_client(scopes=None)
     comments_by_video = {}
     for video_id in video_ids:
         comments = []
@@ -811,6 +821,9 @@ def fetch_comments(video_ids):
                 ).execute()
             except HttpError as e:
                 if e.resp.status in (403, 404):
+                    print(f"[Warning] {video_id}: commentThreads.listが{e.resp.status}を返した"
+                          "ためスキップします(コメント欄無効化、動画削除、または"
+                          "スコープ不足の可能性があります)。")
                     break
                 raise
             for item in response.get("items", []):
