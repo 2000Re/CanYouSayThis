@@ -107,7 +107,20 @@ def extract_requested_word(comment_text):
     if not candidate:
         return None
     candidate = candidate.strip()
-    if not candidate or len(candidate) > _MAX_WORD_LENGTH:
+    if not candidate:
+        return None
+    # [罠] 壊れたクライアントが投稿したコメントには、対応する片割れの無い
+    # UTF-16サロゲートコードポイント(例: U+DCB9)が紛れ込むことが実機で
+    # 確認された(README「ハマった罠」107番)。googleapiclientのJSONパース
+    # 自体はこれを許容してそのままPython文字列に含めてしまうため、
+    # そのままgenerate.pyに渡すと--word引数の処理中にUnicodeEncodeError
+    # ("surrogates not allowed")でクラッシュする。encode(errors="replace")は
+    # 変換できない文字をASCIIの"?"に置き換える(Pythonの仕様上、デコード側の
+    # errors="replace"と違いU+FFFDにはならない)。見た目の情報は一部失うが、
+    # 以降のパイプライン(ファイル書き込み・subprocess引数・YouTube API
+    # 呼び出し)のどこでも確実にUTF-8として扱えるようにする。
+    candidate = candidate.encode("utf-8", errors="replace").decode("utf-8")
+    if len(candidate) > _MAX_WORD_LENGTH:
         return None
     return candidate
 

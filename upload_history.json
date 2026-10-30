@@ -4648,5 +4648,16 @@
     "voice_label": "Romanian (Male)",
     "lang_code": "ro",
     "title_template": "attempt_to_pronounce"
+  },
+  {
+    "word": "ᾮᾎ௹éᾭÜ",
+    "label": "ᾮᾎ௹éᾭÜ",
+    "video_id": "HN_2HuW13kk",
+    "mode": "robot_voice",
+    "run_id": "41063931575",
+    "uploaded_at": "2026-10-30T13:40:04.274386+00:00",
+    "voice_label": "Malay (Male)",
+    "lang_code": "ms",
+    "title_template": null
   }
 ]
