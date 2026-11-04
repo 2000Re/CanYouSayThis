@@ -201,6 +201,14 @@ _unposted_lang_codes()`)があれば、均等抽選ではなく必ずそちら�
 
 ## YouTubeへの自動アップロード
 
+> **2026年11月にチャンネルを作り直した**: YouTubeチャンネルを別のGoogleアカウントで作り直したため、
+> 旧チャンネルの記録(`upload_history.json`・`repost_state.json`・`comment_request_state.json`・
+> `quota_usage.json`・`video_ids.txt`)は `archive/old_channel/` に移し、リポジトリ直下は空の記録から始めている
+> (詳細は `archive/old_channel/README.md`)。新しいチャンネルにつなぐときは、新しいGoogleアカウントで
+> 下の1〜3をやり直し、GitHub Secretsの `YOUTUBE_CLIENT_ID`・`YOUTUBE_CLIENT_SECRET`・`YOUTUBE_REFRESH_TOKEN`・
+> `YOUTUBE_REFRESH_TOKEN_ISSUED_AT`・`YOUTUBE_CHANNEL_ID`・`YOUTUBE_SHORTS_PLAYLIST_ID`・`YOUTUBE_REPOST_PLAYLIST_ID`
+> をすべて新しいチャンネルのものに入れ替えること(再生リストは新しいチャンネルで作り直す)。
+
 `--upload`は[YouTube Data API v3](https://developers.google.com/youtube/v3)
 を使います。GitHub Actionsのようなブラウザ操作ができない環境向けに、事前
 取得したOAuthリフレッシュトークンを使い回す方式です。
