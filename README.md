@@ -206,7 +206,7 @@ _unposted_lang_codes()`)があれば、均等抽選ではなく必ずそちら�
 > `quota_usage.json`・`video_ids.txt`)は `archive/old_channel/` に移し、リポジトリ直下は空の記録から始めている
 > (詳細は `archive/old_channel/README.md`)。新しいチャンネルにつなぐときは、新しいGoogleアカウントで
 > 下の1〜3をやり直し、GitHub Secretsの `YOUTUBE_CLIENT_ID`・`YOUTUBE_CLIENT_SECRET`・`YOUTUBE_REFRESH_TOKEN`・
-> `YOUTUBE_REFRESH_TOKEN_ISSUED_AT`・`YOUTUBE_CHANNEL_ID`・`YOUTUBE_SHORTS_PLAYLIST_ID`・`YOUTUBE_REPOST_PLAYLIST_ID`
+> `YOUTUBE_CHANNEL_ID`・`YOUTUBE_SHORTS_PLAYLIST_ID`・`YOUTUBE_REPOST_PLAYLIST_ID`
 > をすべて新しいチャンネルのものに入れ替えること(再生リストは新しいチャンネルで作り直す)。
 
 `--upload`は[YouTube Data API v3](https://developers.google.com/youtube/v3)
@@ -242,7 +242,6 @@ python3 get_youtube_refresh_token.py --client-id YOUR_CLIENT_ID --client-secret 
 | `YOUTUBE_CLIENT_SECRET` | ○ | OAuthクライアントシークレット |
 | `YOUTUBE_REFRESH_TOKEN` | ○ | 手順2で取得したリフレッシュトークン |
 | `YOUTUBE_CHANNEL_ID` | 推奨 | アップロード先チャンネルID(`UC...`)。不一致ならアップロード前にエラーで止まる |
-| `YOUTUBE_REFRESH_TOKEN_ISSUED_AT` | 推奨 | 手順2実行日(`YYYY-MM-DD`)。7日失効ルールの警告に使う |
 | `YOUTUBE_SHORTS_PLAYLIST_ID` | 任意 | 設定するとShortsをこの再生リストに自動追加 |
 | `YOUTUBE_REPOST_PLAYLIST_ID` | 任意 | 設定すると変換後の通常動画をこの再生リストに自動追加 |
 
@@ -251,13 +250,13 @@ python3 get_youtube_refresh_token.py --client-id YOUR_CLIENT_ID --client-secret 
 - ローカル: `python3 generate.py --upload`(上記を環境変数にセット)
 - GitHub Actions: Actionsタブ → **generate** → **Run workflow**。`upload`はデフォルト有効、`privacy_status`はデフォルト`public`。`word`(視聴者リクエスト対応)を入力した場合は、`privacy_status`の選択に関わらず必ず`private`(非公開)でアップロードされる(`generate.yml`側の上書き。内容を確認してから手動でYouTube Studio側の公開設定を切り替える運用を想定。ローカルで`generate.py --word ... --privacy-status public`のように直接実行した場合はこの上書きは効かない)。あわせて**Repost Shorts as regular videos**ステップもスキップされる(常にバックログ分も合わせて変換するため1本だけ素早く確認したい用途には時間がかかりすぎるうえ、`--privacy-status`が一律適用されるため通常動画側だけ先に公開されてしまう抜け道があったため)。
 
-### 5. リフレッシュトークンの失効監視
+### 5. リフレッシュトークンの有効期限
 
-OAuth同意画面が「テスト」ステータスの場合、リフレッシュトークンは**発行
-から7日で失効**します。`YOUTUBE_REFRESH_TOKEN_ISSUED_AT`を登録しておくと
-`youtube_upload.get_youtube_client()`が経過日数をチェックし、5日経過で予告、
-7日経過で警告をワークフローログに出します(`::warning::`、処理は止めない)。
-再発行時は`get_youtube_refresh_token.py`を再実行し両方を更新してください。
+OAuth同意画面を「本番環境」に公開しているので、リフレッシュトークンに有効期限はない
+(「テスト」のままだと発行から7日で失効する)。以前は発行日(`YOUTUBE_REFRESH_TOKEN_ISSUED_AT`)を
+Secretに登録して失効前に警告を出していたが、本番環境では不要なので2026年11月に仕組みごと削除した。
+トークンを取り消した・パスワードを変えた等で無効になった場合は、`get_youtube_refresh_token.py`を
+再実行して`YOUTUBE_REFRESH_TOKEN`を更新する。
 
 ### 6. APIクォータ使用量のログ(累計)
 

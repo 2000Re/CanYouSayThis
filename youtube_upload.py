@@ -15,10 +15,6 @@ OAuth同意フロー(InstalledAppFlow)は使わない。代わりに、あらか
     YOUTUBE_CHANNEL_ID      アップロード先として想定しているチャンネルID(UCから始まる文字列)。
                             設定しておくと、実際に認証されたチャンネルと一致するかを
                             アップロード前に確認する(下記の罠を参照)。
-    YOUTUBE_REFRESH_TOKEN_ISSUED_AT
-                            get_youtube_refresh_token.py を実行した日付(YYYY-MM-DD)。
-                            設定しておくと、OAuth同意画面が「テスト」ステータスの場合の
-                            既知の7日失効ルールが近づいた/過ぎた際に警告を出す。
     YOUTUBE_SHORTS_PLAYLIST_ID
                             設定しておくと、generate.pyがアップロードした各Shortsを
                             このIDの再生リストに自動追加する(add_to_playlist()参照)。
@@ -231,59 +227,6 @@ def log_api_usage_summary():
     _save_persisted_quota_counts(_api_call_counts)
 
 
-_token_age_warned = False
-
-
-def _token_age_warning(issued_at_str, today=None,
-                        warning_after_days=config.TOKEN_WARNING_AFTER_DAYS,
-                        expiry_days=config.TOKEN_EXPIRY_DAYS):
-    """issued_at_str(YYYY-MM-DD)から今日までの経過日数を見て、リフレッシュ
-    トークンの再発行が近い/おそらく過ぎている場合は警告メッセージを返す。
-
-    issued_at_str が未設定・不正な形式の場合は None を返す(このチェックは
-    あくまでベストエフォートで、設定していない既存環境を壊さないため)。"""
-    if not issued_at_str:
-        return None
-    try:
-        issued_at = datetime.date.fromisoformat(issued_at_str.strip())
-    except ValueError:
-        return None
-
-    today = today or datetime.date.today()
-    age_days = (today - issued_at).days
-
-    if age_days >= expiry_days:
-        return (
-            f"YOUTUBE_REFRESH_TOKEN は発行から{age_days}日経過しています。OAuth同意画面が"
-            f"「テスト」ステータスの場合の既知の{expiry_days}日失効ルールをおそらく超えており、"
-            "アップロードが invalid_grant 等で失敗し始めている可能性があります。"
-            "get_youtube_refresh_token.py を再実行し、YOUTUBE_REFRESH_TOKEN と"
-            "YOUTUBE_REFRESH_TOKEN_ISSUED_AT を更新してください。"
-        )
-    if age_days >= warning_after_days:
-        days_left = expiry_days - age_days
-        return (
-            f"YOUTUBE_REFRESH_TOKEN は発行から{age_days}日経過しています。OAuth同意画面が"
-            f"「テスト」ステータスの場合、あと{days_left}日程度で失効する可能性があります。"
-            "近いうちに get_youtube_refresh_token.py を再実行し、YOUTUBE_REFRESH_TOKEN と"
-            "YOUTUBE_REFRESH_TOKEN_ISSUED_AT を更新してください。"
-        )
-    return None
-
-
-def _check_token_age():
-    """YOUTUBE_REFRESH_TOKEN_ISSUED_AT が設定されていれば、失効が近い/過ぎている
-    場合に1プロセスにつき1回だけ警告を出す(--count で複数本アップロードする際に
-    同じ警告が毎回流れて埋もれないようにするため)。"""
-    global _token_age_warned
-    if _token_age_warned:
-        return
-    message = _token_age_warning(os.environ.get("YOUTUBE_REFRESH_TOKEN_ISSUED_AT"))
-    if message:
-        print(f"::warning::{message}")
-        _token_age_warned = True
-
-
 # _load_credentials()のscopes引数で「未指定(デフォルトのUPLOAD_SCOPESを使う)」
 # と「明示的にNone(リフレッシュ時にscopeパラメータを付けない)」を区別するための
 # 目印。Noneをデフォルト値に使うと後者を表現できなくなるため。
@@ -390,7 +333,6 @@ def get_youtube_client(scopes=_SCOPES_UNSET):
     credentials = _load_credentials(scopes)
     youtube = build("youtube", "v3", credentials=credentials)
     _verify_channel(youtube)
-    _check_token_age()
     return youtube
 
 

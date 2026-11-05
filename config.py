@@ -712,16 +712,6 @@ DAILY_UPLOAD_LIMIT = 100   # videos.insertとは別枠の「1日あたりの動�
 # upload_history.json/repost_state.jsonと一緒にコミットする。
 QUOTA_USAGE_PATH = "quota_usage.json"
 
-# --- YouTubeリフレッシュトークンの有効期限監視 --------------------------------
-#
-# OAuth同意画面の公開ステータスが「テスト」のままだと、リフレッシュトークンは
-# 発行から7日で失効する(スコープにname/email/profile以外を含むアプリのため)。
-# get_youtube_refresh_token.py実行時の日付を任意のSecret
-# (YOUTUBE_REFRESH_TOKEN_ISSUED_AT)として登録しておくと、
-# youtube_upload.get_youtube_client() がこの日数を目安に警告を出す。
-TOKEN_EXPIRY_DAYS = 7          # テストステータスでの既知の失効日数
-TOKEN_WARNING_AFTER_DAYS = 5   # この日数を過ぎたら「そろそろ」の警告を出す
-
 # --- youtube_analytics.py: モード別の再生数・視聴維持率集計 -------------------
 #
 # YouTube Analytics API(youtubeAnalytics v2)のreports.query()は、videoの

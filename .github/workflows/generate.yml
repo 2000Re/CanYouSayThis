@@ -175,9 +175,6 @@ jobs:
           # 任意。設定しておくと、複数チャンネルを持つアカウントで誤った
           # チャンネルにアップロードしそうな場合にアップロード前に検知して止まる
           YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
-          # 任意。設定しておくと、リフレッシュトークンの7日失効(テスト
-          # ステータス時)が近づいた/過ぎた際にログへ警告が出る
-          YOUTUBE_REFRESH_TOKEN_ISSUED_AT: ${{ secrets.YOUTUBE_REFRESH_TOKEN_ISSUED_AT }}
           # 任意。設定しておくと、アップロードした各Shortsをこの再生リストに自動追加する
           YOUTUBE_SHORTS_PLAYLIST_ID: ${{ secrets.YOUTUBE_SHORTS_PLAYLIST_ID }}
           # WORDはワークフロー入力の自由記述文字列なので、run:のスクリプト本文に
@@ -255,7 +252,6 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
-          YOUTUBE_REFRESH_TOKEN_ISSUED_AT: ${{ secrets.YOUTUBE_REFRESH_TOKEN_ISSUED_AT }}
           # 任意。設定しておくと、変換した通常動画をこの再生リストに自動追加する
           YOUTUBE_REPOST_PLAYLIST_ID: ${{ secrets.YOUTUBE_REPOST_PLAYLIST_ID }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

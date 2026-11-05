@@ -65,7 +65,6 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
-          YOUTUBE_REFRESH_TOKEN_ISSUED_AT: ${{ secrets.YOUTUBE_REFRESH_TOKEN_ISSUED_AT }}
         run: |
           python3 comment_requests.py \
             --max-videos "${{ inputs.max_videos }}" \
@@ -91,7 +90,6 @@ jobs:
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
           YOUTUBE_CHANNEL_ID: ${{ secrets.YOUTUBE_CHANNEL_ID }}
-          YOUTUBE_REFRESH_TOKEN_ISSUED_AT: ${{ secrets.YOUTUBE_REFRESH_TOKEN_ISSUED_AT }}
           YOUTUBE_SHORTS_PLAYLIST_ID: ${{ secrets.YOUTUBE_SHORTS_PLAYLIST_ID }}
         run: |
           failures=0

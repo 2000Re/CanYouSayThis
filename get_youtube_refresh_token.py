@@ -46,14 +46,11 @@ GitHub Secretsに登録しておく運用にしている(取得したトーク�
 YOUTUBE_REFRESH_TOKEN として GitHub Secretsに登録する。表示されるチャン
 ネル名が意図したものか、必ず確認すること。
 
-同時に表示される今日の日付も YOUTUBE_REFRESH_TOKEN_ISSUED_AT として登録
-しておくと、OAuth同意画面が「テスト」ステータスの場合の既知の7日失効
-ルールが近づいた/過ぎた際に、generate.py / repost_shorts.py の実行ログに
-警告が出るようになる(任意だが強く推奨)。
+OAuth同意画面は「本番環境」に公開しておくこと(「テスト」のままだと
+リフレッシュトークンが発行から7日で失効する)。
 """
 
 import argparse
-import datetime
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
@@ -102,14 +99,10 @@ def main():
     #   (省略すると初回以外はNoneになることがある)
     credentials = flow.run_local_server(port=0, prompt="consent select_account")
 
-    issued_at = datetime.date.today().isoformat()
-
     print("\n取得できました。以下をGitHub Secretsに登録してください:\n")
     print(f"  YOUTUBE_CLIENT_ID={args.client_id}")
     print(f"  YOUTUBE_CLIENT_SECRET={args.client_secret}")
     print(f"  YOUTUBE_REFRESH_TOKEN={credentials.refresh_token}")
-    print(f"  YOUTUBE_REFRESH_TOKEN_ISSUED_AT={issued_at}"
-          "  (任意だが強く推奨。7日失効が近づいた際の警告に使われる)")
 
     try:
         youtube = build("youtube", "v3", credentials=credentials)
