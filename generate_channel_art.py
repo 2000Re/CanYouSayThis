@@ -25,168 +25,95 @@ import random
 
 from playwright.sync_api import sync_playwright
 
-from config import CHROMIUM_PATH, FRAME_CSS_FONT_STACK
+from config import CHROMIUM_PATH
 
-# ブランドカラー(動画フレームは白背景なので、チャンネル アイコン/バナーは
-# サムネイル一覧やチャンネルページで目立つよう濃色ベースにしている)。
-# BG_COLOR_2 はグラデーションの明るい側(中心)。ACCENT_COLOR_2 は
-# ACCENT_COLORとのグラデーションでロゴ/タイトルに深みを出すための差し色。
-BG_COLOR = "#0B0D12"
-BG_COLOR_2 = "#1B2333"
-ACCENT_COLOR = "#39FF88"   # メインアクセント
-ACCENT_COLOR_2 = "#22D3EE"  # グラデーション用の差し色2(シアン)
+# ブランドカラー(2026年11月、新しいチャンネルで作り直したときのデザイン)。
+# サムネイル一覧の小さなアイコンでも目立つよう、濃い紫の背景に黄色の吹き出しを置く。
+BG_COLOR = "#1A0B3B"
+BG_COLOR_2 = "#3B1580"
+ACCENT_COLOR = "#FFE14D"   # 吹き出し・タイトル(黄色)
+ACCENT_COLOR_2 = "#FF3D7F"  # 差し色(ピンク)
 FG_COLOR = "#FFFFFF"
 
 ICON_SIZE = 800
 BANNER_SIZE = (2560, 1440)
 BANNER_SAFE_AREA = (1546, 423)  # YouTube公式の「どのデバイスでも見切れない」領域
 
-# 背景に薄く散らす「発音不能っぽい」記号(config.DECORATIVE_SYMBOLSと同じ、
-# 実測でフォント対応済みのものだけを使う)
-from config import DECORATIVE_SYMBOLS  # noqa: E402
+# 読めそうで読めない単語(土台の文字に結合文字を重ねたもの)。動画と同じ雰囲気を出す
+Z = "\u0337\u0353\u0300\u0352\u0315"
+ICON_GLYPH = "A\u0337\u0353\u031a\u0352\u0316\u0300"
+BANNER_WORD = "\u1e5b\u0336\u0356u\u0489O\u0334\u0326i\u0338\u0347\u0300e\u0335\u0352e\u0317\u0303"
+BG_WORDS = ["Q\u0337\u0353\u0300", "x\u0489\u0348", "\u00d8\u0336\u0326", "\u0466\u0338",
+            "z\u0334\u0331\u0352", "\u00df\u0335\u0300", "\u01b7\u0337\u0353", "\u0283\u0338\u0352",
+            "?!", "\u0298", "\u0e51"]
 
 ICON_HTML = """
 <html><head><meta charset="utf-8"><style>
-  body {{ margin:0; width:{size}px; height:{size}px;
-         background: radial-gradient(circle at 50% 42%, {bg2} 0%, {bg} 70%);
-         font-family: {font_stack};
-         display:flex; align-items:center; justify-content:center; }}
-  /* YouTubeはアイコンを円形にクロップして表示するため、要素は全て
-     この正方形コンテナ(内接円の安全範囲)にまとめて中央寄せする */
-  .stage {{ position:relative; width:{size}px; height:{size}px;
-            display:flex; align-items:center; justify-content:center; }}
-  .ring {{ position:absolute; top:50%; left:50%; width:680px; height:680px;
-           margin:-340px 0 0 -340px; border-radius:50%;
-           border:2px solid rgba(57,255,136,0.18); }}
-  /* 動画本編と同じ「安全な結合文字」の塊を2つ、左右に並べたアイコン。
-     結合文字だけ(見える土台文字を持たない)だとブラウザのテキスト幅計算が
-     不安定になり中央寄せが崩れるため、Flexboxの明示的なgapで間隔を作り、
-     絶対配置ではなくレイアウトエンジンに位置を委ねている。
-     赤/青にずらした半透明コピーを重ねて色収差(デジタルに壊れた/グリッチ
-     した)風の見た目を追加している */
-  .glyph-row {{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-                display:flex; align-items:center; gap:170px; white-space:nowrap; }}
-  .glyph-cell {{ font-size:{glyph_size}px; font-weight:900; line-height:1; }}
-  .glyph-r {{ transform:translate(calc(-50% - 6px), calc(-50% + 3px)); filter: blur(0.5px); }}
-  .glyph-r .glyph-cell {{ color:rgba(255,45,110,0.5); }}
-  .glyph-b {{ transform:translate(calc(-50% + 6px), calc(-50% - 3px)); filter: blur(0.5px); }}
-  .glyph-b .glyph-cell {{ color:rgba(45,180,255,0.5); }}
-  .glyph .glyph-cell {{ background: linear-gradient(160deg, {accent} 0%, {accent2} 100%);
-                         -webkit-background-clip:text; background-clip:text; color:transparent;
-                         filter: drop-shadow(0 0 46px rgba(57,255,136,0.45))
-                                 drop-shadow(0 0 90px rgba(34,211,238,0.25)); }}
-</style></head>
-<body>
-<div class="stage">
-  <div class="ring"></div>
-  <div class="glyph-row glyph-r"><span class="glyph-cell">{glyph}</span><span class="glyph-cell">{glyph}</span></div>
-  <div class="glyph-row glyph-b"><span class="glyph-cell">{glyph}</span><span class="glyph-cell">{glyph}</span></div>
-  <div class="glyph-row glyph"><span class="glyph-cell">{glyph}</span><span class="glyph-cell">{glyph}</span></div>
-</div>
+  body {{ margin:0; width:{size}px; height:{size}px; overflow:hidden;
+         background: radial-gradient(circle at 50% 40%, {bg2} 0%, {bg} 72%);
+         font-family: 'Noto Sans', sans-serif; }}
+  /* YouTubeはアイコンを円形にクロップするので、要素は中央の円(直径800)の内側に収める */
+  .bubble {{ position:absolute; left:130px; top:150px; width:540px; height:420px;
+             background:{accent}; border-radius:120px;
+             box-shadow: 0 0 80px rgba(255,225,77,0.45); }}
+  .tail {{ position:absolute; left:210px; top:530px; width:0; height:0;
+           border-left:40px solid transparent; border-right:90px solid transparent;
+           border-top:120px solid {accent}; transform:skewX(-18deg); }}
+  .glyph {{ position:absolute; left:130px; top:150px; width:540px; height:420px;
+            display:flex; align-items:center; justify-content:center;
+            font-size:300px; font-weight:700; color:#1A0B3B; line-height:1; }}
+  .q {{ position:absolute; right:150px; top:110px; font-size:150px; font-weight:700;
+        color:{accent2}; transform:rotate(14deg);
+        text-shadow: 0 0 6px #1A0B3B, 0 0 6px #1A0B3B, 0 8px 0 #1A0B3B; }}
+</style></head><body>
+  <div class="tail"></div><div class="bubble"></div>
+  <div class="glyph">{glyph}</div>
+  <div class="q">?!</div>
 </body></html>
 """
 
 BANNER_HTML = """
 <html><head><meta charset="utf-8"><style>
-  body {{ margin:0; width:{w}px; height:{h}px;
-         background: radial-gradient(ellipse at 50% 40%, {bg2} 0%, {bg} 65%);
-         font-family: {font_stack}; position:relative; overflow:hidden; }}
-  /* 記号はPython側でランダムな位置・サイズ・不透明度・回転を計算し、
-     individual spanのinline styleとして埋め込む(CSS Gridの均一な
-     タイル敷きだと壁紙のような単調さが出るため、ばらけた配置にしている) */
-  .bg-symbols {{ position:absolute; inset:0; overflow:hidden; }}
-  .bg-symbols span {{ position:absolute; color:{fg}; }}
-  /* 上下の縁をわずかに暗くして奥行きを出す */
-  .vignette {{ position:absolute; inset:0;
-               background: linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 20%,
-                                            rgba(0,0,0,0) 80%, rgba(0,0,0,0.35) 100%); }}
-  /* セーフエリアの後ろだけ軽く暗くして、パターンと文字が被っても可読性を保つ */
-  .scrim {{ position:absolute; left:{scrim_left}px; top:0; width:{scrim_w}px; height:100%;
-            background: radial-gradient(ellipse at center, rgba(0,0,0,0.65) 0%,
-                                         rgba(0,0,0,0.15) 55%, rgba(0,0,0,0) 78%); }}
+  body {{ margin:0; width:{w}px; height:{h}px; overflow:hidden;
+         background: radial-gradient(ellipse at 50% 50%, {bg2} 0%, {bg} 65%);
+         font-family: 'Noto Sans', sans-serif; }}
+  .bg {{ position:absolute; color:rgba(255,255,255,0.07); font-weight:700; }}
   .safe {{ position:absolute; left:{safe_left}px; top:{safe_top}px; width:{safe_w}px; height:{safe_h}px;
-           display:flex; flex-direction:column; align-items:center; justify-content:center;
-           text-align:center; }}
-  .kicker-row {{ display:flex; align-items:center; gap:18px; }}
-  .kicker-bar {{ width:44px; height:4px; border-radius:2px;
-                 background: linear-gradient(90deg, {accent} 0%, {accent2} 100%); }}
-  .kicker {{ font-size:36px; font-weight:700; letter-spacing:6px; text-transform:uppercase;
-             color:{accent}; margin:0; white-space:nowrap; }}
-  /* チャンネル名「Can You Say This?」を主役の見出しにし、アイコンと同じ
-     赤/シアンの色収差(グリッチ)レイヤーを重ねて見た目を揃えている */
-  .title-wrap {{ position:relative; margin:16px 0 0 0; }}
-  .title-layer {{ font-size:102px; font-weight:900; line-height:1; white-space:nowrap; margin:0; }}
-  .title-r {{ position:absolute; left:50%; top:0;
-              color:rgba(255,45,110,0.5); transform:translate(calc(-50% - 6px), 3px);
-              filter: blur(0.5px); }}
-  .title-b {{ position:absolute; left:50%; top:0;
-              color:rgba(45,180,255,0.5); transform:translate(calc(-50% + 6px), -3px);
-              filter: blur(0.5px); }}
-  .title {{ position:relative;
-            background: linear-gradient(135deg, {fg} 0%, {fg} 55%, {accent2} 100%);
-            -webkit-background-clip:text; background-clip:text; color:transparent;
-            text-shadow: 0 0 46px rgba(57,255,136,0.25); }}
-  .divider {{ width:220px; height:3px; margin:30px auto 0; border-radius:2px;
-              background: linear-gradient(90deg, transparent, {accent2}, transparent); }}
-  .tagline {{ font-size:32px; color:#B9BCC4; margin-top:26px; letter-spacing:1px; }}
-</style></head>
-<body>
-<div class="bg-symbols">{bg_symbols}</div>
-<div class="vignette"></div>
-<div class="scrim"></div>
-<div class="safe">
-  <div class="kicker-row">
-    <span class="kicker-bar"></span>
-    <p class="kicker">How to Pronounce</p>
-    <span class="kicker-bar"></span>
+           display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }}
+  .title {{ font-size:150px; font-weight:700; color:{accent}; letter-spacing:4px; line-height:1;
+            -webkit-text-stroke: 6px #12062B; paint-order: stroke fill;
+            text-shadow: 0 10px 0 #12062B, 0 0 60px rgba(255,225,77,0.35); }}
+  .row {{ display:flex; align-items:center; gap:30px; }}
+  .word {{ background:#FFFFFF; color:#1A0B3B; font-size:60px; font-weight:700; padding:14px 40px 26px; line-height:1.2;
+           border-radius:60px; }}
+  .tag {{ font-size:46px; font-weight:700; color:#FFFFFF; }}
+  .cta {{ background:{accent2}; color:#FFFFFF; font-size:36px; font-weight:700; letter-spacing:3px;
+          padding:8px 34px; border-radius:40px; }}
+</style></head><body>
+  {bg_words}
+  <div class="safe">
+    <div class="title">CAN YOU SAY THIS?</div>
+    <div class="row"><div class="word">{word}</div><div class="tag">Impossible words. Weird voices.</div></div>
+    <div class="cta">COMMENT A WORD FOR ME TO SAY</div>
   </div>
-  <div class="title-wrap">
-    <p class="title-layer title-r">Can You Say This?</p>
-    <p class="title-layer title-b">Can You Say This?</p>
-    <p class="title-layer title">Can You Say This?</p>
-  </div>
-  <div class="divider"></div>
-  <p class="tagline">A new unpronounceable word, every day.</p>
-</div>
 </body></html>
 """
 
 
-# 結合文字の塊だけを左右に2つ並べる構成。土台は中黒(MIDDLE DOT, U+00B7)。
-# 完全に見えない土台(半角スペース)を試したところ、上下のマークがバラバラの
-# 位置に分かれてしまい中央揃えも崩れることを確認したため、ほぼ目立たない
-# 極小の点を土台にして描画位置を安定させている。チャンネルアイコンは動画と
-# 違って「毎回違う見た目」だと困るため固定の組み合わせにしている。
-# ここで使うマークは、豆腐(未対応フォントでの表示崩れ)を避けるため、
-# フランス語のç・ベトナム語の点・ポーランド語のオゴネクなど「実在の言語の
-# アクセント記号として使われていて、対応フォントが特に広い」ものだけを
-# 選んでいる(U+0316などの珍しいbelow系マークや、全角記号(CJK用フォントが
-# 無いと豆腐になる)は避けた)。
-_ICON_GLYPH_BASE = "·"  # 中黒 U+00B7
-_ICON_GLYPH_ABOVE = [0x0300, 0x0301, 0x0303, 0x030C]  # grave/acute/tilde/caron
-_ICON_GLYPH_BELOW = [0x0323, 0x0327, 0x0328]           # dot below/cedilla/ogonek
-
-
-def _icon_glyph():
-    """結合文字の塊を1つ返す(左右2つ並べるレイアウトはICON_HTML側が担当)。"""
-    return _ICON_GLYPH_BASE + "".join(chr(cp) for cp in _ICON_GLYPH_ABOVE + _ICON_GLYPH_BELOW)
-
-
-def _scatter_symbols(count=140):
-    """記号をランダムな位置・サイズ・不透明度・回転で散らした<span>群を作る。
-    均一グリッドで敷き詰めるより「壁紙感」が薄れ、星座のような疎らな見た目になる。"""
+def _scatter_words(w, h, count=70, seed=3):
+    """背景に、読めない単語を薄く散らす(中央のセーフエリアは避ける)。"""
+    rng = random.Random(seed)
+    sw, sh = BANNER_SAFE_AREA
+    x0, y0 = (w - sw) // 2 - 60, (h - sh) // 2 - 60
     spans = []
-    for _ in range(count):
-        sym = random.choice(DECORATIVE_SYMBOLS)
-        left = random.uniform(0, 100)
-        top = random.uniform(0, 100)
-        size = random.randint(26, 60)
-        opacity = round(random.uniform(0.05, 0.16), 2)
-        rotate = random.randint(-25, 25)
-        spans.append(
-            f'<span style="left:{left:.2f}%; top:{top:.2f}%; font-size:{size}px; '
-            f'opacity:{opacity}; transform:translate(-50%,-50%) rotate({rotate}deg);">{sym}</span>'
-        )
+    while len(spans) < count:
+        x, y = rng.randrange(0, w - 120), rng.randrange(0, h - 120)
+        if x0 - 100 < x < x0 + sw + 120 and y0 - 80 < y < y0 + sh + 120:
+            continue
+        size = rng.randrange(60, 150)
+        rot = rng.randrange(-25, 26)
+        spans.append(f'<div class="bg" style="left:{x}px;top:{y}px;font-size:{size}px;'
+                     f'transform:rotate({rot}deg)">{html.escape(rng.choice(BG_WORDS))}</div>')
     return "".join(spans)
 
 
@@ -194,7 +121,7 @@ def _get_browser(pw):
     # CHROMIUM_PATHは元の開発環境にだけ存在するブラウザの実体パス。
     # 他の環境には無いので、その場合はPlaywright自身が解決するデフォルトの
     # バンドル済みChromiumにフォールバックする。
-    executable_path = CHROMIUM_PATH if os.path.exists(CHROMIUM_PATH) else None
+    executable_path = CHROMIUM_PATH if os.path.isfile(CHROMIUM_PATH) else None
     return pw.chromium.launch(executable_path=executable_path)
 
 
@@ -213,10 +140,8 @@ def _render_html(html_content, size, out_path):
 
 def build_icon(out_path):
     html_content = ICON_HTML.format(
-        size=ICON_SIZE, bg=BG_COLOR, bg2=BG_COLOR_2, fg=FG_COLOR,
-        accent=ACCENT_COLOR, accent2=ACCENT_COLOR_2,
-        glyph_size=260, glyph=html.escape(_icon_glyph()),
-        font_stack=FRAME_CSS_FONT_STACK,
+        size=ICON_SIZE, bg=BG_COLOR, bg2=BG_COLOR_2, accent=ACCENT_COLOR, accent2=ACCENT_COLOR_2,
+        glyph=html.escape(ICON_GLYPH),
     )
     _render_html(html_content, (ICON_SIZE, ICON_SIZE), out_path)
 
@@ -224,21 +149,10 @@ def build_icon(out_path):
 def build_banner(out_path):
     w, h = BANNER_SIZE
     safe_w, safe_h = BANNER_SAFE_AREA
-    safe_left = (w - safe_w) // 2
-    safe_top = (h - safe_h) // 2
-
-    bg_symbols = _scatter_symbols()
-
-    scrim_w = safe_w + 500
-    scrim_left = (w - scrim_w) // 2
-
     html_content = BANNER_HTML.format(
-        w=w, h=h, bg=BG_COLOR, bg2=BG_COLOR_2, fg=FG_COLOR,
-        accent=ACCENT_COLOR, accent2=ACCENT_COLOR_2,
-        font_stack=FRAME_CSS_FONT_STACK,
-        safe_left=safe_left, safe_top=safe_top, safe_w=safe_w, safe_h=safe_h,
-        scrim_left=scrim_left, scrim_w=scrim_w,
-        bg_symbols=bg_symbols,
+        w=w, h=h, bg=BG_COLOR, bg2=BG_COLOR_2, accent=ACCENT_COLOR, accent2=ACCENT_COLOR_2,
+        safe_left=(w - safe_w) // 2, safe_top=(h - safe_h) // 2, safe_w=safe_w, safe_h=safe_h,
+        word=html.escape(BANNER_WORD), bg_words=_scatter_words(w, h),
     )
     _render_html(html_content, (w, h), out_path)
 
