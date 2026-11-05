@@ -19,9 +19,7 @@ HTMLを描画してスクリーンショットする方式を使う。
 """
 
 import argparse
-import html
 import os
-import random
 
 from playwright.sync_api import sync_playwright
 
@@ -38,12 +36,6 @@ FG_COLOR = "#FFFFFF"
 ICON_SIZE = 800
 BANNER_SIZE = (2560, 1440)
 BANNER_SAFE_AREA = (1546, 423)  # YouTube公式の「どのデバイスでも見切れない」領域
-
-# 読めそうで読めない単語(土台の文字に結合文字を重ねたもの)。動画と同じ雰囲気を出す
-BANNER_WORD = "\u1e5b\u0336\u0356u\u0489O\u0334\u0326i\u0338\u0347\u0300e\u0335\u0352e\u0317\u0303"
-BG_WORDS = ["Q\u0337\u0353\u0300", "x\u0489\u0348", "\u00d8\u0336\u0326", "\u0466\u0338",
-            "z\u0334\u0331\u0352", "\u00df\u0335\u0300", "\u01b7\u0337\u0353", "\u0283\u0338\u0352",
-            "?!", "\u0298", "\u0e51", "C"]
 
 # アイコン: 緑の円に大きな黒い「C」と「CAN YOU SAY THIS?」。
 # YouTubeは円形に切り抜くので、緑の円を画面いっぱいにして、文字は円の内側に収める。
@@ -70,49 +62,21 @@ BANNER_HTML = """
   body {{ margin:0; width:{w}px; height:{h}px; overflow:hidden;
          background: radial-gradient(ellipse at 50% 50%, {bg2} 0%, {bg} 62%);
          font-family: 'Noto Sans', sans-serif; }}
-  .bg {{ position:absolute; color:rgba(57,255,136,0.07); font-weight:700; }}
   .safe {{ position:absolute; left:{safe_left}px; top:{safe_top}px; width:{safe_w}px; height:{safe_h}px;
            display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; }}
-  .head {{ display:flex; align-items:center; gap:36px; }}
-  .badge {{ width:150px; height:150px; border-radius:50%; flex:none;
-            background: radial-gradient(circle at 40% 32%, #6BFFAA 0%, {accent} 45%, {accent2} 100%);
-            display:flex; align-items:center; justify-content:center;
-            font-size:116px; font-weight:700; color:#0B0D12; -webkit-text-stroke: 5px #0B0D12;
-            box-shadow: 0 0 60px rgba(57,255,136,0.45); }}
-  .title {{ font-size:132px; font-weight:700; color:{accent}; letter-spacing:3px; line-height:1;
+  .title {{ font-size:150px; font-weight:700; color:{accent}; letter-spacing:3px; line-height:1;
             text-shadow: 0 0 50px rgba(57,255,136,0.45); }}
-  .row {{ display:flex; align-items:center; gap:30px; }}
-  .word {{ background:{accent}; color:#0B0D12; font-size:58px; font-weight:700; padding:14px 40px 26px;
-           line-height:1.2; border-radius:60px; }}
-  .tag {{ font-size:46px; font-weight:700; color:#FFFFFF; }}
+  .tag {{ font-size:52px; font-weight:700; color:#FFFFFF; }}
   .cta {{ border:4px solid {accent}; color:{accent}; font-size:34px; font-weight:700; letter-spacing:4px;
           padding:6px 34px; border-radius:40px; }}
 </style></head><body>
-  {bg_words}
   <div class="safe">
-    <div class="head"><div class="badge">C</div><div class="title">CAN YOU SAY THIS?</div></div>
-    <div class="row"><div class="word">{word}</div><div class="tag">Impossible words. Weird voices.</div></div>
+    <div class="title">CAN YOU SAY THIS?</div>
+    <div class="tag">Impossible words. Weird voices.</div>
     <div class="cta">TRY SAYING IT OUT LOUD</div>
   </div>
 </body></html>
 """
-
-
-def _scatter_words(w, h, count=70, seed=3):
-    """背景に、読めない単語を薄く散らす(中央のセーフエリアは避ける)。"""
-    rng = random.Random(seed)
-    sw, sh = BANNER_SAFE_AREA
-    x0, y0 = (w - sw) // 2 - 60, (h - sh) // 2 - 60
-    spans = []
-    while len(spans) < count:
-        x, y = rng.randrange(0, w - 120), rng.randrange(0, h - 120)
-        if x0 - 100 < x < x0 + sw + 120 and y0 - 80 < y < y0 + sh + 120:
-            continue
-        size = rng.randrange(60, 150)
-        rot = rng.randrange(-25, 26)
-        spans.append(f'<div class="bg" style="left:{x}px;top:{y}px;font-size:{size}px;'
-                     f'transform:rotate({rot}deg)">{html.escape(rng.choice(BG_WORDS))}</div>')
-    return "".join(spans)
 
 
 def _get_browser(pw):
@@ -149,7 +113,6 @@ def build_banner(out_path):
     html_content = BANNER_HTML.format(
         w=w, h=h, bg=BG_COLOR, bg2=BG_COLOR_2, accent=ACCENT_COLOR, accent2=ACCENT_COLOR_2,
         safe_left=(w - safe_w) // 2, safe_top=(h - safe_h) // 2, safe_w=safe_w, safe_h=safe_h,
-        word=html.escape(BANNER_WORD), bg_words=_scatter_words(w, h),
     )
     _render_html(html_content, (w, h), out_path)
 
