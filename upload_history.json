@@ -9,5 +9,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "try_to_say"
+  },
+  {
+    "word": "W̵͒è̷'r̸͖e̶ b̵̀a̷̦c̸k̶͒",
+    "label": "Wè're back",
+    "video_id": "7hmMufwREDc",
+    "mode": "chorus",
+    "run_id": "42116930125",
+    "uploaded_at": "2026-11-05T22:04:30.842568+00:00",
+    "voice_label": null,
+    "lang_code": null,
+    "title_template": "say_out_loud"
   }
 ]
