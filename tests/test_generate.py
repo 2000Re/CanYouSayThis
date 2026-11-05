@@ -342,19 +342,20 @@ def test_youtube_metadata_comment_omits_request_length_notice():
     assert "80 characters" not in comment
 
 
-def test_youtube_metadata_comment_contains_request_paused_notice():
-    # コミュニティ投稿は誰も見ておらずリクエストが来続けてしまうため、
-    # 視聴者が実際に見ている動画のコメント欄側でリクエスト対応状況
-    # を告知する(README「ハマった罠」104番、109番で全面停止→徐々に
-    # 再開に文言更新)。モードに関わらず常に含める。
+def test_youtube_metadata_comment_ends_with_request_notice():
+    # リクエスト対応状況の告知(README「ハマった罠」104番・109番)は、モードに関わらず
+    # 常にコメント末尾に付ける。2026年11月にチャンネルを作り直し、最初はリクエストを
+    # 受け付けない方針にしたため、告知文は空(リクエストの話をコメントで持ち出さない)。
     _title, _description, _tags, _caption, comment, _localizations = _youtube_metadata("v́oOn", "voOn", "tts")
-    assert "Slowly getting back to requests" in comment
+    assert comment.endswith(_REQUEST_PAUSED_NOTICE)
+    assert "request" not in comment.lower()
 
 
-def test_youtube_metadata_comment_request_paused_notice_also_applies_to_pictograph_word():
+def test_youtube_metadata_comment_request_notice_also_applies_to_pictograph_word():
     word = config.CUNEIFORM_CHARS[0] + config.CUNEIFORM_CHARS[1]
     _title, _description, _tags, _caption, comment, _localizations = _youtube_metadata(word, word, "glitch")
-    assert "Slowly getting back to requests" in comment
+    assert comment.endswith(_REQUEST_PAUSED_NOTICE)
+    assert "request" not in comment.lower()
 
 
 def test_youtube_metadata_description_omits_request_paused_notice():
@@ -803,7 +804,7 @@ def test_youtube_metadata_comment_is_separate_from_caption():
         "v́oOn", "voOn", "tts"
     )
     assert comment.endswith(_REQUEST_PAUSED_NOTICE)
-    assert comment[: -len(_REQUEST_PAUSED_NOTICE)] in expected
+    assert comment[: len(comment) - len(_REQUEST_PAUSED_NOTICE)] in expected
     assert comment != caption
 
 

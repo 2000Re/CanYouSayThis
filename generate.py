@@ -482,9 +482,11 @@ def _random_pictograph_comment_text():
 # _REQUEST_LENGTH_NOTICEと同じ理由で、repost_shorts.py側だけ付け忘れる
 # 不整合を避ける)。comment_requests.py導入後、全面停止ではなく一部ずつ
 # 対応する運用に変わったため案内文を更新(README「ハマった罠」109番)。
-_REQUEST_PAUSED_NOTICE = (
-    " Slowly getting back to requests now, but I can't get to all of them, sorry! \U0001F64F"
-)
+# 2026年11月にチャンネルを作り直した。新しいチャンネルでは、最初はリクエストを
+# 受け付けない(コメントでリクエストを呼び込まない)方針なので、告知文は空にしている。
+# 受け付けを再開するときは、ここに案内文を入れる(以前の文:
+# " Slowly getting back to requests now, but I can't get to all of them, sorry! 🙏")。
+_REQUEST_PAUSED_NOTICE = ""
 
 
 def _mode_genre_suffix(mode):

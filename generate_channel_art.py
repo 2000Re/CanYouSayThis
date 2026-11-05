@@ -94,7 +94,7 @@ BANNER_HTML = """
   <div class="safe">
     <div class="title">CAN YOU SAY THIS?</div>
     <div class="row"><div class="word">{word}</div><div class="tag">Impossible words. Weird voices.</div></div>
-    <div class="cta">COMMENT A WORD FOR ME TO SAY</div>
+    <div class="cta">TRY SAYING IT OUT LOUD</div>
   </div>
 </body></html>
 """
