@@ -27,12 +27,12 @@ from playwright.sync_api import sync_playwright
 
 from config import CHROMIUM_PATH
 
-# ブランドカラー(2026年11月、新しいチャンネルで作り直したときのデザイン)。
-# サムネイル一覧の小さなアイコンでも目立つよう、濃い紫の背景に黄色の吹き出しを置く。
-BG_COLOR = "#1A0B3B"
-BG_COLOR_2 = "#3B1580"
-ACCENT_COLOR = "#FFE14D"   # 吹き出し・タイトル(黄色)
-ACCENT_COLOR_2 = "#FF3D7F"  # 差し色(ピンク)
+# ブランドカラー。旧チャンネルから使っている緑の「C」のアイコン(OAuth同意画面のロゴにも
+# 登録済み)に合わせて、黒に近い背景と緑(#39FF88)でまとめる。
+BG_COLOR = "#0B0D12"
+BG_COLOR_2 = "#16301F"
+ACCENT_COLOR = "#39FF88"   # メインの緑
+ACCENT_COLOR_2 = "#1FCC66"  # 濃い緑(グラデーション・影)
 FG_COLOR = "#FFFFFF"
 
 ICON_SIZE = 800
@@ -40,59 +40,57 @@ BANNER_SIZE = (2560, 1440)
 BANNER_SAFE_AREA = (1546, 423)  # YouTube公式の「どのデバイスでも見切れない」領域
 
 # 読めそうで読めない単語(土台の文字に結合文字を重ねたもの)。動画と同じ雰囲気を出す
-Z = "\u0337\u0353\u0300\u0352\u0315"
-ICON_GLYPH = "A\u0337\u0353\u031a\u0352\u0316\u0300"
 BANNER_WORD = "\u1e5b\u0336\u0356u\u0489O\u0334\u0326i\u0338\u0347\u0300e\u0335\u0352e\u0317\u0303"
 BG_WORDS = ["Q\u0337\u0353\u0300", "x\u0489\u0348", "\u00d8\u0336\u0326", "\u0466\u0338",
             "z\u0334\u0331\u0352", "\u00df\u0335\u0300", "\u01b7\u0337\u0353", "\u0283\u0338\u0352",
-            "?!", "\u0298", "\u0e51"]
+            "?!", "\u0298", "\u0e51", "C"]
 
+# アイコン: 緑の円に大きな黒い「C」と「CAN YOU SAY THIS?」。
+# YouTubeは円形に切り抜くので、緑の円を画面いっぱいにして、文字は円の内側に収める。
 ICON_HTML = """
 <html><head><meta charset="utf-8"><style>
-  body {{ margin:0; width:{size}px; height:{size}px; overflow:hidden;
-         background: radial-gradient(circle at 50% 40%, {bg2} 0%, {bg} 72%);
+  body {{ margin:0; width:{size}px; height:{size}px; overflow:hidden; background:{bg};
          font-family: 'Noto Sans', sans-serif; }}
-  /* YouTubeはアイコンを円形にクロップするので、要素は中央の円(直径800)の内側に収める */
-  .bubble {{ position:absolute; left:130px; top:150px; width:540px; height:420px;
-             background:{accent}; border-radius:120px;
-             box-shadow: 0 0 80px rgba(255,225,77,0.45); }}
-  .tail {{ position:absolute; left:210px; top:530px; width:0; height:0;
-           border-left:40px solid transparent; border-right:90px solid transparent;
-           border-top:120px solid {accent}; transform:skewX(-18deg); }}
-  .glyph {{ position:absolute; left:130px; top:150px; width:540px; height:420px;
-            display:flex; align-items:center; justify-content:center;
-            font-size:300px; font-weight:700; color:#1A0B3B; line-height:1; }}
-  .q {{ position:absolute; right:150px; top:110px; font-size:150px; font-weight:700;
-        color:{accent2}; transform:rotate(14deg);
-        text-shadow: 0 0 6px #1A0B3B, 0 0 6px #1A0B3B, 0 8px 0 #1A0B3B; }}
+  .circle {{ position:absolute; left:0; top:0; width:{size}px; height:{size}px; border-radius:50%;
+             background: radial-gradient(circle at 40% 32%, #6BFFAA 0%, {accent} 45%, {accent2} 100%); }}
+  .c {{ position:absolute; left:0; top:70px; width:{size}px; text-align:center;
+        font-size:440px; font-weight:700; line-height:1; color:#0B0D12;
+        -webkit-text-stroke: 16px #0B0D12; }}
+  .t {{ position:absolute; left:0; top:575px; width:{size}px; text-align:center;
+        font-size:46px; font-weight:700; letter-spacing:2px; color:#0B0D12; }}
 </style></head><body>
-  <div class="tail"></div><div class="bubble"></div>
-  <div class="glyph">{glyph}</div>
-  <div class="q">?!</div>
+  <div class="circle"></div>
+  <div class="c">C</div>
+  <div class="t">CAN YOU SAY THIS?</div>
 </body></html>
 """
 
 BANNER_HTML = """
 <html><head><meta charset="utf-8"><style>
   body {{ margin:0; width:{w}px; height:{h}px; overflow:hidden;
-         background: radial-gradient(ellipse at 50% 50%, {bg2} 0%, {bg} 65%);
+         background: radial-gradient(ellipse at 50% 50%, {bg2} 0%, {bg} 62%);
          font-family: 'Noto Sans', sans-serif; }}
-  .bg {{ position:absolute; color:rgba(255,255,255,0.07); font-weight:700; }}
+  .bg {{ position:absolute; color:rgba(57,255,136,0.07); font-weight:700; }}
   .safe {{ position:absolute; left:{safe_left}px; top:{safe_top}px; width:{safe_w}px; height:{safe_h}px;
-           display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; }}
-  .title {{ font-size:150px; font-weight:700; color:{accent}; letter-spacing:4px; line-height:1;
-            -webkit-text-stroke: 6px #12062B; paint-order: stroke fill;
-            text-shadow: 0 10px 0 #12062B, 0 0 60px rgba(255,225,77,0.35); }}
+           display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; }}
+  .head {{ display:flex; align-items:center; gap:36px; }}
+  .badge {{ width:150px; height:150px; border-radius:50%; flex:none;
+            background: radial-gradient(circle at 40% 32%, #6BFFAA 0%, {accent} 45%, {accent2} 100%);
+            display:flex; align-items:center; justify-content:center;
+            font-size:116px; font-weight:700; color:#0B0D12; -webkit-text-stroke: 5px #0B0D12;
+            box-shadow: 0 0 60px rgba(57,255,136,0.45); }}
+  .title {{ font-size:132px; font-weight:700; color:{accent}; letter-spacing:3px; line-height:1;
+            text-shadow: 0 0 50px rgba(57,255,136,0.45); }}
   .row {{ display:flex; align-items:center; gap:30px; }}
-  .word {{ background:#FFFFFF; color:#1A0B3B; font-size:60px; font-weight:700; padding:14px 40px 26px; line-height:1.2;
-           border-radius:60px; }}
+  .word {{ background:{accent}; color:#0B0D12; font-size:58px; font-weight:700; padding:14px 40px 26px;
+           line-height:1.2; border-radius:60px; }}
   .tag {{ font-size:46px; font-weight:700; color:#FFFFFF; }}
-  .cta {{ background:{accent2}; color:#FFFFFF; font-size:36px; font-weight:700; letter-spacing:3px;
-          padding:8px 34px; border-radius:40px; }}
+  .cta {{ border:4px solid {accent}; color:{accent}; font-size:34px; font-weight:700; letter-spacing:4px;
+          padding:6px 34px; border-radius:40px; }}
 </style></head><body>
   {bg_words}
   <div class="safe">
-    <div class="title">CAN YOU SAY THIS?</div>
+    <div class="head"><div class="badge">C</div><div class="title">CAN YOU SAY THIS?</div></div>
     <div class="row"><div class="word">{word}</div><div class="tag">Impossible words. Weird voices.</div></div>
     <div class="cta">TRY SAYING IT OUT LOUD</div>
   </div>
@@ -141,7 +139,6 @@ def _render_html(html_content, size, out_path):
 def build_icon(out_path):
     html_content = ICON_HTML.format(
         size=ICON_SIZE, bg=BG_COLOR, bg2=BG_COLOR_2, accent=ACCENT_COLOR, accent2=ACCENT_COLOR_2,
-        glyph=html.escape(ICON_GLYPH),
     )
     _render_html(html_content, (ICON_SIZE, ICON_SIZE), out_path)
 
