@@ -42,5 +42,16 @@
     "voice_label": null,
     "lang_code": null,
     "title_template": "say_out_loud"
+  },
+  {
+    "word": ":oor֦֧֑֢֘o᷷ᷙᷡᷛi̱͓̩͂͐ͯͯͮ͝͞e҄҉҄҆҅A¿ ◠",
+    "label": ":ooroie҉A¿ ◠",
+    "video_id": "T6Vv43_QSnQ",
+    "mode": "reverse",
+    "run_id": "42322838306",
+    "uploaded_at": "2026-11-07T01:18:15.234474+00:00",
+    "voice_label": "Polish (Female)",
+    "lang_code": "pl",
+    "title_template": "what_does_it_sound_like"
   }
 ]
